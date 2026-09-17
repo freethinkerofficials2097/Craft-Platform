@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>Live Game Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FBF1DE; --cream-deep:#F2E1BE; --linen:#FFFBF2;
+    --wood:#C98C56; --wood-deep:#8B5A34; --thread:#D9BE93;
+    --ink:#5B4636; --ink-mid:#9C8367;
+    --pink:#F3B7C6; --pink-deep:#D9829B;
+    --blue:#AAD6EC; --blue-deep:#5E9FC2;
+    --green:#B8DEAE; --green-deep:#6FA867;
+    --yellow:#F6D486; --yellow-deep:#D6A233;
+    --purple:#D3BFEC; --purple-deep:#9E76C4;
+    --font-head:"Baloo 2",cursive; --font-body:"Quicksand",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh;
+    background:
+      radial-gradient(ellipse at 20% 0%, #fff7e8 0%, transparent 55%),
+      linear-gradient(180deg, var(--cream) 0%, var(--cream-deep) 100%);
+    color:var(--ink); font-family:var(--font-body);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .hub{ width:100%; max-width:480px; position:relative; }
+  .hub-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--font-head); font-weight:700; font-size:12.5px;
+    letter-spacing:.04em; color:#fff; background:var(--wood);
+    padding:7px 14px; border-radius:999px; margin-bottom:16px;
+    box-shadow:0 3px 0 var(--wood-deep);
+    border:2px dashed rgba(255,255,255,.6);
+  }
+  h1{
+    font-family:var(--font-head); font-weight:700; font-size:30px; margin:0 0 8px;
+    color:var(--wood-deep); text-shadow:0 2px 0 #fff, 0 3px 0 rgba(139,90,52,.15);
+  }
+  .hub-sub{ color:var(--ink-mid); font-size:14.5px; line-height:1.6; margin:0 0 28px; font-weight:500; }
+  .game-card{
+    display:block; text-decoration:none; color:inherit;
+    background:var(--linen); border:3px dashed var(--thread); border-radius:22px;
+    padding:20px; margin-bottom:16px;
+    box-shadow:0 5px 0 rgba(139,90,52,.14), 0 10px 18px rgba(139,90,52,.10);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .game-card:active{ transform:translateY(3px); box-shadow:0 2px 0 rgba(139,90,52,.14); }
+  .game-card:hover{ border-color:var(--accent, var(--yellow-deep)); }
+  .game-icon{
+    font-size:26px; margin-bottom:8px; display:inline-flex; align-items:center; justify-content:center;
+    width:46px; height:46px; border-radius:50%; background:var(--accent-soft, var(--yellow));
+    box-shadow:inset 0 -3px 0 rgba(0,0,0,.08);
+  }
+  .game-name{ font-family:var(--font-head); font-weight:700; font-size:19px; margin:10px 0 4px; color:var(--ink); }
+  .game-desc{ color:var(--ink-mid); font-size:13.5px; line-height:1.55; margin:0 0 14px; font-weight:500; }
+  .game-tags{ display:flex; gap:6px; flex-wrap:wrap; }
+  .tag{
+    font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;
+    background:var(--cream); color:var(--ink-mid); border:2px dashed var(--thread);
+  }
+  .play-row{ display:flex; align-items:center; justify-content:space-between; margin-top:16px; }
+  .play-cta{
+    font-family:var(--font-head); font-weight:700; font-size:13.5px;
+    color:var(--accent-deep, var(--wood-deep));
+  }
+  .flagle-card{ --accent:#D6A233; --accent-soft:var(--yellow); --accent-deep:var(--yellow-deep); }
+  .travle-card{ --accent:#9E76C4; --accent-soft:var(--purple); --accent-deep:var(--purple-deep); }
+  .hub-footer{ text-align:center; color:var(--ink-mid); font-size:12px; margin-top:24px; line-height:1.7; font-weight:500; }
+  .yarn-dot{
+    position:absolute; border-radius:50%; opacity:.55; filter:blur(.3px);
+  }
+</style>
+</head>
+<body>
+  <div class="hub">
+    <div class="hub-badge">🧶 TIKTOK LIVE GAMES</div>
+    <h1>Choose a game</h1>
+    <p class="hub-sub">Each game reads your TikTok LIVE chat directly — audience comments become guesses automatically. Pick one to open its own control board.</p>
+
+    <a class="game-card flagle-card" href="/flagle/">
+      <span class="game-icon">🚩</span>
+      <div class="game-name">Flagle Live</div>
+      <p class="game-desc">Guess the blurred flag before time runs out. Distance-and-direction hints, a live top-10 ticker, top likes &amp; gifters, and a host hint button.</p>
+      <div class="game-tags"><span class="tag">Live · Test · Offline</span><span class="tag">198 countries</span></div>
+      <div class="play-row"><span></span><span class="play-cta">Play Flagle →</span></div>
+    </a>
+
+    <a class="game-card travle-card" href="/travle/">
+      <span class="game-icon">🌍</span>
+      <div class="game-name">TRAVLE Live</div>
+      <p class="game-desc">Chat builds a land-border chain between two random countries on an interactive rotating globe. No guess limit — free outline and initial hints.</p>
+      <div class="game-tags"><span class="tag">Live · Test · Offline</span><span class="tag">Draggable 3D globe</span></div>
+      <div class="play-row"><span></span><span class="play-cta">Play TRAVLE →</span></div>
+    </a>
+
+    <p class="hub-footer">Each game is fully independent — its own screen, controls, and TikTok connection.<br/>Bookmark this page, or jump straight to a game's own link.</p>
+  </div>
+</body>
+</html>
