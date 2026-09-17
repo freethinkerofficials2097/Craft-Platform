@@ -6,6 +6,8 @@
 <title>Flagle Live · Yarn Atlas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/theme.css" />
+<script src="/shared/theme.js"></script>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -13,7 +15,20 @@
   <!-- ============ SETUP SCREEN ============ -->
   <section id="setup-screen" class="screen">
     <div class="setup-card">
-      <div class="setup-badge">🧶 FLAGLE · LIVE</div>
+      <div class="setup-top-row">
+        <div class="setup-badge">🧶 FLAGLE · LIVE</div>
+        <label class="theme-picker">
+          🎨
+          <select data-theme-select aria-label="Platform theme color">
+            <option value="cream">Cream</option>
+            <option value="blue">Sky Blue</option>
+            <option value="green">Meadow Green</option>
+            <option value="pink">Blossom Pink</option>
+            <option value="violet">Lavender Violet</option>
+            <option value="honey">Honey Gold</option>
+          </select>
+        </label>
+      </div>
       <h1>Choose how to play</h1>
 
       <div class="mode-tabs" id="mode-tabs">

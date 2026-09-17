@@ -7,6 +7,8 @@
 <meta name="description" content="A host-controlled TRAVLE geography game built for TikTok Live." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/theme.css" />
+<script src="/shared/theme.js"></script>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -131,6 +133,22 @@
   </div>
 
   <div class="drawer-body">
+    <h3 class="drawer-subhead">Platform theme</h3>
+    <p class="field-note">Pick the main color for the whole platform (hub, Flagle, and TRAVLE all follow this).</p>
+    <label class="field theme-field">
+      <span class="field-label">🎨 Main color</span>
+      <select data-theme-select class="field-input" aria-label="Platform theme color">
+        <option value="cream">Cream</option>
+        <option value="blue">Sky Blue</option>
+        <option value="green">Meadow Green</option>
+        <option value="pink">Blossom Pink</option>
+        <option value="violet">Lavender Violet</option>
+        <option value="honey">Honey Gold</option>
+      </select>
+    </label>
+
+    <hr class="divider" />
+
     <div class="status-card" id="statusCard">
       <div class="status-row"><span class="status-dot" id="statusModeDot"></span><span id="statusModeText">Live</span></div>
       <div class="status-row"><span class="status-dot" id="statusTiktokDot"></span><span id="statusTiktokText">Auto-chat: not connected</span></div>

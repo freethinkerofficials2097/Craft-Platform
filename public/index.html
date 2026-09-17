@@ -6,17 +6,26 @@
 <title>Live Game Platform</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/theme.css" />
+<script src="/shared/theme.js"></script>
 <style>
   :root{
-    --cream:#FBF1DE; --cream-deep:#F2E1BE; --linen:#FFFBF2;
-    --wood:#C98C56; --wood-deep:#8B5A34; --thread:#D9BE93;
-    --ink:#5B4636; --ink-mid:#9C8367;
-    --pink:#F3B7C6; --pink-deep:#D9829B;
-    --blue:#A9D3EC; --blue-deep:#4E93B8;
-    --green:#B8DEAE; --green-deep:#6FA867;
-    --yellow:#F6D486; --yellow-deep:#D6A233;
-    --purple:#D3BFEC; --purple-deep:#9E76C4;
-    --coral:#F0A990; --coral-deep:#D97456;
+    /* Base surface tokens now come from the shared theme system
+       (/shared/theme.css) so the dropdown below can swap the platform's
+       main color away from cream. These three lines are the only ones
+       that change when a theme is picked. */
+    --cream:var(--theme-bg); --cream-deep:var(--theme-bg-deep); --linen:var(--theme-card);
+    --wood:var(--theme-deep); --wood-deep:var(--theme-deep); --thread:var(--theme-line);
+    --ink:var(--theme-ink); --ink-mid:#9C8367;
+    /* Fixed accent colors — deliberately saturated ("yarn ball" strength,
+       not pastel-washed) so badges/icons/tags read as bold craft color
+       rather than a tint of the background. */
+    --pink:#E0699C; --pink-deep:#A8446F;
+    --blue:#4FA0C4; --blue-deep:#2C7594;
+    --green:#6FAA5C; --green-deep:#4B7D3C;
+    --yellow:#E0A934; --yellow-deep:#A8790F;
+    --purple:#9C6FD1; --purple-deep:#6C459E;
+    --coral:#E0724A; --coral-deep:#A84B26;
     --font-head:"Fredoka","Baloo 2",cursive; --font-body:"Quicksand",sans-serif;
   }
   *{box-sizing:border-box;}
@@ -34,12 +43,13 @@
   }
   .hub{ width:100%; max-width:480px; position:relative; }
 
+  .top-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
   .hub-badge{
     display:inline-flex; align-items:center; gap:6px;
     font-family:var(--font-head); font-weight:600; font-size:12.5px;
     letter-spacing:.04em; color:#fff; background:var(--coral-deep);
-    padding:7px 14px; border-radius:999px; margin-bottom:16px;
-    box-shadow:0 3px 0 #B85A3E;
+    padding:7px 14px; border-radius:999px; margin:0;
+    box-shadow:inset 0 1.5px 0 rgba(255,255,255,.35), 0 4px 0 #7A331A, 0 7px 12px rgba(122,51,26,.25);
     border:2px dashed rgba(255,255,255,.6);
   }
   h1{
@@ -60,59 +70,72 @@
     box-shadow:0 3px 0 rgba(139,90,52,.08);
   }
   .feature-chip .fc-icon{
-    width:34px; height:34px; margin:0 auto 5px; border-radius:50%;
+    width:36px; height:36px; margin:0 auto 5px; border-radius:50%;
     display:flex; align-items:center; justify-content:center; font-size:16px;
-    box-shadow:inset 0 -2px 0 rgba(0,0,0,.08);
+    border:2px solid rgba(255,255,255,.55);
+    box-shadow:inset 0 2px 2px rgba(255,255,255,.5), inset 0 -4px 5px rgba(0,0,0,.14), 0 3px 0 var(--chip-deep, rgba(0,0,0,.18));
   }
   .feature-chip .fc-label{ font-size:10px; font-weight:700; color:var(--ink-mid); letter-spacing:.02em; }
-  .fc-1 .fc-icon{ background:var(--blue); } .fc-2 .fc-icon{ background:var(--yellow); }
-  .fc-3 .fc-icon{ background:var(--green); } .fc-4 .fc-icon{ background:var(--pink); }
-  .fc-5 .fc-icon{ background:var(--purple); }
+  .fc-1 .fc-icon{ background:var(--blue); --chip-deep:var(--blue-deep); } .fc-2 .fc-icon{ background:var(--yellow); --chip-deep:var(--yellow-deep); }
+  .fc-3 .fc-icon{ background:var(--green); --chip-deep:var(--green-deep); } .fc-4 .fc-icon{ background:var(--pink); --chip-deep:var(--pink-deep); }
+  .fc-5 .fc-icon{ background:var(--purple); --chip-deep:var(--purple-deep); }
 
   .game-card{
     display:block; text-decoration:none; color:inherit; position:relative;
-    background:var(--linen); border:3px dashed var(--thread); border-radius:22px;
+    background:var(--linen); border:3px dashed var(--accent, var(--thread)); border-radius:22px;
     padding:20px; margin-bottom:16px; overflow:hidden;
-    box-shadow:0 5px 0 rgba(139,90,52,.14), 0 10px 18px rgba(139,90,52,.10);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.6), 0 7px 0 var(--accent-deep, rgba(139,90,52,.18)), 0 14px 22px rgba(139,90,52,.16);
     transition:transform .12s ease, box-shadow .12s ease;
   }
   .game-card::before{
-    content:""; position:absolute; top:-30px; right:-30px; width:110px; height:110px;
-    border-radius:50%; background:var(--accent-soft, var(--yellow)); opacity:.35;
+    content:""; position:absolute; top:-34px; right:-34px; width:120px; height:120px;
+    border-radius:50%; background:var(--accent-soft, var(--yellow)); opacity:.4;
   }
-  .game-card:active{ transform:translateY(3px); box-shadow:0 2px 0 rgba(139,90,52,.14); }
-  .game-card:hover{ border-color:var(--accent, var(--yellow-deep)); }
+  .game-card:active{ transform:translateY(4px); box-shadow:inset 0 2px 0 rgba(255,255,255,.5), 0 2px 0 var(--accent-deep, rgba(139,90,52,.18)); }
   .game-icon{
     position:relative; z-index:1;
     font-size:26px; margin-bottom:8px; display:inline-flex; align-items:center; justify-content:center;
-    width:48px; height:48px; border-radius:50%; background:var(--accent-soft, var(--yellow));
+    width:50px; height:50px; border-radius:50%; background:var(--accent-soft, var(--yellow));
     border:3px solid var(--linen);
-    box-shadow:0 3px 0 var(--accent-deep, var(--yellow-deep));
+    box-shadow:inset 0 2px 3px rgba(255,255,255,.55), inset 0 -5px 6px rgba(0,0,0,.14), 0 4px 0 var(--accent-deep, var(--yellow-deep));
   }
   .game-name{ position:relative; z-index:1; font-family:var(--font-head); font-weight:600; font-size:20px; margin:10px 0 4px; color:var(--accent-deep, var(--ink)); }
   .game-desc{ position:relative; z-index:1; color:var(--ink-mid); font-size:13.5px; line-height:1.55; margin:0 0 14px; font-weight:500; }
   .game-tags{ position:relative; z-index:1; display:flex; gap:6px; flex-wrap:wrap; }
   .tag{
-    font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;
-    border:2px solid transparent;
+    font-size:11px; font-weight:700; padding:4px 11px; border-radius:999px;
+    color:#fff; box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 2px 0 var(--tag-deep, rgba(0,0,0,.15));
   }
-  .tag-a{ background:var(--blue); color:#265A72; }
-  .tag-b{ background:var(--pink); color:#8F3F55; }
-  .tag-c{ background:var(--green); color:#3F6A38; }
-  .tag-d{ background:var(--purple); color:#5C3F80; }
+  .tag-a{ background:var(--blue); --tag-deep:var(--blue-deep); }
+  .tag-b{ background:var(--pink); --tag-deep:var(--pink-deep); }
+  .tag-c{ background:var(--green); --tag-deep:var(--green-deep); }
+  .tag-d{ background:var(--purple); --tag-deep:var(--purple-deep); }
   .play-row{ position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; margin-top:16px; }
   .play-cta{
     font-family:var(--font-head); font-weight:600; font-size:14px;
     color:var(--accent-deep, var(--wood-deep));
   }
-  .flagle-card{ --accent:#4E93B8; --accent-soft:var(--blue); --accent-deep:var(--blue-deep); }
-  .travle-card{ --accent:#9E76C4; --accent-soft:var(--purple); --accent-deep:var(--purple-deep); }
+  .flagle-card{ --accent:var(--blue); --accent-soft:var(--blue); --accent-deep:var(--blue-deep); }
+  .travle-card{ --accent:var(--purple); --accent-soft:var(--purple); --accent-deep:var(--purple-deep); }
   .hub-footer{ text-align:center; color:var(--ink-mid); font-size:12px; margin-top:24px; line-height:1.7; font-weight:500; }
 </style>
 </head>
 <body>
   <div class="hub">
-    <div class="hub-badge">🧶 TIKTOK LIVE GAMES</div>
+    <div class="top-row">
+      <div class="hub-badge">🧶 TIKTOK LIVE GAMES</div>
+      <label class="theme-picker">
+        🎨
+        <select data-theme-select aria-label="Platform theme color">
+          <option value="cream">Cream</option>
+          <option value="blue">Sky Blue</option>
+          <option value="green">Meadow Green</option>
+          <option value="pink">Blossom Pink</option>
+          <option value="violet">Lavender Violet</option>
+          <option value="honey">Honey Gold</option>
+        </select>
+      </label>
+    </div>
     <h1>Choose a <span class="pop-blue">game</span></h1>
     <p class="hub-sub">Each game reads your TikTok LIVE chat directly — audience comments become guesses automatically. Pick one to open its own control board.</p>
 

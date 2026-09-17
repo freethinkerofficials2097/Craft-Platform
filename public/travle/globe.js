@@ -92,12 +92,11 @@ window.Globe = (() => {
   ]);
 
   const COLORS = {
-    // Yarn-craft palette — matches the CSS theme in style.css.
-    endpoint: "#B79CE0",
-    optimal: "#6FA867",
-    good: "#F6D486",
-    wrong: "#E0725A",
-    neutral: "#E9DCC0",
+    endpoint: "#A855F7",
+    optimal: "#22C55E",
+    good: "#FFD43B",
+    wrong: "#EF4444",
+    neutral: "#8FC1E8",
   };
 
   let mountEl = null;
@@ -275,7 +274,7 @@ window.Globe = (() => {
     if (!countriesLayer) return;
     countriesLayer.selectAll("path.country")
       .attr("fill", (d) => colorFor(d[0], state))
-      .attr("stroke", (d) => d[0] === state.hintedOutline ? "#D6A233" : "#8B6B43")
+      .attr("stroke", (d) => d[0] === state.hintedOutline ? "#D6A24A" : "#12314f")
       .attr("stroke-width", (d) => d[0] === state.hintedOutline ? 2 : (state.countryState.get(d[0]) ? 1 : 0.5))
       .attr("stroke-dasharray", (d) => d[0] === state.hintedOutline ? "3,2" : null);
   }
@@ -303,7 +302,7 @@ window.Globe = (() => {
           (name === lastState.start || name === lastState.end ? "endpoint" : "neutral");
         return COLORS[cat] || COLORS.neutral;
       })
-      .attr("stroke", (name) => name === lastState.hintedOutline ? "#D6A233" : "#8B6B43")
+      .attr("stroke", (name) => name === lastState.hintedOutline ? "#D6A24A" : "#12314f")
       .attr("stroke-dasharray", (name) => name === lastState.hintedOutline ? "2,1.5" : null)
       .each(function (name) {
         const c = COUNTRY_COORDS && COUNTRY_COORDS[name];
@@ -333,9 +332,8 @@ window.Globe = (() => {
 
       const defs = svg.append("defs");
       const grad = defs.append("radialGradient").attr("id", "globeGrad").attr("cx", "35%").attr("cy", "30%").attr("r", "75%");
-      // Warm linen/felt sphere instead of a blue ocean, to match the craft theme.
-      grad.append("stop").attr("offset", "0%").attr("stop-color", "#FFF7E6");
-      grad.append("stop").attr("offset", "100%").attr("stop-color", "#D9BE93");
+      grad.append("stop").attr("offset", "0%").attr("stop-color", "#5FB6E8");
+      grad.append("stop").attr("offset", "100%").attr("stop-color", "#1E6FA8");
 
       projection = d3.geoOrthographic().scale(baseScale).translate([width / 2, height / 2]).rotate(rotate).clipAngle(90);
       pathGen = d3.geoPath(projection);
@@ -346,7 +344,7 @@ window.Globe = (() => {
 
       graticuleEl = g.append("path").attr("class", "globe-graticule")
         .datum(d3.geoGraticule10()).attr("d", pathGen)
-        .attr("fill", "none").attr("stroke", "#FFFDF8").attr("stroke-width", 0.6).attr("opacity", 0.45);
+        .attr("fill", "none").attr("stroke", "#EAF6FD").attr("stroke-width", 0.6).attr("opacity", 0.3);
 
       countriesLayer = g.append("g").attr("class", "globe-countries");
       markersLayer = g.append("g").attr("class", "globe-markers");
@@ -370,7 +368,7 @@ window.Globe = (() => {
         .join("path")
         .attr("class", "country")
         .attr("fill", COLORS.neutral)
-        .attr("stroke", "#8B6B43")
+        .attr("stroke", "#12314f")
         .attr("stroke-width", 0.5)
         .attr("d", (d) => pathGen(d[1]));
 

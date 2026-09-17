@@ -1,0 +1,98 @@
+/* ==========================================================================
+   PLATFORM THEME SYSTEM
+   Lets the host pick which color is the platform's "main" background color
+   instead of always defaulting to cream/beige. Each page's own stylesheet
+   points its background/card/border/heading variables at these shared
+   --theme-* tokens, so picking a theme here recolors the whole page.
+
+   --theme-ink (body text) is intentionally the SAME warm brown in every
+   theme, for guaranteed readability — only the backdrop, cards, borders
+   and headings shift color.
+   ========================================================================== */
+
+:root,
+[data-theme="cream"]{
+  --theme-bg-top:  #FFF3DC;
+  --theme-bg:      #F5E3C0;
+  --theme-bg-deep: #EAD09C;
+  --theme-card:    #FFFBF2;
+  --theme-line:    #D9BE93;
+  --theme-deep:    #6B4423;  /* heading / dark-accent color for this theme */
+  --theme-ink:     #5B4636;  /* body text — constant across all themes */
+  --theme-name:    "Cream";
+}
+
+[data-theme="blue"]{
+  --theme-bg-top:  #DCF0FA;
+  --theme-bg:      #B9E0F2;
+  --theme-bg-deep: #93CBE6;
+  --theme-card:    #F2FAFD;
+  --theme-line:    #6FAFCB;
+  --theme-deep:    #1E5C7A;
+  --theme-name:    "Sky Blue";
+}
+
+[data-theme="green"]{
+  --theme-bg-top:  #E4F5DC;
+  --theme-bg:      #C4E7B4;
+  --theme-bg-deep: #A2D68C;
+  --theme-card:    #F4FBF0;
+  --theme-line:    #6FA867;
+  --theme-deep:    #2E5B26;
+  --theme-name:    "Meadow Green";
+}
+
+[data-theme="pink"]{
+  --theme-bg-top:  #FCE3EE;
+  --theme-bg:      #F6C0D9;
+  --theme-bg-deep: #EE9CC0;
+  --theme-card:    #FFF6FA;
+  --theme-line:    #D9678D;
+  --theme-deep:    #8E2E52;
+  --theme-name:    "Blossom Pink";
+}
+
+[data-theme="violet"]{
+  --theme-bg-top:  #EEE1FA;
+  --theme-bg:      #D9BEF2;
+  --theme-bg-deep: #C199E8;
+  --theme-card:    #F9F4FE;
+  --theme-line:    #9C6FD1;
+  --theme-deep:    #4E2E78;
+  --theme-name:    "Lavender Violet";
+}
+
+[data-theme="honey"]{
+  --theme-bg-top:  #FDEBBD;
+  --theme-bg:      #FBD57F;
+  --theme-bg-deep: #F2BC48;
+  --theme-card:    #FFFBEF;
+  --theme-line:    #D9A72E;
+  --theme-deep:    #7A5109;
+  --theme-name:    "Honey Gold";
+}
+
+/* Shared dropdown control — used on all three pages */
+.theme-picker{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--font-body, "Quicksand", sans-serif);
+  font-weight:700; font-size:12px;
+}
+.theme-picker select{
+  appearance:none; -webkit-appearance:none;
+  font-family:inherit; font-weight:700; font-size:12px;
+  color:var(--theme-deep);
+  background:var(--theme-card);
+  border:2px dashed var(--theme-line);
+  border-radius:999px;
+  padding:6px 26px 6px 12px;
+  cursor:pointer;
+  box-shadow:0 2px 0 rgba(0,0,0,.08);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--theme-deep) 50%),
+    linear-gradient(135deg, var(--theme-deep) 50%, transparent 50%);
+  background-position: calc(100% - 14px) center, calc(100% - 9px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.theme-picker select:focus{ outline:none; border-style:solid; }
