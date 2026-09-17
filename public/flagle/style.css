@@ -8,9 +8,15 @@
   --amber-dim:   #B9863F;
   --coral:       #E08165;   /* wrong / alert (terracotta yarn) */
   --mint:        #6FA867;   /* correct / win (moss-green yarn) */
+  --blue:        #6FAFCB;   /* live / chat accent (denim yarn) */
+  --blue-dim:    #4E8CA8;
+  --violet:      #A47FCB;   /* hint / ticker accent (lavender yarn) */
+  --violet-dim:  #8562AC;
+  --pink:        #D98BA0;   /* gifts / timer accent (rose yarn) */
+  --pink-dim:    #C06B82;
   --wood-deep:   #8B5A34;
   --radius:      18px;
-  --font-head: "Baloo 2", cursive;
+  --font-head: "Fredoka", "Baloo 2", cursive;
   --font-body: "Quicksand", sans-serif;
 }
 
@@ -19,6 +25,10 @@ html,body{height:100%;}
 body{
   margin:0;
   background:
+    radial-gradient(circle at 8% 8%, rgba(111,175,203,.28) 0%, transparent 32%),
+    radial-gradient(circle at 94% 10%, rgba(217,139,160,.28) 0%, transparent 30%),
+    radial-gradient(circle at 90% 94%, rgba(164,127,203,.24) 0%, transparent 34%),
+    radial-gradient(circle at 6% 92%, rgba(111,168,103,.24) 0%, transparent 32%),
     radial-gradient(ellipse at 50% -10%, #FFF7E6 0%, var(--navy-deep) 60%);
   color:var(--ink-hi);
   font-family:var(--font-body);
@@ -52,11 +62,11 @@ body{
   font-size:12.5px;
   letter-spacing:.04em;
   color:#fff;
-  background:var(--amber);
+  background:var(--blue);
   padding:6px 14px;
   border-radius:999px;
   margin-bottom:16px;
-  box-shadow:0 3px 0 var(--amber-dim);
+  box-shadow:0 3px 0 var(--blue-dim);
 }
 .setup-card h1{
   font-family:var(--font-head);
@@ -117,6 +127,10 @@ body{
 }
 .primary-btn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--amber-dim);}
 .primary-btn:disabled{opacity:.55; cursor:default;}
+#connect-btn{ background:var(--blue); box-shadow:0 4px 0 var(--blue-dim); }
+#connect-btn:active{ box-shadow:0 1px 0 var(--blue-dim); }
+#start-offline-btn{ background:var(--mint); box-shadow:0 4px 0 #4F8048; }
+#start-offline-btn:active{ box-shadow:0 1px 0 #4F8048; }
 .setup-status{
   min-height:20px;
   font-size:13px;
@@ -176,13 +190,13 @@ body{
   font-weight:700;
   font-size:15px;
   color:#fff;
-  background:var(--amber);
+  background:var(--pink);
   border:2px dashed rgba(255,255,255,.5);
   border-radius:999px;
   padding:4px 14px;
   min-width:44px;
   text-align:center;
-  box-shadow:0 3px 0 var(--amber-dim);
+  box-shadow:0 3px 0 var(--pink-dim);
 }
 .topbar-right{
   display:flex;
@@ -242,7 +256,7 @@ body{
   animation:globe-spin 46s linear infinite;
 }
 .globe-grid .blip{
-  fill:var(--amber);
+  fill:var(--violet);
   stroke:none;
   animation:blip-pulse 2.6s ease-in-out infinite;
 }
@@ -258,7 +272,7 @@ body{
   position:absolute;
   width:100%; height:100%;
   border-radius:50%;
-  background:conic-gradient(from 0deg, rgba(214,162,51,.28), transparent 26%);
+  background:conic-gradient(from 0deg, rgba(164,127,203,.30), transparent 26%);
   animation:spin 4s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -309,7 +323,7 @@ body{
   color:var(--ink-mid);
   font-weight:600;
 }
-.hint-icon{color:var(--amber); font-size:14px;}
+.hint-icon{color:var(--violet-dim); font-size:14px;}
 #hint-text.flash{color:var(--amber-dim); }
 
 .debug-strip{
@@ -351,6 +365,8 @@ body{
   border-bottom:2px dashed var(--navy-line);
   flex-shrink:0;
 }
+.comment-panel .panel-head{ color:var(--blue-dim); }
+.fans-panel .panel-head{ color:var(--pink-dim); }
 .comment-feed{
   flex:1;
   overflow-y:auto;
@@ -383,6 +399,8 @@ body{
 .leaderboard li b{color:var(--ink-hi); font-weight:700;}
 .leaderboard li span.pts{color:var(--amber-dim); font-family:var(--font-head); font-weight:700;}
 .leaderboard li:nth-child(1) b{color:var(--amber-dim);}
+.leaderboard li:nth-child(2) b{color:var(--blue-dim);}
+.leaderboard li:nth-child(3) b{color:var(--pink-dim);}
 
 .host-bar{
   flex-shrink:0;
@@ -415,14 +433,14 @@ body{
 .host-bar button[type="submit"]{
   border:none;
   border-radius:999px;
-  background:var(--amber);
+  background:var(--mint);
   color:#fff;
   font-family:var(--font-head);
   font-weight:700;
   font-size:13px;
   padding:0 16px;
   cursor:pointer;
-  box-shadow:0 3px 0 var(--amber-dim);
+  box-shadow:0 3px 0 #4F8048;
 }
 .ghost-btn{
   border:2px dashed var(--navy-line);
@@ -434,6 +452,8 @@ body{
   cursor:pointer;
   font-weight:700;
 }
+#hint-btn{ border-color:var(--violet); color:var(--violet-dim); }
+#skip-btn{ border-color:var(--coral); color:var(--coral); }
 
 /* Toasts for correct / wrong / reveal */
 #toast-layer{
@@ -489,7 +509,7 @@ body{
   left:50%;
   transform:translate(-50%,-50%) scale(.7);
   z-index:50;
-  background:linear-gradient(135deg, var(--amber), #F6D486);
+  background:linear-gradient(135deg, var(--pink), var(--violet));
   color:#fff;
   font-family:var(--font-head);
   font-weight:700;
@@ -562,6 +582,9 @@ body{
   background:var(--amber);
   color:#fff;
 }
+.mode-tab.active[data-mode="live"]{ background:var(--blue); }
+.mode-tab.active[data-mode="test"]{ background:var(--amber); }
+.mode-tab.active[data-mode="offline"]{ background:var(--mint); }
 .mode-panel{}
 
 /* Mode badge (game screen topbar, replaces the old live-only dot) */
@@ -602,7 +625,7 @@ body{
   font-family:var(--font-head);
   font-weight:700;
   font-size:12.5px;
-  color:var(--amber-dim);
+  color:var(--violet-dim);
   animation:ticker-scroll 22s linear infinite;
 }
 .ticker-track .tk-rank{ color:var(--ink-mid); font-weight:600; margin-right:4px; }
@@ -636,3 +659,5 @@ body{
   color:var(--amber-dim);
   border-bottom-color:var(--amber);
 }
+.fans-tab.active[data-tab="likes"]{ color:var(--pink-dim); border-bottom-color:var(--pink); }
+.fans-tab.active[data-tab="gifts"]{ color:var(--blue-dim); border-bottom-color:var(--blue); }

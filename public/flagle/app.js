@@ -364,7 +364,7 @@ function celebrateWinner(username) {
   document.getElementById("game-screen").appendChild(banner);
   setTimeout(() => banner.remove(), 2200);
 
-  const colors = ["#F2B84B", "#6FD6B0", "#EF7A63", "#EAF3FB"];
+  const colors = ["#D6A233", "#6FA867", "#E08165", "#6FAFCB", "#A47FCB", "#D98BA0"];
   const originX = window.innerWidth / 2;
   const originY = window.innerHeight * 0.32;
   const PARTICLE_COUNT = 22;
