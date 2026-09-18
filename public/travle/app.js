@@ -358,16 +358,27 @@
   function stopCompletionWatchdog() {
     if (completionWatchdog) { clearInterval(completionWatchdog); completionWatchdog = null; }
   }
+  function checkCompletionNow() {
+    if (!round || !round.active) return;
+    if (trySpliceFloating()) {
+      renderRound();
+      finishRound(true);
+    }
+  }
+
   function startCompletionWatchdog() {
     stopCompletionWatchdog();
-    completionWatchdog = setInterval(() => {
-      if (!round || !round.active) return;
-      if (trySpliceFloating()) {
-        renderRound();
-        finishRound(true);
-      }
-    }, 1000);
+    completionWatchdog = setInterval(checkCompletionNow, 1000);
   }
+
+  // Backgrounded tabs are throttled by most browsers, which can delay the
+  // 1s watchdog well beyond a second. Re-checking the instant the tab is
+  // foregrounded again means the host never has to nudge a round that
+  // actually finished while the tab wasn't in view.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkCompletionNow();
+  });
+  window.addEventListener("focus", checkCompletionNow);
 
   function startNewRound() {
     stopBots();
@@ -631,26 +642,51 @@
     processGuess(rawGuess, viewerName, { silent: false });
   }
 
-  // After the connected chain grows, check whether its new frontier is now
-  // adjacent to any previously-accepted "floating" optimal guess — if so,
-  // splice it straight into the chain (no fresh guess needed, it was
-  // already claimed) and keep checking, since one splice can expose the
-  // next one. Returns true if the trail is now fully connected.
+  // Is any member of startChain directly bordering any member of endChain?
+  // Checked against the WHOLE chain, not just the newest tip — a country
+  // can legitimately border an earlier link (real border graphs aren't a
+  // simple single-file line), and checking only the tip was exactly the
+  // gap that let a genuinely finished trail sit undetected.
+  function chainsConnected() {
+    for (const s of round.startChain) {
+      const nbrs = GRAPH.get(s);
+      if (!nbrs) continue;
+      for (const e of round.endChain) {
+        if (nbrs.has(e)) return true;
+      }
+    }
+    return false;
+  }
+
+  // After the connected chain grows (or a floating guess is added), check
+  // whether any previously-accepted "floating" optimal guess now borders
+  // ANY link already in either chain — if so, splice it straight in (no
+  // fresh guess needed, it was already claimed) and keep checking, since
+  // one splice can expose the next one. This scans the full chains each
+  // pass rather than only the newest tip, so floaters claimed in any
+  // order — which is the norm with a fast-moving live chat — still get
+  // recognized once they actually bridge the gap. Returns true if the
+  // trail is now fully connected.
   function trySpliceFloating() {
+    if (chainsConnected()) return true;
     let progress = true;
     while (progress) {
       progress = false;
-      const sf = round.startChain[round.startChain.length - 1];
-      const ef = round.endChain[round.endChain.length - 1];
-      if (GRAPH.get(sf).has(ef)) return true;
-      for (const cand of round.floatingOptimal) {
-        if (GRAPH.get(sf).has(cand)) { round.startChain.push(cand); round.floatingOptimal.delete(cand); progress = true; break; }
-        if (GRAPH.get(ef).has(cand)) { round.endChain.push(cand); round.floatingOptimal.delete(cand); progress = true; break; }
+      for (const cand of [...round.floatingOptimal]) {
+        const nbrs = GRAPH.get(cand);
+        if (!nbrs) continue;
+        const touchesStart = round.startChain.some((s) => nbrs.has(s));
+        const touchesEnd = round.endChain.some((e) => nbrs.has(e));
+        if (touchesStart || touchesEnd) {
+          if (touchesStart) round.startChain.push(cand);
+          else round.endChain.push(cand);
+          round.floatingOptimal.delete(cand);
+          progress = true;
+        }
       }
+      if (chainsConnected()) return true;
     }
-    const sf = round.startChain[round.startChain.length - 1];
-    const ef = round.endChain[round.endChain.length - 1];
-    return GRAPH.get(sf).has(ef);
+    return chainsConnected();
   }
 
   // Briefly rotate the globe to center on whatever country was just
@@ -730,6 +766,7 @@
       if (mode === "live") addPoints(viewerName, pts);
       addSessionPoints(viewerName, pts);
       recordRoundScore(viewerName, pts);
+      trySpliceFloating();
       renderRound();
       finishRound(true);
       return;
@@ -764,7 +801,33 @@
       if (mode === "live") addPoints(viewerName, 3);
       addSessionPoints(viewerName, 3);
       recordRoundScore(viewerName, 3);
+      const connectedNow = trySpliceFloating();
       renderRound();
+      if (connectedNow) finishRound(true);
+      return;
+    }
+
+    // Not on the shortest path and not adjacent to the current frontier
+    // tip — but it may still genuinely border a country already accepted
+    // earlier in the chain (borders aren't a single-file line, so this is
+    // a real, valid connection, just not from the newest link). Treat it
+    // the same as a floating guess rather than rejecting it: it gets
+    // spliced in immediately since it already touches the chain.
+    const touchesAcceptedNode = [...round.used].some((u) => {
+      const nbrs = GRAPH.get(u);
+      return nbrs && nbrs.has(country);
+    });
+    if (touchesAcceptedNode) {
+      round.floatingOptimal.add(country);
+      round.used.add(country);
+      round.guessesUsed++;
+      addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="tag-good">connects to the trail! (+1)</span>`);
+      if (mode === "live") addPoints(viewerName, 1);
+      addSessionPoints(viewerName, 1);
+      recordRoundScore(viewerName, 1);
+      const connectedNow = trySpliceFloating();
+      renderRound();
+      if (connectedNow) finishRound(true);
       return;
     }
 
