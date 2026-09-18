@@ -1,0 +1,14 @@
+# Optional: lets Render auto-fill most settings if you use
+# "New +" -> "Blueprint" instead of "New +" -> "Web Service".
+# Manually creating a Web Service (see DEPLOY_GUIDE.md) works exactly the
+# same and does not require this file - it's just a shortcut.
+services:
+  - type: web
+    name: tiktok-live-game-platform
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: EULERSTREAM_API_KEY
+        sync: false

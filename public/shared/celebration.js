@@ -118,60 +118,37 @@
       durationMs = 4000, // 4 seconds by default for every card
     } = opts || {};
 
-    // The whole body runs inside try/catch and every path — including a
-    // thrown error — ends by calling close(), which is what resolves this
-    // promise. That guarantees this step of the queue always settles: a
-    // single bad call (bad data, a DOM hiccup, whatever) can never leave
-    // the promise chain stuck pending, which would otherwise silently
-    // block every card queued after it, including ones already scheduled
-    // to appear later in this same round.
     queue = queue.then(() => new Promise((resolve) => {
-      let timer = null;
-      let overlay = null;
-      let closed = false;
+      // Hard singleton: no matter what got us here, clear out any
+      // leftover card first so exactly one is ever on screen at once.
+      document.querySelectorAll(".cel-overlay").forEach((el) => el.remove());
 
+      const overlay = document.createElement("div");
+      overlay.className = "cel-overlay";
+      const card = document.createElement("div");
+      card.className = "cel-card";
+      card.innerHTML =
+        `<div class="cel-emoji">${emoji}</div>` +
+        `<div class="cel-title">${escapeHtml(title)}</div>` +
+        `<div class="cel-rows">${rows.map(rowHtml).join("")}</div>` +
+        (footer ? `<div class="cel-footer">${escapeHtml(footer)}</div>` : "");
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+      requestAnimationFrame(() => {
+        fitRowsToCard(card, card.querySelector(".cel-rows"));
+        requestAnimationFrame(() => overlay.classList.add("cel-visible"));
+      });
+
+      let closed = false;
       function close() {
         if (closed) return;
         closed = true;
         clearTimeout(timer);
-        try {
-          if (overlay) {
-            overlay.classList.remove("cel-visible");
-            setTimeout(() => { try { overlay.remove(); } catch (e) {} resolve(); }, 260);
-            return;
-          }
-        } catch (e) { /* fall through to immediate resolve below */ }
-        resolve();
+        overlay.classList.remove("cel-visible");
+        setTimeout(() => { overlay.remove(); resolve(); }, 260);
       }
-
-      try {
-        // Hard singleton: no matter what got us here, clear out any
-        // leftover card first so exactly one is ever on screen at once.
-        document.querySelectorAll(".cel-overlay").forEach((el) => el.remove());
-
-        overlay = document.createElement("div");
-        overlay.className = "cel-overlay";
-        const card = document.createElement("div");
-        card.className = "cel-card";
-        card.innerHTML =
-          `<div class="cel-emoji">${emoji}</div>` +
-          `<div class="cel-title">${escapeHtml(title)}</div>` +
-          `<div class="cel-rows">${rows.map(rowHtml).join("")}</div>` +
-          (footer ? `<div class="cel-footer">${escapeHtml(footer)}</div>` : "");
-        overlay.appendChild(card);
-        document.body.appendChild(overlay);
-
-        requestAnimationFrame(() => {
-          try { fitRowsToCard(card, card.querySelector(".cel-rows")); } catch (e) {}
-          requestAnimationFrame(() => { try { overlay.classList.add("cel-visible"); } catch (e) {} });
-        });
-
-        overlay.addEventListener("click", close);
-        timer = setTimeout(close, durationMs);
-      } catch (e) {
-        console.error("[Celebration] showCard failed, skipping this card:", e);
-        close();
-      }
+      overlay.addEventListener("click", close);
+      const timer = setTimeout(close, durationMs);
     }));
     return queue;
   }
