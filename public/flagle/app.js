@@ -55,6 +55,32 @@ const fullscreenBtn = document.getElementById("fullscreen-btn");
 let countdownInterval = null;
 let maxGuesses = 6;
 
+// ---------- All-time leaderboard (persisted client-side, same convention
+// as TRAVLE's store) ----------
+// Flagle's server-side scores live only in memory for the current socket
+// session, so they reset on reconnect/redeploy. To have a genuine
+// "all-time top scorer" across sessions we keep a small persisted tally
+// here, updated every time a round is won in Live mode.
+const FLAGLE_STORE_KEY = "flagle_tiktok_v1";
+function loadFlagleStore() {
+  try {
+    const raw = localStorage.getItem(FLAGLE_STORE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+let flagleAllTime = loadFlagleStore();
+function saveFlagleStore() {
+  try { localStorage.setItem(FLAGLE_STORE_KEY, JSON.stringify(flagleAllTime)); } catch (e) { /* ignore */ }
+}
+function addFlagleAllTimePoints(name, points) {
+  const clean = (name || "").trim();
+  if (!clean || !points || points <= 0) return;
+  flagleAllTime[clean] = (flagleAllTime[clean] || 0) + points;
+  saveFlagleStore();
+}
+
 // ---------- Fullscreen ----------
 if (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen) {
   fullscreenBtn.style.display = "none"; // not supported on this browser — hide rather than show a dead button
@@ -209,6 +235,7 @@ socket.on("round-end", ({ countryName, fact, winner, points, leaderboard: lb }) 
   if (winner) {
     showToast(`🎯 ${winner} nailed it — ${countryName} (+${points})`, "win");
     celebrateWinner(winner);
+    addFlagleAllTimePoints(winner, points);
   } else {
     showToast(`⏱ Time's up — it was ${countryName}`, "reveal");
   }
@@ -217,7 +244,39 @@ socket.on("round-end", ({ countryName, fact, winner, points, leaderboard: lb }) 
   hintTextEl.classList.remove("flash");
 
   renderLeaderboard(lb);
+  showRoundCelebration(winner, countryName);
 });
+
+// ---------- Floating round-result & all-time-top-scorer windows ----------
+// Row 1: who got it (or a friendly fallback if nobody did). Row 2: the
+// answer itself, deliberately in a larger font so it's unmistakable even
+// to someone glancing at a stream overlay. After that window closes, a
+// second floating window shows the all-time top scorer, if there is one.
+function showRoundCelebration(winner, countryName) {
+  if (!window.Celebration) return;
+  window.Celebration.showCard({
+    emoji: winner ? "🎯" : "⏱",
+    title: winner ? "Round Winner!" : "Round Result",
+    rows: [
+      { primary: winner ? winner : "No one got it this round" },
+      { primary: countryName, primaryLarge: true },
+    ],
+    durationMs: 4200,
+  }).then(showFlagleAllTimeTopScorer);
+}
+
+function showFlagleAllTimeTopScorer() {
+  if (!window.Celebration) return;
+  const entries = Object.entries(flagleAllTime).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return;
+  const [name, pts] = entries[0];
+  window.Celebration.showCard({
+    emoji: "🏆",
+    title: "All-Time Top Scorer",
+    rows: [{ primary: name, primaryLarge: true, secondary: `${pts} pt${pts === 1 ? "" : "s"}` }],
+    durationMs: 4000,
+  });
+}
 
 // ---------- Top Fans (Likes and Gifts — two independent sections) ----------
 let latestFanStats = { likes: [], gifts: [] };

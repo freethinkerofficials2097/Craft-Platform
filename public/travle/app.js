@@ -182,6 +182,15 @@
     renderTicker();
   }
 
+  // Tracks points earned THIS round only, per viewer — separate from the
+  // persisted all-time store and the session ticker — so the round-end
+  // celebration window can list just this round's scorers.
+  function recordRoundScore(viewerName, points) {
+    if (!round || !points || points <= 0) return;
+    const label = viewerLabel(viewerName);
+    round.roundScores[label] = (round.roundScores[label] || 0) + points;
+  }
+
   function resetBucket(bucket) {
     store[bucket] = {};
     saveStore();
@@ -364,6 +373,7 @@
       optimalTotal: picked.optimal,
       hintedOutline: null,
       hintedLetters: false,
+      roundScores: {},
     };
     feedList.innerHTML = "";
     addFeed(`New trail: <span class="viewer">${picked.start}</span> → <span class="viewer">${picked.end}</span>`);
@@ -696,6 +706,7 @@
       addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="${tag}">bridged the trail! 🎉 (+${pts})</span>`);
       if (mode === "live") addPoints(viewerName, pts);
       addSessionPoints(viewerName, pts);
+      recordRoundScore(viewerName, pts);
       renderRound();
       finishRound(true);
       return;
@@ -712,6 +723,7 @@
       addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="${tag}">${note}, connects from ${side} ${arrowFor(connectsStart ? "start" : "end")} (+${pts})</span>`);
       if (mode === "live") addPoints(viewerName, pts);
       addSessionPoints(viewerName, pts);
+      recordRoundScore(viewerName, pts);
       const connected = trySpliceFloating();
       renderRound();
       if (connected) finishRound(true);
@@ -728,6 +740,7 @@
       addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="tag-optimal">on the optimal path! (+3) — not connected to the trail yet</span>`);
       if (mode === "live") addPoints(viewerName, 3);
       addSessionPoints(viewerName, 3);
+      recordRoundScore(viewerName, 3);
       renderRound();
       return;
     }
@@ -849,6 +862,7 @@
 
     openModal();
     postRoundTimer.hidden = true;
+    showRoundCelebration();
 
     if (autoContinueToggle.checked) {
       const secs = Math.max(3, parseInt(autoContinueDelay.value, 10) || 12);
@@ -883,6 +897,43 @@
     } else {
       modalCountdown.textContent = "";
     }
+  }
+
+  // Floating round-end windows: first, everyone who scored points THIS
+  // round (name in a larger font than their points, one row each) — then,
+  // right after that window closes, a second floating window with the
+  // all-time top scorer pulled from the persisted leaderboard store.
+  function showRoundCelebration() {
+    if (!window.Celebration) return;
+    const scores = (round && round.roundScores) || {};
+    const entries = Object.entries(scores).filter(([, p]) => p > 0).sort((a, b) => b[1] - a[1]);
+    if (entries.length) {
+      window.Celebration.showCard({
+        emoji: "🎉",
+        title: "Round Scorers!",
+        rows: entries.map(([name, pts]) => ({
+          primary: name,
+          primaryLarge: true,
+          secondary: `+${pts} pt${pts === 1 ? "" : "s"}`,
+        })),
+        durationMs: 4200,
+      }).then(showAllTimeTopScorer);
+    } else {
+      showAllTimeTopScorer();
+    }
+  }
+
+  function showAllTimeTopScorer() {
+    if (!window.Celebration) return;
+    const totalEntries = Object.entries(store.total).sort((a, b) => b[1] - a[1]);
+    if (!totalEntries.length) return;
+    const [name, pts] = totalEntries[0];
+    window.Celebration.showCard({
+      emoji: "🏆",
+      title: "All-Time Top Scorer",
+      rows: [{ primary: name, primaryLarge: true, secondary: `${pts} pt${pts === 1 ? "" : "s"}` }],
+      durationMs: 4000,
+    });
   }
 
   // Lights up every country in the TRUE shortest path directly on the

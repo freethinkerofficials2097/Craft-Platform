@@ -86,8 +86,23 @@
   let sceneReady = false;
   let pendingAction = null; // "penguin" | "fish" queued while three.js loads
 
-  function vw() { return window.innerWidth; }
-  function vh() { return window.innerHeight; }
+  // On a mobile Android phone the on-screen keyboard, address bar, and
+  // pinch-zoom can all make window.innerWidth/innerHeight briefly disagree
+  // with what's actually visible. window.visualViewport tracks the real
+  // visible area, so on that platform specifically we use it to keep the
+  // penguin and every fish strictly inside the phone's own screen border.
+  // Desktop/other platforms keep the original window-based bounds.
+  function isMobileAndroid() {
+    return /Android/i.test(navigator.userAgent || "") && Math.min(window.innerWidth, window.innerHeight) < 900;
+  }
+  function vw() {
+    if (isMobileAndroid() && window.visualViewport) return window.visualViewport.width;
+    return window.innerWidth;
+  }
+  function vh() {
+    if (isMobileAndroid() && window.visualViewport) return window.visualViewport.height;
+    return window.innerHeight;
+  }
   function rand(min, max) { return min + Math.random() * (max - min); }
 
   function initScene() {
@@ -115,12 +130,18 @@
     fill.position.set(-120, -60, 140);
     scene.add(fill);
 
-    window.addEventListener("resize", () => {
+    function handleViewportResize() {
       const w2 = vw(), h2 = vh();
       camera.left = -w2 / 2; camera.right = w2 / 2; camera.top = h2 / 2; camera.bottom = -h2 / 2;
       camera.updateProjectionMatrix();
       renderer.setSize(w2, h2);
-    });
+    }
+    window.addEventListener("resize", handleViewportResize);
+    window.addEventListener("orientationchange", handleViewportResize);
+    // visualViewport fires its own resize on mobile (keyboard open/close,
+    // address-bar collapse) that window "resize" can miss — this is what
+    // keeps the phone-screen boundary accurate on Android specifically.
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", handleViewportResize);
 
     sceneReady = true;
     requestAnimationFrame(loop);
@@ -172,6 +193,20 @@
     const eyeL = new T.Mesh(eyeGeo, eyeMat); eyeL.position.set(-3.8, 2, 6.8); headPivot.add(eyeL);
     const eyeR = new T.Mesh(eyeGeo, eyeMat); eyeR.position.set(3.8, 2, 6.8); headPivot.add(eyeR);
 
+    // Tiny eye-shine highlights — cheap way to make the eyes read as glossy
+    // and alive instead of flat black dots.
+    const shineMat = new T.MeshBasicMaterial({ color: 0xffffff });
+    const shineGeo = new T.SphereGeometry(0.55, 6, 6);
+    const shineL = new T.Mesh(shineGeo, shineMat); shineL.position.set(-3.2, 2.7, 7.6); headPivot.add(shineL);
+    const shineR = new T.Mesh(shineGeo, shineMat); shineR.position.set(4.4, 2.7, 7.6); headPivot.add(shineR);
+
+    // Small stub tail, angled back — reads as a distinct silhouette detail
+    // from the side without adding any extra moving parts.
+    const tail = new T.Mesh(new T.ConeGeometry(3.4, 8, 8), darkMat);
+    tail.rotation.x = Math.PI / 2.3;
+    tail.position.set(0, 12, -11);
+    bodyPivot.add(tail);
+
     function makeFlipper(sign) {
       const pivot = new T.Group();
       pivot.position.set(sign * 14, 30, 0);
@@ -220,9 +255,40 @@
     dorsal.position.set(0, 5.5, 0);
     group.add(dorsal);
 
+    // Belly stripe — a flattened, lighter-colored sphere along the
+    // underside, so the fish reads as more than a single flat blob of color.
+    const bellyMat = new T.MeshPhongMaterial({ color: 0xd8f2fb, shininess: 70, specular: 0xffffff });
+    const belly = new T.Mesh(new T.SphereGeometry(5.4, 12, 8), bellyMat);
+    belly.scale.set(0.95, 0.4, 0.42);
+    belly.position.set(-1, -2.4, 0);
+    group.add(belly);
+
+    // Pectoral fins — small angled fins on either side, just behind the head.
+    function makePectoralFin(sign) {
+      const fin = new T.Mesh(new T.ConeGeometry(2, 4.5, 4), finMat);
+      fin.rotation.z = sign * 1.15;
+      fin.rotation.x = Math.PI / 2;
+      fin.position.set(2.5, -1, sign * 4.4);
+      return fin;
+    }
+    group.add(makePectoralFin(1));
+    group.add(makePectoralFin(-1));
+
     const eye = new T.Mesh(new T.SphereGeometry(1.1, 6, 6), new T.MeshBasicMaterial({ color: 0x14171f }));
     eye.position.set(5.5, 1.8, 3);
     group.add(eye);
+
+    // Eye-shine highlight, matching the penguin's — small detail, big
+    // difference for how "alive" the fish looks while it falls.
+    const eyeShine = new T.Mesh(new T.SphereGeometry(0.4, 6, 6), new T.MeshBasicMaterial({ color: 0xffffff }));
+    eyeShine.position.set(6, 2.3, 3.4);
+    group.add(eyeShine);
+
+    // Small mouth notch at the tip of the snout.
+    const mouth = new T.Mesh(new T.SphereGeometry(0.9, 6, 6), new T.MeshBasicMaterial({ color: 0x1c2430 }));
+    mouth.scale.set(1, 0.5, 0.6);
+    mouth.position.set(7.6, -0.3, 0);
+    group.add(mouth);
 
     return group;
   }
@@ -457,8 +523,13 @@
     slideIn();
   }
 
+  // Fish are unlimited — any number can be falling at once. Only one fish
+  // at a time "claims" the penguin's chase (whichever is currently falling
+  // and within reach first), so multiple simultaneous fish never fight
+  // over the penguin's position; any extra fish just fall past on their own.
+  let chaseTargetFish = null;
+
   function triggerFish() {
-    if (activeFish.length > 0) return; // one fish at a time keeps this readable
     const startWorld = toWorld(rand(vw() * 0.1, vw() * 0.9), -16);
     const landingWorld = toWorld(0, vh() - 70);
     const fallMs = 2600;
@@ -470,11 +541,12 @@
     const fish = { group, x: startWorld.x, y: startWorld.y };
     activeFish.push(fish);
 
-    const chasing = !!(penguin && !penguin.dragging);
-    const withinReach = chasing && Math.hypot(startWorld.x - penguin.x, landingWorld.y - penguin.y) < vw();
+    const canChase = !!(penguin && !penguin.dragging && !chaseTargetFish);
+    const withinReach = canChase && Math.hypot(startWorld.x - penguin.x, landingWorld.y - penguin.y) < vw();
     const willMiss = withinReach && Math.random() < 0.18; // "less likely" to miss
+    const isChasingThis = withinReach;
 
-    if (chasing && withinReach) { clearPenguinTimers(); penguin.state = "chasing"; }
+    if (isChasingThis) { chaseTargetFish = fish; clearPenguinTimers(); penguin.state = "chasing"; }
 
     function step() {
       const t = Math.min(1, (performance.now() - t0) / fallMs);
@@ -482,7 +554,7 @@
       fish.group.position.set(fish.x, fish.y, 0);
       fish.group.rotation.z = Math.sin(t * 10) * 0.25; // little swim wiggle
 
-      if (penguin && withinReach && !willMiss) {
+      if (penguin && isChasingThis && withinReach && !willMiss) {
         const dx = fish.x - penguin.x, dy = landingWorld.y - penguin.y;
         const dist = Math.hypot(dx, dy);
         if (dist > 3) {
@@ -499,15 +571,16 @@
 
     function finish() {
       activeFish = activeFish.filter((f) => f !== fish);
-      const caught = penguin && withinReach && !willMiss;
+      const caught = penguin && isChasingThis && withinReach && !willMiss;
       const sx = toScreen(fish.x, fish.y);
       scene.remove(fish.group);
+      if (isChasingThis) chaseTargetFish = null;
       if (caught) {
         penguin.state = "eating";
         popSparkle(fish.x, fish.y);
         showBubble(sx.x, sx.y - 30, "😋");
         penguin.timers.afterEat = setTimeout(() => { if (penguin) scheduleWander(); }, 700);
-      } else if (penguin) {
+      } else if (penguin && isChasingThis) {
         penguin.state = "sad";
         const ps = toScreen(penguin.x, penguin.y);
         showBubble(ps.x, ps.y - 45, "😢");
