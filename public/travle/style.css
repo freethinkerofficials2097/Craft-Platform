@@ -399,10 +399,11 @@ button, input, select {
 }
 .node.endpoint {
   background: var(--violet);
-  color: var(--paper);
-  border-color: var(--violet);
+  color: #FFFFFF;
+  border-color: var(--violet-dim);
   font-family: var(--font-display);
   font-size: 15px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.25);
 }
 .node.small.endpoint { font-size: 12px; }
 .node.confirmed {
@@ -811,7 +812,7 @@ button, input, select {
   border: 2px dashed var(--line);
   text-align: left;
 }
-.chip-endpoint { background: var(--violet); color: var(--paper); border-color: var(--violet); }
+.chip-endpoint { background: var(--violet); color: #FFFFFF; border-color: var(--violet-dim); }
 .chip-optimal { background: var(--green-opt-dim); color: #DFFCE9; border-color: var(--green-opt); }
 .chip-good { background: var(--yellow-good-dim); color: #FFF6D6; border-color: var(--yellow-good); }
 .chip-empty { background: transparent; color: var(--slate); border-style: dashed; }

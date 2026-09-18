@@ -40,7 +40,8 @@ const hintTextEl = document.getElementById("hint-text");
 const commentFeedEl = document.getElementById("comment-feed");
 const leaderboardEl = document.getElementById("ticker-track");
 const tickerWrapEl = document.getElementById("ticker-wrap");
-const fansListEl = document.getElementById("fans-list");
+const likesListEl = document.getElementById("likes-list");
+const giftsListEl = document.getElementById("gifts-list");
 const toastLayer = document.getElementById("toast-layer");
 const debugStripEl = document.getElementById("debug-strip");
 const debugLastEl = document.getElementById("debug-last");
@@ -218,38 +219,32 @@ socket.on("round-end", ({ countryName, fact, winner, points, leaderboard: lb }) 
   renderLeaderboard(lb);
 });
 
-// ---------- Top Fans (Likes / Gifts) ----------
+// ---------- Top Fans (Likes and Gifts — two independent sections) ----------
 let latestFanStats = { likes: [], gifts: [] };
-let activeFansTab = "likes";
-
-document.querySelectorAll(".fans-tab").forEach((tab) => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".fans-tab").forEach((t) => t.classList.toggle("active", t === tab));
-    activeFansTab = tab.dataset.tab;
-    renderFansList();
-  });
-});
 
 socket.on("fan-stats", (stats) => {
   latestFanStats = stats;
   renderFansList();
 });
 
-function renderFansList() {
-  const list = latestFanStats[activeFansTab] || [];
-  fansListEl.innerHTML = "";
-  if (list.length === 0) {
-    const emptyText = activeFansTab === "likes" ? "No likes yet." : "No gifts yet.";
-    fansListEl.innerHTML = `<li><span style="color:var(--ink-mid)">${emptyText}</span></li>`;
+function renderFanList(listEl, entries, emptyText, valueFn) {
+  listEl.innerHTML = "";
+  if (!entries || entries.length === 0) {
+    listEl.innerHTML = `<li><span style="color:var(--ink-mid)">${emptyText}</span></li>`;
     return;
   }
-  list.forEach((entry, i) => {
+  entries.forEach((entry, i) => {
     const li = document.createElement("li");
-    const value = activeFansTab === "likes" ? `❤️ ${entry.count}` : `💎 ${entry.value}`;
-    li.innerHTML = `<b>${i + 1}. ${escapeHtml(entry.username)}</b><span class="pts">${value}</span>`;
-    fansListEl.appendChild(li);
+    li.innerHTML = `<b>${i + 1}. ${escapeHtml(entry.username)}</b><span class="pts">${valueFn(entry)}</span>`;
+    listEl.appendChild(li);
   });
 }
+
+function renderFansList() {
+  renderFanList(likesListEl, latestFanStats.likes, "No likes yet.", (e) => `❤️ ${e.count}`);
+  renderFanList(giftsListEl, latestFanStats.gifts, "No gifts yet.", (e) => `💎 ${e.value}`);
+}
+
 
 // ---------- Chat feed ----------
 socket.on("comment-feed", ({ username, text, correct }) => {
@@ -284,19 +279,23 @@ function setBlur(px) {
   flagPlate.style.setProperty("--blur", `${px}px`);
 }
 
-// Smoothly clears the flag from fully blurred to sharp over the whole
-// round, via a CSS transition — no repeated JS ticking needed, so it
-// stays smooth and light even on a lower-end phone.
+// Clears the flag from fully blurred to fully sharp via a CSS transition,
+// timed so it finishes with exactly 10 seconds left on the clock (per
+// design: viewers should be able to clearly see the unblurred flag for
+// the final 10-second stretch of every round), then holds fully sharp
+// for the remainder.
 function startBlurReveal(roundSeconds) {
   const MAX_BLUR_PX = 26;
-  const MIN_BLUR_PX = 0.5; // leave a hint of softness right at reveal
+  const MIN_BLUR_PX = 0; // fully unblurred, not just "mostly clear"
+  const HOLD_CLEAR_SECONDS = 10;
+  const revealSeconds = Math.max(roundSeconds - HOLD_CLEAR_SECONDS, 3);
   flagImg.style.transition = "none";
   setBlur(MAX_BLUR_PX);
   // Force the browser to apply the instant reset above before we attach
   // the transition, otherwise it can animate FROM the old value.
   void flagImg.offsetWidth;
   requestAnimationFrame(() => {
-    flagImg.style.transition = `filter ${roundSeconds}s linear`;
+    flagImg.style.transition = `filter ${revealSeconds}s linear`;
     setBlur(MIN_BLUR_PX);
   });
 }

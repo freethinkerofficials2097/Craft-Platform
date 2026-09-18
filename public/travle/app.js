@@ -288,6 +288,49 @@
   let round = null;
   let tiktokConnected = false;
 
+  /* ------------------------------------------------------------------ *
+   * 4b. TEST-MODE BOTS
+   * Test mode has no real TikTok chat, so a handful of simulated
+   * "viewers" auto-guess on a staggered timer to actually exercise the
+   * round — connecting the trail, triggering hints/scoring/auto-continue
+   * — instead of leaving the host to type every guess by hand.
+   * ------------------------------------------------------------------ */
+  const BOT_NAMES = ["GeoFan22", "MapWhiz", "TrailBlazer", "AtlasAce", "BorderHopper", "QuizzyQ"];
+  let botTimers = [];
+
+  function stopBots() {
+    botTimers.forEach((t) => clearTimeout(t));
+    botTimers = [];
+  }
+
+  function scheduleBot(botName) {
+    if (mode !== "test" || !round || !round.active) return;
+    const delay = 1400 + Math.random() * 2200;
+    const t = setTimeout(() => {
+      if (mode !== "test" || !round || !round.active) return;
+      // Mostly guess something that actually advances the trail (so the
+      // round realistically plays itself out); occasionally throw in a
+      // random country to also exercise the "wrong guess" path.
+      let guess = Math.random() < 0.82 ? pickHintCandidate(null) : null;
+      if (!guess) {
+        const keys = Object.keys(COUNTRY_COORDS);
+        guess = keys[(Math.random() * keys.length) | 0];
+      }
+      processGuess(guess, botName, { silent: true });
+      scheduleBot(botName);
+    }, delay);
+    botTimers.push(t);
+  }
+
+  function startBots() {
+    stopBots();
+    if (mode !== "test") return;
+    BOT_NAMES.slice(0, 3).forEach((name, i) => {
+      const t = setTimeout(() => scheduleBot(name), 600 + i * 500);
+      botTimers.push(t);
+    });
+  }
+
   function isOptimal(country) {
     if (!round) return false;
     const a = round.distFromStart.get(country);
@@ -297,6 +340,7 @@
   }
 
   function startNewRound() {
+    stopBots();
     clearTimeout(autoTimer);
     closeModal();
     postRoundTimer.hidden = true;
@@ -326,6 +370,7 @@
     hostMsg.textContent = "";
     if (window.Globe && window.Globe.isReady()) window.Globe.centerOn(picked.start, picked.end);
     renderRound();
+    if (mode === "test") startBots();
   }
 
   function buildCountryStateMap() {
@@ -743,6 +788,7 @@
   }
 
   function finishRound(solved) {
+    stopBots();
     round.active = false;
     round.hintedOutline = null;
     round.hintedLetters = false;
@@ -1098,7 +1144,7 @@
 
   const MODE_BANNER_TEXT = {
     live: "",
-    test: "Practice round — scores won't be saved to the leaderboard.",
+    test: "Practice round — a few simulated bots auto-guess so you can watch the game play itself. Scores won't be saved to the leaderboard.",
     offline: "Solo practice — no leaderboard, just you.",
   };
 

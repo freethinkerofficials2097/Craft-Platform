@@ -247,7 +247,7 @@ body{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 2px 0 var(--amber-dim);
 }
 
-/* Radar / flag reveal */
+/* Flag reveal */
 .radar-wrap{
   position:relative;
   flex-shrink:0;
@@ -256,38 +256,6 @@ body{
   align-items:center;
   justify-content:center;
 }
-/* Wireframe-globe grid: the "planet" the radar is scanning — now reads
-   as a stitched embroidery hoop rather than a tech radar. */
-.globe-grid{
-  position:absolute;
-  width:100%; height:100%;
-  fill:none;
-  stroke:var(--navy-line);
-  stroke-width:1.5;
-  stroke-dasharray:3 4;
-  animation:globe-spin 46s linear infinite;
-}
-.globe-grid .blip{
-  fill:var(--violet);
-  stroke:none;
-  animation:blip-pulse 2.6s ease-in-out infinite;
-}
-.globe-grid .blip:nth-child(6){ animation-delay:.6s; }
-.globe-grid .blip:nth-child(7){ animation-delay:1.2s; }
-.globe-grid .blip:nth-child(8){ animation-delay:1.8s; }
-@keyframes globe-spin{ to{ transform:rotate(360deg); } }
-@keyframes blip-pulse{
-  0%, 100%{ opacity:.25; }
-  50%{ opacity:1; }
-}
-.radar-sweep{
-  position:absolute;
-  width:100%; height:100%;
-  border-radius:50%;
-  background:conic-gradient(from 0deg, rgba(164,127,203,.30), transparent 26%);
-  animation:spin 4s linear infinite;
-}
-@keyframes spin{to{transform:rotate(360deg);}}
 .flag-plate{
   position:relative;
   width:64%;
@@ -380,7 +348,6 @@ body{
   flex-shrink:0;
 }
 .comment-panel .panel-head{ color:var(--blue-dim); }
-.fans-panel .panel-head{ color:var(--pink-dim); }
 .comment-feed{
   flex:1;
   overflow-y:auto;
@@ -653,29 +620,20 @@ body{
   to{ transform:translateX(-100%); }
 }
 
-/* Top Fans panel (Likes / Gifts tabs) */
-.fans-panel{ flex:1; }
-.fans-tabs{
-  display:flex;
-  padding:0;
-  border-bottom:2px dashed var(--navy-line);
-}
-.fans-tab{
+/* Top Fans panel — two independent, always-visible sections stacked
+   vertically (Likes above, Gifts below) rather than a tab toggle. */
+.fans-panel{ flex:1; padding:0; }
+.fans-section{
   flex:1;
-  border:none;
-  background:transparent;
-  color:var(--ink-mid);
-  font-family:var(--font-head);
-  font-weight:700;
-  font-size:11px;
-  letter-spacing:.04em;
-  padding:10px 6px 8px;
-  cursor:pointer;
-  border-bottom:3px solid transparent;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
 }
-.fans-tab.active{
-  color:var(--amber-dim);
-  border-bottom-color:var(--amber);
+.fans-section + .fans-section{
+  border-top:2px dashed var(--navy-line);
 }
-.fans-tab.active[data-tab="likes"]{ color:var(--pink-dim); border-bottom-color:var(--pink); }
-.fans-tab.active[data-tab="gifts"]{ color:var(--blue-dim); border-bottom-color:var(--blue); }
+.fans-section .panel-head{ flex-shrink:0; }
+.fans-section:first-child .panel-head{ color:var(--pink-dim); }
+.fans-section:last-child .panel-head{ color:var(--blue-dim); }
+.fans-section .leaderboard{ flex:1; min-height:0; }
