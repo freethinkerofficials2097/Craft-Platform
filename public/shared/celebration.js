@@ -39,7 +39,8 @@
       }
       .cel-overlay.cel-visible{ background:rgba(30,20,10,.38); pointer-events:auto; }
       .cel-card{
-        width:100%; max-width:340px;
+        width:100%; max-width:340px; max-height:82vh;
+        display:flex; flex-direction:column;
         background:var(--theme-card,#fffbf2);
         border:3px dashed var(--theme-line,#d9be93);
         border-radius:22px;
@@ -53,12 +54,16 @@
         transition:transform .28s cubic-bezier(.34,1.56,.64,1), opacity .22s ease;
       }
       .cel-overlay.cel-visible .cel-card{ transform:scale(1) translateY(0); opacity:1; }
-      .cel-emoji{ font-size:38px; line-height:1; margin-bottom:4px; }
+      .cel-emoji{ font-size:38px; line-height:1; margin-bottom:4px; flex:none; }
       .cel-title{
         font-weight:600; font-size:18px; letter-spacing:.01em;
-        color:var(--theme-deep,#6b4423); margin-bottom:14px;
+        color:var(--theme-deep,#6b4423); margin-bottom:14px; flex:none;
       }
-      .cel-rows{ display:flex; flex-direction:column; gap:10px; max-height:44vh; overflow-y:auto; }
+      .cel-rows{
+        display:flex; flex-direction:column; gap:10px;
+        transform-origin:top center;
+        overflow-y:auto; /* last-resort only — rows are pre-scaled to fit before this ever kicks in */
+      }
       .cel-row{
         display:flex; align-items:baseline; justify-content:space-between; gap:12px;
         background:rgba(0,0,0,.035); border-radius:12px; padding:8px 12px;
@@ -88,16 +93,36 @@
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  // Shrinks the rows block down (as one unit — text, gaps, everything) so
+  // its natural height fits inside the card without scrolling. Only falls
+  // back to the browser's own scrollbar if a genuinely huge number of rows
+  // would need to shrink past legibility.
+  const ROWS_MIN_SCALE = 0.55;
+  function fitRowsToCard(cardEl, rowsEl) {
+    if (!cardEl || !rowsEl) return;
+    rowsEl.style.transform = "";
+    const nonRowsHeight = cardEl.scrollHeight - rowsEl.scrollHeight;
+    const available = cardEl.clientHeight - nonRowsHeight;
+    const natural = rowsEl.scrollHeight;
+    if (!available || !natural || natural <= available) return;
+    const scale = Math.max(ROWS_MIN_SCALE, available / natural);
+    rowsEl.style.transform = `scale(${scale})`;
+  }
+
   function showCard(opts) {
     const {
       emoji = "🎉",
       title = "",
       rows = [],
       footer = "",
-      durationMs = 4000,
+      durationMs = 4000, // 4 seconds by default for every card
     } = opts || {};
 
     queue = queue.then(() => new Promise((resolve) => {
+      // Hard singleton: no matter what got us here, clear out any
+      // leftover card first so exactly one is ever on screen at once.
+      document.querySelectorAll(".cel-overlay").forEach((el) => el.remove());
+
       const overlay = document.createElement("div");
       overlay.className = "cel-overlay";
       const card = document.createElement("div");
@@ -109,7 +134,10 @@
         (footer ? `<div class="cel-footer">${escapeHtml(footer)}</div>` : "");
       overlay.appendChild(card);
       document.body.appendChild(overlay);
-      requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add("cel-visible")));
+      requestAnimationFrame(() => {
+        fitRowsToCard(card, card.querySelector(".cel-rows"));
+        requestAnimationFrame(() => overlay.classList.add("cel-visible"));
+      });
 
       let closed = false;
       function close() {

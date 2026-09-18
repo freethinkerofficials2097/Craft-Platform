@@ -348,8 +348,30 @@
     return a + b === round.optimalTotal;
   }
 
+  // Safety net: independently of whatever path a guess came in through,
+  // check once a second whether the trail is actually fully connected —
+  // and if so, finish the round. This can't loosen the win condition (it
+  // uses the exact same trySpliceFloating() check every guess already
+  // uses), it just guarantees the round can never sit "done" on the board
+  // while still technically active, no matter how that state was reached.
+  let completionWatchdog = null;
+  function stopCompletionWatchdog() {
+    if (completionWatchdog) { clearInterval(completionWatchdog); completionWatchdog = null; }
+  }
+  function startCompletionWatchdog() {
+    stopCompletionWatchdog();
+    completionWatchdog = setInterval(() => {
+      if (!round || !round.active) return;
+      if (trySpliceFloating()) {
+        renderRound();
+        finishRound(true);
+      }
+    }, 1000);
+  }
+
   function startNewRound() {
     stopBots();
+    stopCompletionWatchdog();
     clearTimeout(autoTimer);
     closeModal();
     postRoundTimer.hidden = true;
@@ -381,6 +403,7 @@
     if (window.Globe && window.Globe.isReady()) window.Globe.centerOn(picked.start, picked.end);
     renderRound();
     if (mode === "test") startBots();
+    startCompletionWatchdog();
   }
 
   function buildCountryStateMap() {
@@ -802,6 +825,7 @@
 
   function finishRound(solved) {
     stopBots();
+    stopCompletionWatchdog();
     round.active = false;
     round.hintedOutline = null;
     round.hintedLetters = false;
@@ -916,7 +940,7 @@
           primaryLarge: true,
           secondary: `+${pts} pt${pts === 1 ? "" : "s"}`,
         })),
-        durationMs: 4200,
+        durationMs: 4000,
       }).then(showAllTimeTopScorer);
     } else {
       showAllTimeTopScorer();
@@ -1101,12 +1125,28 @@
       }
     });
 
-    let lastAutoGuessAt = 0;
-    socket.on("tiktok-comment", ({ commenter, text }) => {
-      const now = Date.now();
-      if (now - lastAutoGuessAt < 600) return; // gentle throttle so a burst of chat doesn't flood the board
-      lastAutoGuessAt = now;
+    // Every chat comment gets processed — none are silently dropped.
+    // (This used to throttle by simply discarding any comment that arrived
+    // within 600ms of the last one processed. During a busy stream that
+    // could — and did — silently eat the exact comment that completed the
+    // trail, leaving the round "done" in the audience's eyes but stuck
+    // active in the game until the host manually skipped it. Now bursts
+    // are smoothed out by queueing and draining at a steady pace instead,
+    // so pacing is preserved but nothing is ever lost.)
+    const tiktokQueue = [];
+    let tiktokDrainTimer = null;
+    function drainTiktokQueue() {
+      if (!tiktokQueue.length) { tiktokDrainTimer = null; return; }
+      const { commenter, text } = tiktokQueue.shift();
       processGuess(text, commenter, { silent: true });
+      tiktokDrainTimer = setTimeout(drainTiktokQueue, 180);
+    }
+    socket.on("tiktok-comment", ({ commenter, text }) => {
+      tiktokQueue.push({ commenter, text });
+      // Only trims during a genuinely huge, sustained flood — high enough
+      // that a real guess is exceedingly unlikely to be the one dropped.
+      if (tiktokQueue.length > 60) tiktokQueue.splice(0, tiktokQueue.length - 60);
+      if (!tiktokDrainTimer) drainTiktokQueue();
     });
 
     tiktokConnectBtn.addEventListener("click", () => {

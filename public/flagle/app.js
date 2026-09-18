@@ -261,7 +261,7 @@ function showRoundCelebration(winner, countryName) {
       { primary: winner ? winner : "No one got it this round" },
       { primary: countryName, primaryLarge: true },
     ],
-    durationMs: 4200,
+    durationMs: 4000,
   }).then(showFlagleAllTimeTopScorer);
 }
 
