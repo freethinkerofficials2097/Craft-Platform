@@ -1152,24 +1152,9 @@
     tiktokConnectBtn.addEventListener("click", () => {
       const uname = tiktokUsername.value.trim();
       if (!uname) { tiktokStatus.textContent = "Enter a TikTok username first."; tiktokStatus.className = "field-note tiktok-status err"; return; }
-      if (window.PlatformSession) PlatformSession.setUsername(uname);
       socket.emit("tiktok-connect", uname);
     });
     tiktokDisconnectBtn.addEventListener("click", () => socket.emit("tiktok-disconnect"));
-
-    // Platform session: remember the TikTok username across every game.
-    // Pre-fill the (hidden-until-opened) settings field, and auto-connect
-    // once on load so switching to TRAVLE from another game doesn't
-    // require re-entering the username or opening Settings at all.
-    if (window.PlatformSession) {
-      const saved = PlatformSession.getUsername();
-      if (saved) {
-        if (!tiktokUsername.value) tiktokUsername.value = saved;
-        tiktokStatus.textContent = `Auto-connecting as @${saved} (saved) — open Settings to use a different account.`;
-        tiktokStatus.className = "field-note tiktok-status";
-        setTimeout(() => tiktokConnectBtn.click(), 600);
-      }
-    }
   } else {
     tiktokConnectBtn.disabled = true;
     tiktokDisconnectBtn.disabled = true;

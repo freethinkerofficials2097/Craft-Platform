@@ -81,14 +81,14 @@ const DEFAULT_SETTINGS = {
   roundSeconds: 45,       // how long each round runs before time's up
   revealHoldSeconds: 10,  // flag is fully sharp for the final N seconds of the round
   maxBlurPx: 26,          // how blurred the flag is at the moment the round starts
-  maxGuesses: 6,          // wrong guesses allowed before the round ends early
+  // Guesses are unlimited (see processGuess below) - there is no guess-
+  // count setting anymore; only running out of time ends a round early.
   revealPauseMs: 6000,    // pause between a round ending and the next one starting
 };
 const SETTINGS_LIMITS = {
   roundSeconds: { min: 10, max: 180 },
   revealHoldSeconds: { min: 0, max: 60 },
   maxBlurPx: { min: 2, max: 40 },
-  maxGuesses: { min: 1, max: 15 },
   revealPauseMs: { min: 2000, max: 30000 },
 };
 
@@ -112,9 +112,6 @@ function sanitizeSettings(input, base) {
   }
   if (input.maxBlurPx !== undefined) {
     out.maxBlurPx = clamp(input.maxBlurPx, SETTINGS_LIMITS.maxBlurPx.min, SETTINGS_LIMITS.maxBlurPx.max, base.maxBlurPx);
-  }
-  if (input.maxGuesses !== undefined) {
-    out.maxGuesses = clamp(input.maxGuesses, SETTINGS_LIMITS.maxGuesses.min, SETTINGS_LIMITS.maxGuesses.max, base.maxGuesses);
   }
   if (input.revealPauseMs !== undefined) {
     out.revealPauseMs = clamp(input.revealPauseMs, SETTINGS_LIMITS.revealPauseMs.min, SETTINGS_LIMITS.revealPauseMs.max, base.revealPauseMs);
@@ -178,13 +175,12 @@ function fanStats(session) {
 function startRound(session) {
   clearRoundTimer(session);
   const country = pickCountry(session);
-  const { roundSeconds, revealHoldSeconds, maxBlurPx, maxGuesses } = session.settings;
+  const { roundSeconds, revealHoldSeconds, maxBlurPx } = session.settings;
   session.round = { country, guessesUsed: 0, hintsGiven: 0, startedAt: Date.now() };
   session.roundActive = true;
 
   session.socket.emit("round-start", {
     code: country.code,
-    maxGuesses,
     roundSeconds,
     revealHoldSeconds,
     maxBlurPx,
@@ -232,6 +228,9 @@ function processGuess(session, username, rawText) {
     return true;
   }
 
+  // Guesses are unlimited - a wrong guess never ends the round on its
+  // own anymore. guessesUsed is still tracked purely as an informational
+  // count (e.g. for a future "X guesses so far" display).
   session.round.guessesUsed += 1;
   const dist = haversineKm(guessedCountry.lat, guessedCountry.lng, target.lat, target.lng);
   const dir = bearingCompass(guessedCountry.lat, guessedCountry.lng, target.lat, target.lng);
@@ -241,10 +240,8 @@ function processGuess(session, username, rawText) {
     distanceKm: dist,
     direction: dir,
     guessesUsed: session.round.guessesUsed,
-    maxGuesses: session.settings.maxGuesses,
   });
 
-  if (session.round.guessesUsed >= session.settings.maxGuesses) endRound(session, null);
   return false;
 }
 

@@ -35,7 +35,6 @@ const modeBadgeEl = document.getElementById("mode-badge");
 const roundTimerEl = document.getElementById("round-timer");
 const flagImg = document.getElementById("flag-image");
 const flagPlate = document.querySelector(".flag-plate");
-const guessPipsEl = document.getElementById("guess-pips");
 const hintTextEl = document.getElementById("hint-text");
 const commentFeedEl = document.getElementById("comment-feed");
 const leaderboardEl = document.getElementById("ticker-track");
@@ -53,7 +52,6 @@ const settingRoundSeconds = document.getElementById("setting-round-seconds");
 const settingHoldSeconds = document.getElementById("setting-hold-seconds");
 const settingBlurPx = document.getElementById("setting-blur-px");
 const settingBlurPxValue = document.getElementById("setting-blur-px-value");
-const settingMaxGuesses = document.getElementById("setting-max-guesses");
 const settingRevealPause = document.getElementById("setting-reveal-pause");
 const settingsApplyBtn = document.getElementById("settings-apply");
 const settingsStatusEl = document.getElementById("settings-status");
@@ -67,7 +65,6 @@ const hintBtn = document.getElementById("hint-btn");
 const fullscreenBtn = document.getElementById("fullscreen-btn");
 
 let countdownInterval = null;
-let maxGuesses = 6;
 
 // ---------- Host settings ----------
 // Local mirror of the session's settings, kept in sync with the server
@@ -78,7 +75,6 @@ let currentSettings = {
   roundSeconds: 45,
   revealHoldSeconds: 10,
   maxBlurPx: 26,
-  maxGuesses: 6,
   revealPauseMs: 6000,
 };
 
@@ -88,7 +84,6 @@ function populateSettingsForm(settings) {
   settingHoldSeconds.value = currentSettings.revealHoldSeconds;
   settingBlurPx.value = currentSettings.maxBlurPx;
   settingBlurPxValue.textContent = currentSettings.maxBlurPx + "px";
-  settingMaxGuesses.value = currentSettings.maxGuesses;
   settingRevealPause.value = Math.round(currentSettings.revealPauseMs / 1000);
 }
 
@@ -113,7 +108,6 @@ settingsApplyBtn.addEventListener("click", () => {
     roundSeconds: Number(settingRoundSeconds.value),
     revealHoldSeconds: Number(settingHoldSeconds.value),
     maxBlurPx: Number(settingBlurPx.value),
-    maxGuesses: Number(settingMaxGuesses.value),
     revealPauseMs: Number(settingRevealPause.value) * 1000,
   };
   socket.emit("host:updateSettings", payload);
@@ -212,13 +206,6 @@ modeTabsEl.addEventListener("click", (e) => {
 });
 
 // ---------- Setup screen ----------
-// Platform session: remember the TikTok username across every game, so
-// connecting once anywhere pre-fills (and auto-connects) the rest.
-if (window.PlatformSession) {
-  const saved = PlatformSession.getUsername();
-  if (saved && !usernameInput.value) usernameInput.value = saved;
-}
-
 connectBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim();
   if (!username) {
@@ -226,29 +213,11 @@ connectBtn.addEventListener("click", () => {
     setupStatus.className = "setup-status";
     return;
   }
-  if (window.PlatformSession) PlatformSession.setUsername(username);
   connectBtn.disabled = true;
   setupStatus.textContent = "Connecting to your live chat…";
   setupStatus.className = "setup-status";
   socket.emit("connect-tiktok", { username });
 });
-
-// Auto-connect once using the saved platform username, so switching to
-// this game from another one doesn't require re-entering it or tapping
-// Connect again. Only fires once per page load, and only while still
-// sitting on the Live tab (the default).
-if (window.PlatformSession) {
-  const savedForAutoConnect = PlatformSession.getUsername();
-  if (savedForAutoConnect) {
-    setupStatus.textContent = `Auto-connecting as @${savedForAutoConnect} (saved) — tap Go live & connect to use a different account.`;
-    setupStatus.className = "setup-status";
-    setTimeout(() => {
-      if (document.getElementById("live-panel") && !document.getElementById("live-panel").classList.contains("hidden")) {
-        connectBtn.click();
-      }
-    }, 600);
-  }
-}
 
 startTestBtn.addEventListener("click", () => {
   setupStatus.textContent = "Starting test round…";
@@ -312,10 +281,8 @@ socket.on("tiktok-disconnected", () => {
 });
 
 // ---------- Round lifecycle ----------
-socket.on("round-start", ({ code, maxGuesses: mg, roundSeconds, revealHoldSeconds, maxBlurPx, answer }) => {
-  maxGuesses = mg;
+socket.on("round-start", ({ code, roundSeconds, revealHoldSeconds, maxBlurPx, answer }) => {
   flagImg.src = `https://flagcdn.com/w640/${code}.png`;
-  buildPips(mg, 0);
   hintTextEl.textContent = "Type the country name in chat to guess.";
   hintTextEl.classList.remove("flash");
   startCountdown(roundSeconds);
@@ -327,8 +294,7 @@ socket.on("round-start", ({ code, maxGuesses: mg, roundSeconds, revealHoldSecond
   }
 });
 
-socket.on("wrong-guess", ({ guessedName, distanceKm, direction, guessesUsed, maxGuesses: mg }) => {
-  buildPips(mg, guessesUsed);
+socket.on("wrong-guess", ({ guessedName, distanceKm, direction }) => {
   hintTextEl.textContent = `${guessedName} is not it — ${distanceKm.toLocaleString()} km away, head ${direction}.`;
   hintTextEl.classList.add("flash");
 });
@@ -473,15 +439,6 @@ function startBlurReveal(roundSeconds, holdClearSeconds, maxBlurPx) {
     flagImg.style.transition = `filter ${revealSeconds}s linear`;
     setBlur(MIN_BLUR_PX);
   });
-}
-
-function buildPips(total, used) {
-  guessPipsEl.innerHTML = "";
-  for (let i = 0; i < total; i++) {
-    const pip = document.createElement("span");
-    pip.className = "pip" + (i < used ? " used" : "");
-    guessPipsEl.appendChild(pip);
-  }
 }
 
 function startCountdown(seconds) {

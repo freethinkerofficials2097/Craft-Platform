@@ -544,6 +544,14 @@ body{
   display:flex; align-items:flex-end; justify-content:center;
   padding:0;
 }
+/* BUG FIX: an element's own `display` declaration (author stylesheet)
+   always outranks the browser's built-in `[hidden] { display: none }`
+   rule (user-agent stylesheet), regardless of selector specificity - so
+   without this line, setting the "hidden" attribute via JS (used by
+   closeSettings() in app.js) did nothing and the drawer could never
+   actually be closed once opened. This explicit, same-origin rule wins
+   the tie-break by simply appearing later in this file. */
+.settingsOverlay[hidden]{ display:none; }
 .settingsPanel{
   width:100%; max-width:460px;
   max-height:88vh;

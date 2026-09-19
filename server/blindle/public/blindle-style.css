@@ -100,7 +100,20 @@ button { cursor: pointer; }
 .brandTitle .accent { color: var(--gold-text); text-shadow: 0 0 18px rgba(255, 177, 0, 0.45); }
 .brandSubtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
 
-.toolbarRow { display: flex; align-items: center; gap: 6px; }
+.toolbarRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* BUG FIX: this row holds 7+ icon buttons plus two badges and a theme
+     picker - with no wrap, on anything narrower than a wide desktop
+     window the later icons (⚙️ Settings, ⛶ Fullscreen) simply ran off
+     the right edge of the screen with no way to scroll to them, even at
+     ordinary 100% browser zoom. Wrapping keeps every control on screen
+     and reachable, however many lines that takes. */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 6px;
+}
 .modeBadge {
   font-size: 11px;
   font-weight: 700;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Flagle Live · Yarn Atlas</title>
+<title>FLAGLE Live · Yarn Atlas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared/theme.css" />
@@ -17,7 +17,7 @@
   <section id="setup-screen" class="screen">
     <div class="setup-card">
       <div class="setup-top-row">
-        <div class="setup-badge">🧶 Flagle · Live</div>
+        <div class="setup-badge">🧶 FLAGLE · Live</div>
         <label class="theme-picker">
           🎨
           <select data-theme-select aria-label="Platform theme color">
@@ -80,7 +80,7 @@
       <div class="topbar-left">
         <a href="/" class="icon-btn" id="home-btn" title="Choose another game">🏠</a>
         <span class="mode-badge" id="mode-badge">LIVE</span>
-        <span class="topbar-title">Flagle live</span>
+        <span class="topbar-title">FLAGLE live</span>
       </div>
       <div class="round-timer" id="round-timer">45</div>
       <div class="topbar-right">
@@ -99,7 +99,6 @@
       <div class="flag-plate">
         <img id="flag-image" alt="Guess this flag" />
       </div>
-      <div class="guess-pips" id="guess-pips"></div>
     </div>
 
     <div class="hint-strip" id="hint-strip">
@@ -164,11 +163,6 @@
             </label>
             <input type="range" id="setting-blur-px" min="2" max="40" step="1" />
             <p class="settings-note">Higher = blurrier at the start of the round, so it takes longer to become recognizable. The flag always finishes sharpening at the "seconds left" mark above, whatever this is set to.</p>
-          </div>
-
-          <div class="settingsField">
-            <label class="field-label" for="setting-max-guesses">Wrong guesses allowed before the round ends</label>
-            <input type="number" id="setting-max-guesses" class="settings-input" min="1" max="15" step="1" />
           </div>
 
           <div class="settingsField">

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>Findle Live</title>
+<title>FINDLE Live</title>
 <link rel="stylesheet" href="/shared/theme.css" />
 <script src="/shared/theme.js"></script>
 <script src="/shared/session.js"></script>
@@ -155,7 +155,7 @@
 <div class="host-banner" id="hostBanner"><div class="host-banner-inner"><b>HOST:</b><span id="hostBannerText"></span></div></div>
 
 <div class="topbar">
-  <div class="brand">Fin<em>dle</em></div>
+  <div class="brand">FIN<em>DLE</em></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Not connected</span></div>
   <div class="icon-group">
     <a href="/" class="icon-btn" id="homeBtn" title="Choose another game">🏠</a>
@@ -495,29 +495,11 @@
   document.getElementById('connectBtn').onclick = () => {
     FindleAudio.unlock();
     const username = document.getElementById('usernameInput').value.trim();
-    if (window.PlatformSession) PlatformSession.setUsername(username);
     socket.emit('host:connectTikTok', { username });
     closeDrawer();
   };
   document.getElementById('disconnectBtn').onclick = () => socket.emit('host:disconnectTikTok');
   document.getElementById('testModeBtn').onclick = () => { FindleAudio.unlock(); socket.emit('host:toggleTestMode'); };
-
-  // Platform session: remember the TikTok username across every game.
-  // Pre-fill the connect field, and auto-connect once on load so
-  // switching to Findle from another game doesn't require re-entering
-  // the username or opening this drawer at all. (Sound stays muted until
-  // the host taps something themselves — browsers require a real click
-  // before audio can play, so the one-time auto-connect can't unlock it.)
-  if (window.PlatformSession) {
-    const savedUsername = PlatformSession.getUsername();
-    if (savedUsername) {
-      const usernameField = document.getElementById('usernameInput');
-      if (!usernameField.value) usernameField.value = savedUsername;
-      setTimeout(() => {
-        socket.emit('host:connectTikTok', { username: savedUsername });
-      }, 600);
-    }
-  }
 
   document.getElementById('nextBtn').onclick = () => { socket.emit('host:nextWord'); closeDrawer(); };
   document.getElementById('hintBtn').onclick = () => socket.emit('host:revealHint');

@@ -419,31 +419,11 @@ function setMiniStatus(text) { el.miniStatus.textContent = text; }
 function doConnect(usernameInput) {
   const username = usernameInput.value.trim();
   if (!username) { setMiniStatus("Type a TikTok username first."); return; }
-  if (window.PlatformSession) PlatformSession.setUsername(username);
   send("connect_tiktok", { username: username });
 }
 el.connectBtn.addEventListener("click", () => doConnect(el.tiktokUsername));
 el.connectBtnBottom.addEventListener("click", () => doConnect(el.tiktokUsernameBottom));
 el.disconnectBtn.addEventListener("click", () => send("disconnect_tiktok", {}));
-
-// Platform session: remember the TikTok username across every game.
-// Pre-fill both username fields so it's already there the moment the
-// host picks Live mode — and if Live mode + Apply has already happened
-// (e.g. re-arriving on this tab), connect immediately without asking
-// the host to type it again.
-if (window.PlatformSession) {
-  const saved = PlatformSession.getUsername();
-  if (saved) {
-    if (!el.tiktokUsername.value) el.tiktokUsername.value = saved;
-    if (!el.tiktokUsernameBottom.value) el.tiktokUsernameBottom.value = saved;
-    setTimeout(() => {
-      if (!el.connectBtnBottom.disabled) {
-        setMiniStatus(`Auto-connecting as @${saved} (saved) — change the username above to use a different account.`);
-        doConnect(el.tiktokUsernameBottom);
-      }
-    }, 600);
-  }
-}
 
 el.applyBtn.addEventListener("click", () => {
   send("apply_settings", {
@@ -729,25 +709,37 @@ function computeTileMetrics(wordLength, rowCount) {
   const containerWidth = el.tilesWrap.clientWidth || 320;
   const hGap = 2;
   const avatarGap = 8;
+  const badgeGap = 3;
+  const badgeToTilesGap = 8;
 
-  // Pass 1: rough estimate to bootstrap a font size, using a
-  // conservative guess for how wide the counts row + avatar column will
-  // end up being.
-  let countsReserve = 70;
+  // Badges (the green/gold/red count clues) are sized to exactly MATCH
+  // the letter tiles - same width and height, only the color changes -
+  // so for width-fitting purposes each of the 3 badges counts as one
+  // more "column" right alongside the word's own letters. The small
+  // extra gaps around the badge group (tighter than the letter gap,
+  // plus one gap connecting the group to the tile row) are reserved
+  // separately below.
+  const badgeColumns = 3;
+  const extraBadgeGaps = (badgeColumns - 1) * badgeGap + badgeToTilesGap;
+
+  // Pass 1: rough avatar-size estimate to bootstrap a tile size.
   let avatarReserve = 40;
-  let tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - countsReserve - avatarReserve), wordLength, hGap);
-  let fontSizeGuess = Math.max(7, Math.round(tileSizeByWidth * 0.42));
+  let tileSizeByWidth = widthConstrainedTileSize(
+    Math.max(100, containerWidth - avatarReserve - extraBadgeGaps),
+    wordLength + badgeColumns,
+    hGap
+  );
 
-  // Pass 2: the count badges use THIS SAME font size (matching the
-  // guessed letters, as requested) - so now that we know roughly what
-  // that font size will be, compute the counts row's real width and
-  // redo the fit. This is what lets everything auto-shrink together
-  // (badges included) to keep guesses on one line at any word length.
-  let badgeWidth = Math.max(20, Math.round(fontSizeGuess * 2.3));
-  countsReserve = badgeWidth * 3 + 3 * 2 + 8; // 3 badges + 2 small gaps + gap to the tiles
-  let avatarSizeGuess = Math.max(14, Math.round(fontSizeGuess * 1.9));
-  avatarReserve = avatarSizeGuess + avatarGap;
-  tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - countsReserve - avatarReserve), wordLength, hGap);
+  // Pass 2: the avatar scales off the tile HEIGHT (see the final
+  // formula below) - now that pass 1 gives a rough tile size, redo the
+  // fit once more with a much closer avatar-size estimate.
+  const tileHeightGuess = Math.round(tileSizeByWidth * 1.18);
+  avatarReserve = Math.max(14, Math.round(tileHeightGuess * 0.82)) + avatarGap;
+  tileSizeByWidth = widthConstrainedTileSize(
+    Math.max(100, containerWidth - avatarReserve - extraBadgeGaps),
+    wordLength + badgeColumns,
+    hGap
+  );
 
   const availableHeight = computeAvailableTilesHeight();
   const vGap = 8;
@@ -760,11 +752,10 @@ function computeTileMetrics(wordLength, rowCount) {
   const tileHeight = Math.round(tileSize * 1.18);
   const fontSize = Math.max(7, Math.round(tileSize * 0.42));
 
-  // Recompute badge + avatar dimensions from the FINAL font size, so
-  // they always visually match the guessed-letter font exactly, and
-  // shrink together with the tiles as word length grows.
-  badgeWidth = Math.max(20, Math.round(fontSize * 2.3));
-  const badgeHeight = Math.max(16, Math.round(tileSize * 0.62));
+  // Badges match the letter tiles exactly - same box size as a guessed
+  // letter, same font size, only the fill color differs per clue.
+  const badgeWidth = tileSize;
+  const badgeHeight = tileHeight;
   const avatarSize = Math.max(14, Math.round(tileHeight * 0.82));
   const avatarFontSize = Math.max(7, Math.round(avatarSize * 0.46));
 
