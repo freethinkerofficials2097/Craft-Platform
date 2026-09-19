@@ -9,11 +9,19 @@
 <script src="/shared/session.js"></script>
 <link rel="stylesheet" href="/findle-public/findle-theme.css">
 <style>
-  html,body{ height:100%; overflow:hidden; }
+  html{ height:100%; overflow:hidden; }
   body{
     height: calc(var(--findle-vh) * 100);
     display:flex; flex-direction:column;
+    /* Safety net: the layout is built to fit without scrolling in the
+       normal case (grid-wrap is the flexible middle section), but if a
+       long theme title/answer list or an unusual zoom/font-size ever
+       adds up to more than the viewport, this lets the host scroll to
+       reach the bottom control bar instead of it being clipped off. */
+    overflow-y: auto;
+    overflow-x: hidden;
   }
+  footer.sticky{ position: sticky; bottom: 0; z-index: 15; }
 
   /* ---- top bar ---- */
   .topbar{
@@ -39,13 +47,13 @@
   }
   .theme-title{
     font-family:'Fraunces',serif; font-weight:600; color:var(--findle-citrus-text);
-    font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;
+    font-size:19px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;
   }
   .progress-dots{ display:flex; flex-wrap:wrap; gap:4px; flex:none; max-width:90px; justify-content:flex-end; }
   .progress-dot{ width:8px; height:8px; border-radius:50%; background:var(--findle-surface-2); border:1px solid var(--findle-line); }
   .progress-dot.done{ background:var(--findle-leaf); border-color:var(--findle-leaf); }
-  .timer{ font-family:'Fraunces',serif; font-weight:700; font-size:15px; color:var(--findle-ink); flex:none; min-width:30px; text-align:right; }
-  .timer.low{ color:var(--findle-berry-text); }
+  /* Time to answer is unlimited - no more countdown clock, so the .timer
+     rule/element is gone (see the header row markup + JS below). */
 
   /* ---- grid (majority of screen) ---- */
   .grid-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:2px 14px; }
@@ -176,7 +184,6 @@
   <div class="theme-title" id="themeTitle">— tap ⚙ then Start —</div>
   <div class="progress-dots" id="progressDots"></div>
   <div class="combo-badge" id="comboBadge"></div>
-  <div class="timer" id="timerNum">--</div>
 </div>
 
 <div class="grid-wrap" id="gridWrap">
@@ -469,10 +476,7 @@
       R.renderProgress(document.getElementById('progressDots'), s.game.wordsFound, s.game.wordsTotal);
     }
 
-    const timerEl = document.getElementById('timerNum');
-    timerEl.textContent = s.game.status === 'playing' ? s.game.timeLeft + 's'
-      : s.game.status === 'paused' ? '⏸ ' + s.game.timeLeft + 's' : '--';
-    timerEl.classList.toggle('low', s.game.status === 'playing' && s.game.timeLeft <= 10);
+    // Time to answer is unlimited - there is no countdown clock anymore.
 
     latestLeaderboard = s.leaderboard;
     R.renderTicker(document.getElementById('tickerOuter'), document.getElementById('tickerTrack'), s.leaderboard);

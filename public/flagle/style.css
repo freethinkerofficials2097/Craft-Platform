@@ -537,6 +537,70 @@ body{
   }
 }
 
+/* ---------------- Host settings drawer ---------------- */
+.settingsOverlay{
+  position:fixed; inset:0; z-index:60;
+  background:rgba(30,20,10,.45);
+  display:flex; align-items:flex-end; justify-content:center;
+  padding:0;
+}
+.settingsPanel{
+  width:100%; max-width:460px;
+  max-height:88vh;
+  max-height:88dvh;
+  overflow-y:auto; /* the drawer itself scrolls, so every setting stays reachable at any screen size */
+  -webkit-overflow-scrolling:touch;
+  background:var(--navy-panel);
+  border:3px dashed var(--navy-line);
+  border-bottom:none;
+  border-radius:24px 24px 0 0;
+  box-shadow:0 -8px 30px rgba(139,90,52,.28);
+  padding:6px 20px calc(20px + env(safe-area-inset-bottom));
+}
+.settingsHead{
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:2;
+  background:var(--navy-panel);
+  padding:14px 0 10px;
+  border-bottom:2px dashed var(--navy-line);
+  margin-bottom:14px;
+}
+.settingsHead h3{
+  margin:0; font-family:var(--font-head); font-weight:700; font-size:17px; color:var(--wood-deep);
+}
+.settingsBody{ display:flex; flex-direction:column; gap:16px; padding-bottom:6px; }
+.settingsField{ display:flex; flex-direction:column; gap:6px; }
+.settingsField-row{ flex-direction:row; flex-wrap:wrap; gap:10px; }
+.settingsField-row .danger-btn{ flex:1; min-width:160px; }
+.settings-input{
+  background:var(--navy-deep);
+  border:2px dashed var(--navy-line);
+  border-radius:12px;
+  color:var(--ink-hi);
+  padding:10px 12px;
+  font-size:15px;
+  font-family:var(--font-body);
+  font-weight:600;
+  outline:none;
+}
+input[type="range"].settings-input,
+#setting-blur-px{
+  padding:0; accent-color:var(--amber); background:transparent; border:none; height:22px;
+}
+.settings-note{
+  margin:0; font-size:11.5px; color:var(--ink-mid); line-height:1.5; font-weight:500;
+}
+.settings-divider{
+  border:none; border-top:2px dashed var(--navy-line); margin:2px 0 0;
+}
+.settings-subhead{
+  margin:0; font-family:var(--font-head); font-weight:700; font-size:13px; color:var(--ink-mid);
+  letter-spacing:.04em; text-transform:uppercase;
+}
+.danger-btn{
+  border-color:var(--coral); color:var(--coral-dim);
+}
+
 /* Mode selection tabs (setup screen) */
 .mode-tabs{
   display:flex;

@@ -306,6 +306,23 @@
     </div>
   </div>
 
+  <!-- =============================================================
+       Win celebration — a floating overlay sequence (winner, then the
+       all-time leaderboard), same format as BLINDLE's. Only appears
+       when a round is actually SOLVED.
+  ============================================================= -->
+  <div id="celebrationOverlay" class="celebrationOverlay hidden">
+    <div class="celebrationCard">
+      <button id="celebrationCloseBtn" class="celebrationClose" aria-label="Close">✕</button>
+      <div id="celebrationBody"></div>
+      <div class="celebrationDots" id="celebrationDots">
+        <span class="celebDot" data-stage="0"></span>
+        <span class="celebDot" data-stage="1"></span>
+      </div>
+    </div>
+  </div>
+  <div id="celebConfettiLayer" class="celebConfettiLayer"></div>
+
 </div>
 
 <script src="/socket.io/socket.io.js"></script>

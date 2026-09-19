@@ -33,10 +33,15 @@ const COMBO_WINDOW_SECONDS = 14;
 const MAX_MSGID_CACHE = 300;
 const DEDUP_TEXT_WINDOW_MS = 4000;
 
+// Time to answer is unlimited (see MERGE-NOTES / round-completion notes
+// below) - "timeLimit" was removed from here on purpose. Difficulty
+// still controls grid size and scoring (basePoints/timeDecay/hintPenalty)
+// exactly as before; timeDecay still gently rewards a FASTER find over a
+// slower one, it just never forces the round to end.
 const DIFFICULTY_SETTINGS = {
-  easy:   { gridSize: 9,  timeLimit: 150, basePoints: 8,  perLetter: 1, timeDecay: 0.12, hintPenalty: 1 },
-  medium: { gridSize: 10, timeLimit: 200, basePoints: 12, perLetter: 1, timeDecay: 0.10, hintPenalty: 2 },
-  hard:   { gridSize: 11, timeLimit: 260, basePoints: 16, perLetter: 1, timeDecay: 0.08, hintPenalty: 2 },
+  easy:   { gridSize: 9,  basePoints: 8,  perLetter: 1, timeDecay: 0.12, hintPenalty: 1 },
+  medium: { gridSize: 10, basePoints: 12, perLetter: 1, timeDecay: 0.10, hintPenalty: 2 },
+  hard:   { gridSize: 11, basePoints: 16, perLetter: 1, timeDecay: 0.08, hintPenalty: 2 },
 };
 
 function registerFindle(app, rootIO) {
@@ -66,8 +71,6 @@ function registerFindle(app, rootIO) {
       hintsUsed: 0,
       roundStartedAt: null,
       pauseStartedAt: null,
-      timeLimitSeconds: 90,
-      timeLeft: 90,
       usedThemes: [],
       comboCount: 0,
       lastFindAt: 0,
@@ -85,7 +88,6 @@ function registerFindle(app, rootIO) {
   const recentMsgIdOrder = [];
   let recentTextSignatures = [];
 
-  let roundTimer = null;
   let autoAdvanceTimer = null;
   let testModeTimer = null;
   let tiktokConnection = null;
@@ -168,8 +170,6 @@ function registerFindle(app, rootIO) {
         wordsTotal: g.words.length,
         clearedGrid: g.grid ? computeClearedGrid(g.gridSize, g.words) : null,
         combo: { count: g.comboCount, multiplier: comboMultiplier(g.comboCount) },
-        timeLeft: g.timeLeft,
-        timeLimitSeconds: g.timeLimitSeconds,
       },
       leaderboard: getTopN(10),
       feed: state.feed.slice(0, 30),
@@ -208,7 +208,6 @@ function registerFindle(app, rootIO) {
   }
 
   function startRound() {
-    clearInterval(roundTimer);
     clearTimeout(autoAdvanceTimer);
 
     const settings = DIFFICULTY_SETTINGS[state.game.difficulty] || DIFFICULTY_SETTINGS.easy;
@@ -224,8 +223,6 @@ function registerFindle(app, rootIO) {
     state.game.comboCount = 0;
     state.game.lastFindAt = 0;
     state.game.bestCombo = 0;
-    state.game.timeLimitSeconds = settings.timeLimit;
-    state.game.timeLeft = settings.timeLimit;
     state.game.words = puzzle.words.map((word) => {
       const upper = word.toUpperCase();
       return {
@@ -241,33 +238,17 @@ function registerFindle(app, rootIO) {
 
     pushFeed({ type: "system", text: `New puzzle: "${puzzle.theme}" — find ${state.game.words.length} hidden words!`, time: Date.now() });
     broadcastState();
-
-    beginTicking(settings);
   }
 
-  function beginTicking(settings) {
-    clearInterval(roundTimer);
-    let secondsElapsed = settings.timeLimit - state.game.timeLeft;
-    roundTimer = setInterval(() => {
-      try {
-        secondsElapsed++;
-        state.game.timeLeft = Math.max(0, settings.timeLimit - secondsElapsed);
-
-        if (state.game.timeLeft <= 0) {
-          endRound("timeout");
-        } else {
-          broadcastState();
-        }
-      } catch (err) {
-        console.error("[findle:roundTimer] error:", err);
-      }
-    }, 1000);
-  }
-
+  // Time to answer is unlimited: there is no round clock/countdown of any
+  // kind anymore, and a round only ends when every word has been found
+  // ("cleared" - see handleGuess below) or the host stops/skips it.
+  // pause/resume still exist as plain host actions (e.g. to freeze the
+  // board without a time penalty) - they just no longer coordinate with
+  // any timer.
   function pauseRound() {
     const g = state.game;
     if (g.status !== "playing") return;
-    clearInterval(roundTimer);
     g.status = "paused";
     g.pauseStartedAt = Date.now();
     broadcastState();
@@ -276,7 +257,6 @@ function registerFindle(app, rootIO) {
   function resumeRound() {
     const g = state.game;
     if (g.status !== "paused") return;
-    const settings = DIFFICULTY_SETTINGS[g.difficulty] || DIFFICULTY_SETTINGS.easy;
     if (g.pauseStartedAt) {
       const pausedMs = Date.now() - g.pauseStartedAt;
       g.roundStartedAt += pausedMs;
@@ -284,11 +264,9 @@ function registerFindle(app, rootIO) {
     }
     g.status = "playing";
     broadcastState();
-    beginTicking(settings);
   }
 
   function stopRound() {
-    clearInterval(roundTimer);
     clearTimeout(autoAdvanceTimer);
     const g = state.game;
     g.status = "waiting";
@@ -299,7 +277,6 @@ function registerFindle(app, rootIO) {
     g.comboCount = 0;
     g.lastFindAt = 0;
     g.bestCombo = 0;
-    g.timeLeft = 0;
     pushFeed({ type: "system", text: "⏹ Game stopped by host.", time: Date.now() });
     broadcastState();
   }
@@ -323,20 +300,15 @@ function registerFindle(app, rootIO) {
   }
 
   function endRound(reason) {
-    clearInterval(roundTimer);
     const g = state.game;
     g.status = "roundEnd";
 
+    // "timeout" can no longer happen (no more clock), but the branch is
+    // kept as a no-op fallback rather than removed outright, in case a
+    // host action from an older client build somewhere still sends it.
     if (reason === "timeout") {
       const remaining = g.words.filter((w) => !w.found);
       remaining.forEach((w) => { w.found = true; w.foundBy = null; });
-      pushFeed({
-        type: "system",
-        text: remaining.length
-          ? `⏱️ Time's up! The remaining word${remaining.length > 1 ? "s were" : " was"}: ${remaining.map((w) => w.word).join(", ")}.`
-          : "⏱️ Time's up!",
-        time: Date.now(),
-      });
     } else {
       const comboNote = g.bestCombo >= 2 ? ` (best combo x${comboMultiplier(g.bestCombo)})` : "";
       pushFeed({ type: "win", text: `🎉 Puzzle cleared! Great teamwork, chat!${comboNote}`, time: Date.now() });

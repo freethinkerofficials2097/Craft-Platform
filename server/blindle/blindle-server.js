@@ -152,11 +152,23 @@ const DEFAULT_REJECTION_TOAST_SECONDS = 4;
 // it keeps using autoContinueDelaySeconds on its own (see giveUp below).
 const CELEBRATION_STAGE_COUNT = 3;
 
+// Points awarded per guess. Solving it is worth 10x a plain wrong-but-
+// valid guess (which still earns a small participation point), same
+// ratio as the original 100/10 split, just at a smaller scale.
+const WIN_POINTS = 10;
+const GUESS_POINTS = 1;
+
 const game = {
   mode: "test",
   status: "idle",
   wordLength: 5,
   difficulty: "normal",
+  // "fixed" plays game.wordLength every round (as before); "random"
+  // picks a new random length inside [lengthMin, lengthMax] (still
+  // filtered by `difficulty`) at the start of every round.
+  lengthMode: "fixed",
+  lengthMin: 4,
+  lengthMax: 8,
   secretWord: null,
   guesses: [],
   streak: 0,
@@ -179,6 +191,12 @@ function clampWordLength(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return 5;
   return Math.min(MAX_WORD_LENGTH, Math.max(MIN_WORD_LENGTH, Math.round(v)));
+}
+
+function randomWordLengthInRange() {
+  const lo = clampWordLength(game.lengthMin);
+  const hi = Math.max(lo, clampWordLength(game.lengthMax));
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
 }
 
 function pickAnswer(wordLength, difficulty) {
@@ -212,13 +230,16 @@ function processGuess(word, caller) {
   game.guesses.push({ word, counts, caller });
 
   if (word === game.secretWord) {
-    const points = game.mode === "live" ? 100 : null;
-    awardPoints(caller, 100);
+    // Scaled down from the original 100/10 split to 10/1, keeping the
+    // same 10x relationship between solving it and a wrong-but-valid
+    // guess (which still earns a small participation point).
+    const points = game.mode === "live" ? WIN_POINTS : null;
+    awardPoints(caller, WIN_POINTS);
     game.status = "won";
     game.streak += 1;
     game.lastWinInfo = { username: caller, points, word };
   } else {
-    awardPoints(caller, 10);
+    awardPoints(caller, GUESS_POINTS);
   }
 
   if (game.status === "won" && game.autoContinue) {
@@ -246,6 +267,9 @@ function attemptGuess(word, caller) {
 }
 
 function startRound(overrideWord) {
+  if (!overrideWord && game.lengthMode === "random") {
+    game.wordLength = randomWordLengthInRange();
+  }
   game.secretWord = overrideWord || pickAnswer(game.wordLength, game.difficulty);
   game.guesses = [];
   game.hintsUsed = 0;
@@ -269,6 +293,9 @@ function applySettings(settings) {
   const mode = settings.mode;
   const wordLength = settings.wordLength;
   const difficulty = settings.difficulty;
+  const lengthMode = settings.lengthMode;
+  const lengthMin = settings.lengthMin;
+  const lengthMax = settings.lengthMax;
   const autoContinue = settings.autoContinue;
   const autoContinueDelaySeconds = settings.autoContinueDelaySeconds;
 
@@ -282,6 +309,14 @@ function applySettings(settings) {
   }
   if (wordLength !== undefined) game.wordLength = clampWordLength(wordLength);
   if (["normal", "medium", "hard", "random"].includes(difficulty)) game.difficulty = difficulty;
+  if (["fixed", "random"].includes(lengthMode)) game.lengthMode = lengthMode;
+  if (lengthMin !== undefined || lengthMax !== undefined) {
+    let lo = clampWordLength(lengthMin !== undefined ? lengthMin : game.lengthMin);
+    let hi = clampWordLength(lengthMax !== undefined ? lengthMax : game.lengthMax);
+    if (lo > hi) [lo, hi] = [hi, lo]; // never let the range invert
+    game.lengthMin = lo;
+    game.lengthMax = hi;
+  }
   if (typeof autoContinue === "boolean") game.autoContinue = autoContinue;
   if (autoContinueDelaySeconds !== undefined) {
     const v = Number(autoContinueDelaySeconds);
@@ -552,6 +587,9 @@ function buildStatePayload() {
       status: game.status,
       wordLength: game.wordLength,
       difficulty: game.difficulty,
+      lengthMode: game.lengthMode,
+      lengthMin: game.lengthMin,
+      lengthMax: game.lengthMax,
       secretWord: game.status === "lost" ? game.secretWord : null,
       guesses: game.guesses.slice(-12),
       guessesMade: game.guesses.length,

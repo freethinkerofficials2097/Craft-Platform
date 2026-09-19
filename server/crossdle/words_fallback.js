@@ -142,6 +142,14 @@ export const FALLBACK_WORD_LISTS = {
     "petty", "phase", "phone", "photo", "piano", "piece", "piety", "pilot", "pitch", "pixel",
     "pizza", "place", "plaid", "plain", "plank", "plant", "plate", "plaza", "plead", "pluck",
     "plumb", "podge", "point", "poise", "poker", "polar", "polka", "porch", "pound", "power",
+    // Added: "watch" was previously accepted only if the real network
+    // dictionary loaded — the offline fallback list here jumped straight
+    // from "p" words to the closing bracket with nothing for q-z, so on
+    // a fallback-only run "watch" (a real curated answer word, see
+    // crossdle-answers.js) couldn't be guessed at all. Listed here
+    // explicitly since resorting the whole multi-hundred-word list
+    // alphabetically for one entry isn't worth the diff noise.
+    "watch",
   ],
   6: [
     "accept", "access", "across", "action", "active", "actual", "advice", "afford", "afraid", "agency",

@@ -176,7 +176,24 @@
 
       <div class="drawerSection">
         <h4>Word length</h4>
-        <select id="wordLengthSelect" class="selectInput"></select>
+        <label class="switchRow">
+          <input type="checkbox" id="randomLengthToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Random length each round</span>
+        </label>
+
+        <div id="fixedLengthRow">
+          <select id="wordLengthSelect" class="selectInput"></select>
+        </div>
+
+        <div id="randomLengthRow" class="row" hidden>
+          <label class="fieldLabel delayLabel">From</label>
+          <select id="lengthMinSelect" class="selectInput selectNarrow"></select>
+          <label class="fieldLabel delayLabel">to</label>
+          <select id="lengthMaxSelect" class="selectInput selectNarrow"></select>
+          <span class="fieldLabel delayLabel">letters</span>
+        </div>
+        <p class="sectionNote" id="randomLengthNote" hidden>Each new round picks a random length in this range (still filtered by the difficulty tier below).</p>
       </div>
 
       <div class="drawerSection">

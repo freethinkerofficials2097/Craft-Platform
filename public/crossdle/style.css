@@ -419,3 +419,65 @@ input[type="text"]:focus, .select:focus { border-color: var(--accent-2); box-sha
   .modal-card { padding: 20px 14px 16px; }
   .ticker-label { display: none; }
 }
+
+/* --------------------------------------------------------------------
+   Win celebration - a full-screen overlay sequence (winner -> all-time
+   leaderboard) with confetti, mirroring BLINDLE's celebration format.
+   Only appears when a round is actually SOLVED (never on skip/reveal/
+   timeout), and auto-dismisses on its own after cycling both stages.
+--------------------------------------------------------------------- */
+.celebrationOverlay {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 9, 20, 0.7);
+  backdrop-filter: blur(3px);
+  padding: 20px;
+}
+.celebrationOverlay.hidden { display: none; }
+.celebrationCard {
+  position: relative;
+  width: 100%; max-width: 360px;
+  max-height: 82vh; overflow-y: auto;
+  background: var(--panel-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+  padding: 26px 22px 20px;
+  text-align: center;
+  animation: celeb-pop 0.32s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes celeb-pop {
+  0% { transform: scale(0.86); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.celebrationClose {
+  position: absolute; top: 10px; right: 10px;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--text-dim); font-size: 14px; cursor: pointer;
+}
+.celebLabel { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 6px; }
+.celebWinnerRow { font-size: 24px; font-weight: 800; color: var(--gold); margin-bottom: 6px; word-break: break-word; }
+.celebAnswerRow { font-size: 17px; font-weight: 700; color: var(--text); letter-spacing: .06em; margin-bottom: 4px; }
+.celebPoints { font-size: 14px; font-weight: 700; color: var(--accent-3); }
+.celebBoardTitle { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+.celebBoardList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.celebBoardList li {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 8px 12px; font-size: 14px; font-weight: 600;
+}
+.celebBoardList li.empty { justify-content: center; color: var(--text-faint); font-weight: 500; }
+.celebBoardList .rank { color: var(--text-faint); font-weight: 800; margin-right: 8px; }
+.celebrationDots { display: flex; justify-content: center; gap: 6px; margin-top: 16px; }
+.celebDot { width: 7px; height: 7px; border-radius: 50%; background: var(--border-strong); }
+.celebDot.active { background: var(--gold); }
+.celebConfettiLayer { position: fixed; inset: 0; z-index: 79; pointer-events: none; overflow: hidden; }
+.celebConfettiLayer .confetti-piece {
+  position: absolute; top: -12px; width: 9px; height: 15px; opacity: 0.9;
+  animation: celeb-confetti-fall 1.9s ease-in forwards;
+}
+@keyframes celeb-confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(540deg); opacity: 0; }
+}

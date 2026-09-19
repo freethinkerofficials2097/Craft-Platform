@@ -23,13 +23,13 @@
   .icon-group{ display:flex; gap:8px; flex:none; }
 
   .theme-row{ flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 24px 6px; flex-wrap:wrap; }
-  .theme-title{ font-size:clamp(20px, 3vw, 30px); font-weight:600; color:var(--findle-citrus-text); font-family:'Fraunces',serif; }
+  .theme-title{ font-size:clamp(23px, 3.6vw, 34px); font-weight:600; color:var(--findle-citrus-text); font-family:'Fraunces',serif; }
   .progress-info{ display:flex; align-items:center; gap:14px; }
   .progress-dots{ display:flex; flex-wrap:wrap; gap:6px; max-width:160px; justify-content:flex-end; }
   .progress-dot{ width:11px; height:11px; border-radius:50%; background:var(--findle-surface-2); border:1px solid var(--findle-line); }
   .progress-dot.done{ background:var(--findle-leaf); border-color:var(--findle-leaf); }
-  .timer{ font-family:'Fraunces',serif; font-weight:600; font-size:19px; color:var(--findle-ink); min-width:40px; text-align:right; }
-  .timer.low{ color:var(--findle-berry-text); }
+  /* Time to answer is unlimited - no more countdown clock, so the .timer
+     rule/element is gone (see the theme row markup + JS below). */
 
   .grid-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:6px 24px; }
   /* Self-contained square sized from viewport units alone (see host.html
@@ -73,7 +73,6 @@
     <div class="progress-info">
       <div class="progress-dots" id="progressDots"></div>
       <div class="combo-badge" id="comboBadge"></div>
-      <div class="timer" id="timerNum">--</div>
     </div>
   </div>
 
@@ -207,10 +206,7 @@
       R.renderProgress(document.getElementById('progressDots'), s.game.wordsFound, s.game.wordsTotal);
     }
 
-    const timerEl = document.getElementById('timerNum');
-    timerEl.textContent = s.game.status === 'playing' ? s.game.timeLeft + 's'
-      : s.game.status === 'paused' ? '⏸ ' + s.game.timeLeft + 's' : '--';
-    timerEl.classList.toggle('low', s.game.status === 'playing' && s.game.timeLeft <= 10);
+    // Time to answer is unlimited - there is no countdown clock anymore.
 
     latestLeaderboard = s.leaderboard;
     R.renderTicker(document.getElementById('tickerOuter'), document.getElementById('tickerTrack'), s.leaderboard);

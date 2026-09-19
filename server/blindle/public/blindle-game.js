@@ -72,6 +72,12 @@ const el = {
   disconnectBtn: document.getElementById("disconnectBtn"),
   wordLengthSelect: document.getElementById("wordLengthSelect"),
   difficultySelect: document.getElementById("difficultySelect"),
+  randomLengthToggle: document.getElementById("randomLengthToggle"),
+  fixedLengthRow: document.getElementById("fixedLengthRow"),
+  randomLengthRow: document.getElementById("randomLengthRow"),
+  randomLengthNote: document.getElementById("randomLengthNote"),
+  lengthMinSelect: document.getElementById("lengthMinSelect"),
+  lengthMaxSelect: document.getElementById("lengthMaxSelect"),
   autoContinueToggle: document.getElementById("autoContinueToggle"),
   delayInput: document.getElementById("delayInput"),
   leaderboardShowInput: document.getElementById("leaderboardShowInput"),
@@ -152,32 +158,38 @@ el.fullscreenBtn.addEventListener("click", () => {
 // Manual, host-only scratchpad coloring
 // ------------------------------------------------------------
 const CYCLE = [null, "absent", "present", "correct"];
-let manualKeyColors = {};
-let manualTileColors = {};
+// Colors are keyed by LETTER, not by tile position or key element -
+// marking any occurrence of a letter (on the keyboard OR on any
+// guessed-word tile) colors every occurrence of that same letter
+// everywhere else on screen, and clicking again cycles it further.
+// This is what makes the keyboard and the tiles stay in sync in both
+// directions.
+let manualLetterColors = {};
 
 function nextColor(current) {
   const idx = CYCLE.indexOf(current || null);
   return CYCLE[(idx + 1) % CYCLE.length];
 }
 
-function cycleKeyColor(letter) {
-  const next = nextColor(manualKeyColors[letter] || null);
-  if (next) manualKeyColors[letter] = next;
-  else delete manualKeyColors[letter];
+function cycleLetterColor(letter) {
+  const next = nextColor(manualLetterColors[letter] || null);
+  if (next) manualLetterColors[letter] = next;
+  else delete manualLetterColors[letter];
   paintKeyboard();
-}
-
-function cycleTileColor(key) {
-  const next = nextColor(manualTileColors[key] || null);
-  if (next) manualTileColors[key] = next;
-  else delete manualTileColors[key];
+  // Bypass the tiles' render cache (it only tracks round/guess-count
+  // changes) so a pure color change repaints immediately.
   lastTilesSignature = "";
   if (lastState) renderTiles(lastState.game);
 }
 
+// Kept as thin aliases so the keyboard-click and tile-click handlers
+// below read clearly at their call sites - both ultimately touch the
+// same shared, letter-keyed color map.
+function cycleKeyColor(letter) { cycleLetterColor(letter); }
+function cycleTileColor(letter) { cycleLetterColor(letter); }
+
 function resetManualColors() {
-  manualKeyColors = {};
-  manualTileColors = {};
+  manualLetterColors = {};
   paintKeyboard();
   lastTilesSignature = "";
   if (lastState) renderTiles(lastState.game);
@@ -187,7 +199,7 @@ function paintKeyboard() {
   const usedLetters = new Set((lastState && lastState.game && lastState.game.usedLetters) || []);
   el.keyboard.querySelectorAll(".key").forEach((key) => {
     const letter = key.dataset.letter;
-    const manual = manualKeyColors[letter];
+    const manual = manualLetterColors[letter];
     let cls = "key";
     if (manual) cls += " " + manual;
     else if (usedLetters.has(letter)) cls += " used";
@@ -253,6 +265,38 @@ for (let n = 4; n <= 20; n++) {
   if (n === 5) opt.selected = true;
   el.wordLengthSelect.appendChild(opt);
 }
+for (let n = 4; n <= 20; n++) {
+  const optMin = document.createElement("option");
+  optMin.value = String(n);
+  optMin.textContent = String(n);
+  if (n === 4) optMin.selected = true;
+  el.lengthMinSelect.appendChild(optMin);
+
+  const optMax = document.createElement("option");
+  optMax.value = String(n);
+  optMax.textContent = String(n);
+  if (n === 8) optMax.selected = true;
+  el.lengthMaxSelect.appendChild(optMax);
+}
+
+function updateLengthModeUI() {
+  const isRandom = el.randomLengthToggle.checked;
+  el.fixedLengthRow.hidden = isRandom;
+  el.randomLengthRow.hidden = !isRandom;
+  el.randomLengthNote.hidden = !isRandom;
+}
+el.randomLengthToggle.addEventListener("change", updateLengthModeUI);
+// Keep "from" <= "to" so the range is never inverted.
+el.lengthMinSelect.addEventListener("change", () => {
+  if (Number(el.lengthMinSelect.value) > Number(el.lengthMaxSelect.value)) {
+    el.lengthMaxSelect.value = el.lengthMinSelect.value;
+  }
+});
+el.lengthMaxSelect.addEventListener("change", () => {
+  if (Number(el.lengthMaxSelect.value) < Number(el.lengthMinSelect.value)) {
+    el.lengthMinSelect.value = el.lengthMaxSelect.value;
+  }
+});
 
 let stagedMode = "test";
 
@@ -260,6 +304,10 @@ function syncStagedSettingsFromState(g) {
   stagedMode = g.mode;
   el.wordLengthSelect.value = String(g.wordLength);
   el.difficultySelect.value = g.difficulty;
+  el.randomLengthToggle.checked = g.lengthMode === "random";
+  el.lengthMinSelect.value = String(g.lengthMin || 4);
+  el.lengthMaxSelect.value = String(g.lengthMax || 8);
+  updateLengthModeUI();
   el.autoContinueToggle.checked = g.autoContinue;
   el.delayInput.value = g.autoContinueDelaySeconds;
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
@@ -402,6 +450,9 @@ el.applyBtn.addEventListener("click", () => {
     mode: stagedMode,
     wordLength: Number(el.wordLengthSelect.value),
     difficulty: el.difficultySelect.value,
+    lengthMode: el.randomLengthToggle.checked ? "random" : "fixed",
+    lengthMin: Number(el.lengthMinSelect.value),
+    lengthMax: Number(el.lengthMaxSelect.value),
     autoContinue: el.autoContinueToggle.checked,
     autoContinueDelaySeconds: Number(el.delayInput.value) || 3
   });
@@ -677,11 +728,14 @@ function widthConstrainedTileSize(usableWidth, wordLength, hGap) {
 function computeTileMetrics(wordLength, rowCount) {
   const containerWidth = el.tilesWrap.clientWidth || 320;
   const hGap = 2;
+  const avatarGap = 8;
 
   // Pass 1: rough estimate to bootstrap a font size, using a
-  // conservative guess for how wide the counts row will end up being.
+  // conservative guess for how wide the counts row + avatar column will
+  // end up being.
   let countsReserve = 70;
-  let tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - countsReserve), wordLength, hGap);
+  let avatarReserve = 40;
+  let tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - countsReserve - avatarReserve), wordLength, hGap);
   let fontSizeGuess = Math.max(7, Math.round(tileSizeByWidth * 0.42));
 
   // Pass 2: the count badges use THIS SAME font size (matching the
@@ -691,7 +745,9 @@ function computeTileMetrics(wordLength, rowCount) {
   // (badges included) to keep guesses on one line at any word length.
   let badgeWidth = Math.max(20, Math.round(fontSizeGuess * 2.3));
   countsReserve = badgeWidth * 3 + 3 * 2 + 8; // 3 badges + 2 small gaps + gap to the tiles
-  tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - countsReserve), wordLength, hGap);
+  let avatarSizeGuess = Math.max(14, Math.round(fontSizeGuess * 1.9));
+  avatarReserve = avatarSizeGuess + avatarGap;
+  tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - countsReserve - avatarReserve), wordLength, hGap);
 
   const availableHeight = computeAvailableTilesHeight();
   const vGap = 8;
@@ -704,17 +760,64 @@ function computeTileMetrics(wordLength, rowCount) {
   const tileHeight = Math.round(tileSize * 1.18);
   const fontSize = Math.max(7, Math.round(tileSize * 0.42));
 
-  // Recompute badge dimensions from the FINAL font size, so the
-  // counts always visually match the guessed-letter font exactly.
+  // Recompute badge + avatar dimensions from the FINAL font size, so
+  // they always visually match the guessed-letter font exactly, and
+  // shrink together with the tiles as word length grows.
   badgeWidth = Math.max(20, Math.round(fontSize * 2.3));
   const badgeHeight = Math.max(16, Math.round(tileSize * 0.62));
+  const avatarSize = Math.max(14, Math.round(tileHeight * 0.82));
+  const avatarFontSize = Math.max(7, Math.round(avatarSize * 0.46));
 
-  return { tileSize, tileHeight, fontSize, gap: hGap, badgeWidth, badgeHeight, badgeFontSize: fontSize };
+  return { tileSize, tileHeight, fontSize, gap: hGap, badgeWidth, badgeHeight, badgeFontSize: fontSize, avatarSize, avatarFontSize };
+}
+
+// ------------------------------------------------------------
+// Per-guesser avatar - a deterministic "colored circle + initial"
+// generated from the username (TikTok chat events don't reliably give
+// us a hotlinkable profile-photo URL here, so this is a stable stand-in
+// that's always the same color/letter for the same person every time).
+// ------------------------------------------------------------
+const AVATAR_PALETTE = [
+  "#e0699c", "#4fa0c4", "#6faa5c", "#e0a934", "#9c6fd1",
+  "#e0724a", "#3aa6a6", "#c4577a", "#5c8ae0", "#8aa63a"
+];
+function hashString(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h;
+}
+function avatarColorFor(username) {
+  return AVATAR_PALETTE[hashString(username || "?") % AVATAR_PALETTE.length];
+}
+function avatarInitial(username) {
+  const clean = String(username || "").trim();
+  return clean ? clean[0].toUpperCase() : "?";
 }
 
 function buildGuessBlock(guess, wordLength, metrics) {
   const block = document.createElement("div");
   block.className = "guessBlock";
+
+  if (guess) {
+    const avatar = document.createElement("div");
+    avatar.className = "guessAvatar";
+    avatar.style.width = metrics.avatarSize + "px";
+    avatar.style.height = metrics.avatarSize + "px";
+    avatar.style.fontSize = metrics.avatarFontSize + "px";
+    avatar.style.background = avatarColorFor(guess.caller);
+    avatar.textContent = avatarInitial(guess.caller);
+    avatar.title = guess.caller || "Unknown viewer";
+    block.appendChild(avatar);
+  } else {
+    // Keeps the "current" (still-typing) row's tiles aligned under the
+    // guessed rows above/below it, instead of shifting left with no
+    // avatar column reserved.
+    const spacer = document.createElement("div");
+    spacer.className = "guessAvatarSpacer";
+    spacer.style.width = metrics.avatarSize + "px";
+    spacer.style.height = metrics.avatarSize + "px";
+    block.appendChild(spacer);
+  }
 
   const rowEl = document.createElement("div");
   rowEl.className = "tileRow";
@@ -725,11 +828,11 @@ function buildGuessBlock(guess, wordLength, metrics) {
     tile.style.height = metrics.tileHeight + "px";
     tile.style.fontSize = metrics.fontSize + "px";
     if (guess) {
-      const key = guess.word + "_" + c;
-      const manual = manualTileColors[key];
+      const letter = guess.word[c];
+      const manual = manualLetterColors[letter];
       tile.className = "tile filled" + (manual ? " " + manual : "");
-      tile.textContent = guess.word[c];
-      tile.addEventListener("click", () => cycleTileColor(key));
+      tile.textContent = letter;
+      tile.addEventListener("click", () => cycleTileColor(letter));
     } else {
       tile.className = "tile current";
     }

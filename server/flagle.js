@@ -71,10 +71,67 @@ function bearingCompass(lat1, lon1, lat2, lon2) {
   return dirs[Math.round(brng / 45) % 8];
 }
 
-const MAX_GUESSES = 6;
-const ROUND_SECONDS = 45;
-const ROUND_SECONDS_TEST = 15;
-const REVEAL_PAUSE_MS = 6000;
+// ---------------------------------------------------------------------
+// Host-tunable settings. Every field below can be changed live from the
+// game's ⚙️ Settings drawer (see flagle-app.js's "host:updateSettings"
+// emit) — nothing here is fixed at deploy time anymore. Each session
+// (one per connected browser tab) keeps its own copy, seeded from these
+// defaults, so a co-host on another tab isn't affected by your changes.
+const DEFAULT_SETTINGS = {
+  roundSeconds: 45,       // how long each round runs before time's up
+  revealHoldSeconds: 10,  // flag is fully sharp for the final N seconds of the round
+  maxBlurPx: 26,          // how blurred the flag is at the moment the round starts
+  maxGuesses: 6,          // wrong guesses allowed before the round ends early
+  revealPauseMs: 6000,    // pause between a round ending and the next one starting
+};
+const SETTINGS_LIMITS = {
+  roundSeconds: { min: 10, max: 180 },
+  revealHoldSeconds: { min: 0, max: 60 },
+  maxBlurPx: { min: 2, max: 40 },
+  maxGuesses: { min: 1, max: 15 },
+  revealPauseMs: { min: 2000, max: 30000 },
+};
+
+function clamp(value, lo, hi, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(hi, Math.max(lo, Math.round(n)));
+}
+
+// Merges a partial, untrusted settings payload from the client onto a
+// known-good base, clamping every field to a sane range so a stray/odd
+// value typed into the host's settings form (or a malformed socket
+// payload) can never produce a broken or absurd round (e.g. a 0-second
+// round, or a fully-clear flag that never gets to be blurry at all).
+function sanitizeSettings(input, base) {
+  const out = { ...base };
+  if (!input || typeof input !== "object") return out;
+
+  if (input.roundSeconds !== undefined) {
+    out.roundSeconds = clamp(input.roundSeconds, SETTINGS_LIMITS.roundSeconds.min, SETTINGS_LIMITS.roundSeconds.max, base.roundSeconds);
+  }
+  if (input.maxBlurPx !== undefined) {
+    out.maxBlurPx = clamp(input.maxBlurPx, SETTINGS_LIMITS.maxBlurPx.min, SETTINGS_LIMITS.maxBlurPx.max, base.maxBlurPx);
+  }
+  if (input.maxGuesses !== undefined) {
+    out.maxGuesses = clamp(input.maxGuesses, SETTINGS_LIMITS.maxGuesses.min, SETTINGS_LIMITS.maxGuesses.max, base.maxGuesses);
+  }
+  if (input.revealPauseMs !== undefined) {
+    out.revealPauseMs = clamp(input.revealPauseMs, SETTINGS_LIMITS.revealPauseMs.min, SETTINGS_LIMITS.revealPauseMs.max, base.revealPauseMs);
+  }
+  if (input.revealHoldSeconds !== undefined) {
+    // Always leave at least 3 real seconds for the blur-to-sharp
+    // animation itself, however short the round is set to.
+    const maxHold = Math.max(0, out.roundSeconds - 3);
+    out.revealHoldSeconds = clamp(
+      input.revealHoldSeconds,
+      SETTINGS_LIMITS.revealHoldSeconds.min,
+      Math.min(SETTINGS_LIMITS.revealHoldSeconds.max, maxHold),
+      Math.min(base.revealHoldSeconds, maxHold)
+    );
+  }
+  return out;
+}
 
 function newSession(socket) {
   return {
@@ -88,6 +145,7 @@ function newSession(socket) {
     usedCountries: new Set(),
     round: null,
     roundActive: false,
+    settings: { ...DEFAULT_SETTINGS },
   };
 }
 
@@ -120,14 +178,16 @@ function fanStats(session) {
 function startRound(session) {
   clearRoundTimer(session);
   const country = pickCountry(session);
-  const roundSeconds = session.mode === "test" ? ROUND_SECONDS_TEST : ROUND_SECONDS;
+  const { roundSeconds, revealHoldSeconds, maxBlurPx, maxGuesses } = session.settings;
   session.round = { country, guessesUsed: 0, hintsGiven: 0, startedAt: Date.now() };
   session.roundActive = true;
 
   session.socket.emit("round-start", {
     code: country.code,
-    maxGuesses: MAX_GUESSES,
+    maxGuesses,
     roundSeconds,
+    revealHoldSeconds,
+    maxBlurPx,
     answer: session.mode === "test" ? country.name : undefined,
   });
 
@@ -155,7 +215,7 @@ function endRound(session, winner) {
 
   setTimeout(() => {
     if (session.socket.connected) startRound(session);
-  }, REVEAL_PAUSE_MS);
+  }, session.settings.revealPauseMs);
 }
 
 function processGuess(session, username, rawText) {
@@ -181,10 +241,10 @@ function processGuess(session, username, rawText) {
     distanceKm: dist,
     direction: dir,
     guessesUsed: session.round.guessesUsed,
-    maxGuesses: MAX_GUESSES,
+    maxGuesses: session.settings.maxGuesses,
   });
 
-  if (session.round.guessesUsed >= MAX_GUESSES) endRound(session, null);
+  if (session.round.guessesUsed >= session.settings.maxGuesses) endRound(session, null);
   return false;
 }
 
@@ -228,7 +288,7 @@ export function registerFlagle(io) {
           session.commentsSeen = 0;
 
           await connection.connect();
-          socket.emit("session-started", { mode: "live", label: "@" + clean });
+          socket.emit("session-started", { mode: "live", label: "@" + clean, settings: session.settings });
 
           session.watchdog = setTimeout(() => {
             if (session.commentsSeen === 0) {
@@ -351,7 +411,7 @@ export function registerFlagle(io) {
       }
       const label = mode === "test" ? "Test Mode" : "Offline Mode";
       session.tiktokUsername = label;
-      socket.emit("session-started", { mode, label });
+      socket.emit("session-started", { mode, label, settings: session.settings });
       startRound(session);
     });
 
@@ -363,6 +423,25 @@ export function registerFlagle(io) {
 
     socket.on("skip-round", () => {
       if (session.roundActive) endRound(session, null);
+    });
+
+    // Host settings drawer: round length, blur-reveal timing/strength,
+    // guess limit, and inter-round pause — sanitized against
+    // SETTINGS_LIMITS above so a stray value can never break a round.
+    // Applies starting with the NEXT round; if the host also wants it to
+    // take effect immediately, the client pairs this with "skip-round".
+    socket.on("host:updateSettings", (payload) => {
+      session.settings = sanitizeSettings(payload, session.settings);
+      socket.emit("settings:update", session.settings);
+    });
+
+    // Clears THIS session's live leaderboard only (the current
+    // socket/session's in-memory scores — resets on reconnect anyway).
+    // The separate "all-time" leaderboard lives in the browser's
+    // localStorage and is reset entirely client-side.
+    socket.on("host:resetSessionScores", () => {
+      session.scores.clear();
+      socket.emit("leaderboard-update", leaderboard(session));
     });
 
     socket.on("request-hint", () => {

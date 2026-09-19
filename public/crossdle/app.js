@@ -46,6 +46,11 @@
   const leaderboardModal = el('leaderboardModal');
   const leaderboardModalClose = el('leaderboardModalClose');
   const leaderboardModalList = el('leaderboardModalList');
+  const celebrationOverlay = el('celebrationOverlay');
+  const celebrationCloseBtn = el('celebrationCloseBtn');
+  const celebrationBody = el('celebrationBody');
+  const celebrationDots = el('celebrationDots');
+  const celebConfettiLayer = el('celebConfettiLayer');
 
   const keyboardRow1 = el('keyboardRow1');
   const keyboardRow2 = el('keyboardRow2');
@@ -395,7 +400,7 @@
     }
 
     renderHints(round);
-    renderBanner(round);
+    renderBanner(round, game.leaderboard || []);
   }
 
   function renderBoard(round, fullRebuild) {
@@ -464,7 +469,7 @@
   }
 
   let lastBannerStatus = null;
-  function renderBanner(round) {
+  function renderBanner(round, leaderboardTop) {
     if (round.status === 'active') {
       roundBanner.classList.add('hidden');
       roundBanner.innerHTML = '';
@@ -495,6 +500,7 @@
       roundBanner.appendChild(answerRow);
 
       fireConfetti();
+      triggerWinCelebration(round, leaderboardTop);
     } else {
       roundBanner.className = 'round-banner lose';
       const reason = round.status === 'timeout' ? 'Time ran out!' : 'Round ended.';
@@ -519,6 +525,82 @@
       setTimeout(() => piece.remove(), 2200);
     }
   }
+
+  // ----------------------------------------------------------------
+  // Win celebration overlay - a full-screen sequence (winner, then the
+  // all-time leaderboard) with screen-wide confetti, matching BLINDLE's
+  // celebration format. Only fires on an actual SOLVE (never on a
+  // skip/reveal/timeout), and walks itself through both stages before
+  // auto-dismissing - tapping the overlay (or the ✕) closes it early.
+  // ----------------------------------------------------------------
+  const CELEB_STAGE_SECONDS = 3;
+  const CELEB_CONFETTI_COLORS = ['#8a5cff', '#4f8dff', '#22e0c9', '#3fd67a', '#ffcf70'];
+  let celebTimer = null;
+  let celebStage = 0;
+
+  function spawnScreenConfetti() {
+    for (let i = 0; i < 60; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.background = CELEB_CONFETTI_COLORS[i % CELEB_CONFETTI_COLORS.length];
+      const duration = 1.5 + Math.random() * 1.2;
+      piece.style.animationDuration = duration + 's';
+      piece.style.animationDelay = Math.random() * 0.3 + 's';
+      celebConfettiLayer.appendChild(piece);
+      setTimeout(() => piece.remove(), (duration + 0.5) * 1000);
+    }
+  }
+
+  function renderCelebBoard(list) {
+    if (!list || !list.length) return '<li class="empty">No scores yet</li>';
+    const medals = ['🥇', '🥈', '🥉'];
+    return list.map((row, i) =>
+      `<li><span class="rank">${medals[i] || '#' + (i + 1)}</span><span>${escapeHtml(row.username)}</span><span>${row.score} pts</span></li>`
+    ).join('');
+  }
+
+  function showCelebStage(stageIndex, round, leaderboardTop) {
+    celebrationDots.querySelectorAll('.celebDot').forEach((dot) => {
+      dot.classList.toggle('active', Number(dot.dataset.stage) === stageIndex);
+    });
+    if (stageIndex === 0) {
+      const quickTag = round.quickSolve ? ' ⚡' : '';
+      celebrationBody.innerHTML =
+        '<div class="celebLabel">🎉 Winner</div>' +
+        `<div class="celebWinnerRow">${escapeHtml(round.solvedBy)}${quickTag}</div>` +
+        `<div class="celebAnswerRow">${escapeHtml((round.revealAnswer || '').toUpperCase())}</div>` +
+        `<div class="celebPoints">+${round.solveBonus} points</div>`;
+    } else {
+      celebrationBody.innerHTML =
+        '<div class="celebBoardTitle">👑 All-time top scorers</div>' +
+        `<ul class="celebBoardList">${renderCelebBoard(leaderboardTop)}</ul>`;
+    }
+  }
+
+  function hideCelebration() {
+    clearTimeout(celebTimer);
+    celebrationOverlay.classList.add('hidden');
+  }
+
+  function advanceCeleb(round, leaderboardTop) {
+    celebStage += 1;
+    if (celebStage >= 2) { hideCelebration(); return; }
+    showCelebStage(celebStage, round, leaderboardTop);
+    celebTimer = setTimeout(() => advanceCeleb(round, leaderboardTop), CELEB_STAGE_SECONDS * 1000);
+  }
+
+  function triggerWinCelebration(round, leaderboardTop) {
+    spawnScreenConfetti();
+    celebStage = 0;
+    celebrationOverlay.classList.remove('hidden');
+    showCelebStage(0, round, leaderboardTop || []);
+    clearTimeout(celebTimer);
+    celebTimer = setTimeout(() => advanceCeleb(round, leaderboardTop || []), CELEB_STAGE_SECONDS * 1000);
+  }
+
+  celebrationCloseBtn.addEventListener('click', hideCelebration);
+  celebrationOverlay.addEventListener('click', (e) => { if (e.target === celebrationOverlay) hideCelebration(); });
 
   // --------------------------------------------------------------------
   // Host control wiring

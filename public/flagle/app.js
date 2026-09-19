@@ -46,6 +46,20 @@ const toastLayer = document.getElementById("toast-layer");
 const debugStripEl = document.getElementById("debug-strip");
 const debugLastEl = document.getElementById("debug-last");
 
+const settingsBtn = document.getElementById("settings-btn");
+const settingsOverlay = document.getElementById("settings-overlay");
+const settingsCloseBtn = document.getElementById("settings-close");
+const settingRoundSeconds = document.getElementById("setting-round-seconds");
+const settingHoldSeconds = document.getElementById("setting-hold-seconds");
+const settingBlurPx = document.getElementById("setting-blur-px");
+const settingBlurPxValue = document.getElementById("setting-blur-px-value");
+const settingMaxGuesses = document.getElementById("setting-max-guesses");
+const settingRevealPause = document.getElementById("setting-reveal-pause");
+const settingsApplyBtn = document.getElementById("settings-apply");
+const settingsStatusEl = document.getElementById("settings-status");
+const resetSessionScoresBtn = document.getElementById("reset-session-scores");
+const resetAllTimeScoresBtn = document.getElementById("reset-alltime-scores");
+
 const hostForm = document.getElementById("host-form");
 const hostInput = document.getElementById("host-input");
 const skipBtn = document.getElementById("skip-btn");
@@ -54,6 +68,81 @@ const fullscreenBtn = document.getElementById("fullscreen-btn");
 
 let countdownInterval = null;
 let maxGuesses = 6;
+
+// ---------- Host settings ----------
+// Local mirror of the session's settings, kept in sync with the server
+// via "session-started" and "settings:update". Sensible fallbacks here
+// only matter for the brief moment before the server's first message
+// arrives — the server is always the source of truth once connected.
+let currentSettings = {
+  roundSeconds: 45,
+  revealHoldSeconds: 10,
+  maxBlurPx: 26,
+  maxGuesses: 6,
+  revealPauseMs: 6000,
+};
+
+function populateSettingsForm(settings) {
+  currentSettings = { ...currentSettings, ...settings };
+  settingRoundSeconds.value = currentSettings.roundSeconds;
+  settingHoldSeconds.value = currentSettings.revealHoldSeconds;
+  settingBlurPx.value = currentSettings.maxBlurPx;
+  settingBlurPxValue.textContent = currentSettings.maxBlurPx + "px";
+  settingMaxGuesses.value = currentSettings.maxGuesses;
+  settingRevealPause.value = Math.round(currentSettings.revealPauseMs / 1000);
+}
+
+function openSettings() {
+  settingsOverlay.hidden = false;
+  settingsStatusEl.textContent = "";
+}
+function closeSettings() {
+  settingsOverlay.hidden = true;
+}
+settingsBtn.addEventListener("click", openSettings);
+settingsCloseBtn.addEventListener("click", closeSettings);
+settingsOverlay.addEventListener("click", (e) => {
+  if (e.target === settingsOverlay) closeSettings();
+});
+settingBlurPx.addEventListener("input", () => {
+  settingBlurPxValue.textContent = settingBlurPx.value + "px";
+});
+
+settingsApplyBtn.addEventListener("click", () => {
+  const payload = {
+    roundSeconds: Number(settingRoundSeconds.value),
+    revealHoldSeconds: Number(settingHoldSeconds.value),
+    maxBlurPx: Number(settingBlurPx.value),
+    maxGuesses: Number(settingMaxGuesses.value),
+    revealPauseMs: Number(settingRevealPause.value) * 1000,
+  };
+  socket.emit("host:updateSettings", payload);
+  // Applies right away rather than waiting for the current round to
+  // finish naturally, mirroring the other games' "Apply settings &
+  // start new round" behavior.
+  socket.emit("skip-round");
+  settingsStatusEl.textContent = "Applied — starting a new round with these settings.";
+  setTimeout(closeSettings, 900);
+});
+
+socket.on("settings:update", (settings) => {
+  populateSettingsForm(settings);
+});
+
+resetSessionScoresBtn.addEventListener("click", () => {
+  socket.emit("host:resetSessionScores");
+  settingsStatusEl.textContent = "This session's leaderboard was reset.";
+});
+
+resetAllTimeScoresBtn.addEventListener("click", () => {
+  flagleAllTime = {};
+  saveFlagleStore();
+  settingsStatusEl.textContent = "All-time leaderboard was reset.";
+});
+
+socket.on("leaderboard-update", (list) => {
+  renderLeaderboard(list);
+});
 
 // ---------- All-time leaderboard (persisted client-side, same convention
 // as TRAVLE's store) ----------
@@ -173,7 +262,8 @@ startOfflineBtn.addEventListener("click", () => {
   socket.emit("start-local-mode", { mode: "offline" });
 });
 
-socket.on("session-started", ({ mode, label }) => {
+socket.on("session-started", ({ mode, label, settings }) => {
+  if (settings) populateSettingsForm(settings);
   setupStatus.textContent = "Ready! Starting the game…";
   setupStatus.className = "setup-status ok";
   liveUsernameEl.textContent = mode === "live" ? label : "";
@@ -222,14 +312,14 @@ socket.on("tiktok-disconnected", () => {
 });
 
 // ---------- Round lifecycle ----------
-socket.on("round-start", ({ code, maxGuesses: mg, roundSeconds, answer }) => {
+socket.on("round-start", ({ code, maxGuesses: mg, roundSeconds, revealHoldSeconds, maxBlurPx, answer }) => {
   maxGuesses = mg;
   flagImg.src = `https://flagcdn.com/w640/${code}.png`;
   buildPips(mg, 0);
   hintTextEl.textContent = "Type the country name in chat to guess.";
   hintTextEl.classList.remove("flash");
   startCountdown(roundSeconds);
-  startBlurReveal(roundSeconds);
+  startBlurReveal(roundSeconds, revealHoldSeconds, maxBlurPx);
 
   if (answer) {
     debugStripEl.classList.remove("hidden");
@@ -364,14 +454,15 @@ function setBlur(px) {
 }
 
 // Clears the flag from fully blurred to fully sharp via a CSS transition,
-// timed so it finishes with exactly 10 seconds left on the clock (per
-// design: viewers should be able to clearly see the unblurred flag for
-// the final 10-second stretch of every round), then holds fully sharp
-// for the remainder.
-function startBlurReveal(roundSeconds) {
-  const MAX_BLUR_PX = 26;
+// timed so it finishes with exactly `holdClearSeconds` left on the clock
+// (host-configurable in Settings — viewers should be able to clearly see
+// the unblurred flag for that final stretch of every round), then holds
+// fully sharp for the remainder. Starting blur strength is also
+// host-configurable (harder to guess early on with a stronger blur).
+function startBlurReveal(roundSeconds, holdClearSeconds, maxBlurPx) {
+  const MAX_BLUR_PX = Number.isFinite(maxBlurPx) ? maxBlurPx : currentSettings.maxBlurPx;
   const MIN_BLUR_PX = 0; // fully unblurred, not just "mostly clear"
-  const HOLD_CLEAR_SECONDS = 10;
+  const HOLD_CLEAR_SECONDS = Number.isFinite(holdClearSeconds) ? holdClearSeconds : currentSettings.revealHoldSeconds;
   const revealSeconds = Math.max(roundSeconds - HOLD_CLEAR_SECONDS, 3);
   flagImg.style.transition = "none";
   setBlur(MAX_BLUR_PX);

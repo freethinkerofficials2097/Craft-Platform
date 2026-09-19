@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { WORD_LENGTH_OPTIONS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, randomWord, isKnownWord } from './dictionary.js';
-import { ANSWER_WORDS } from './crossdle-answers.js';
+import { ANSWER_WORDS } from './answers.js';
 
 export { WORD_LENGTH_OPTIONS };
 
@@ -104,11 +104,18 @@ export function computeRowColors(guess, answer, decoy) {
 // handful of legitimate 5-letter answer words but removes the most common
 // source of false-positive "guesses". It naturally has no effect on rounds
 // using any other word length.
+// BUG FIX: 'watch' used to be listed here, which silently ignored every
+// chat message containing the word "watch" whenever the round's word
+// length was 5 - including as a legitimate guess, AND (worse) whenever
+// "watch" itself was the round's secret answer, making that round
+// unsolvable by chat since the guess was thrown away before ever being
+// tested. Removed - "watch" is a normal playable answer word (see
+// crossdle-answers.js) and shouldn't have been in a noise-word list.
 const CHAT_NOISE_WORDS = new Set([
   'guess', 'hello', 'there', 'where', 'which', 'their', 'would',
   'could', 'should', 'right', 'still', 'other', 'after', 'about', 'above',
   'first', 'great', 'every', 'maybe', 'think', 'video', 'super', 'doing',
-  'going', 'being', 'while', 'again', 'watch', 'check', 'thank', 'sorry',
+  'going', 'being', 'while', 'again', 'check', 'thank', 'sorry',
   'today', 'later', 'never', 'these', 'those', 'youre',
 ]);
 
