@@ -2,18 +2,30 @@
 // PLATFORM ENTRY POINT
 // One always-on server hosting five independent games. Each game keeps
 // its own files and its own Socket.IO namespace (or WebSocket path, for
-// WORD500), so they never share state or event names — this file just
+// BLINDLE), so they never share state or event names — this file just
 // wires up Express + Socket.IO/HTTP once and lets each game register
 // itself.
 //
 //   /flagle/    - Flagle Live      (Socket.IO namespace /flagle)
 //   /travle/    - TRAVLE Live      (Socket.IO namespace /travle)
-//   /word500/   - WORD500          (its own WebSocket path /word500-ws)
+//   /blindle/   - Blindle          (its own WebSocket path /blindle-ws)
 //   /findle     - Findle Live      (Socket.IO namespace /findle)
 //   /crossdle/  - CROSSDLE Live    (Socket.IO namespace /crossdle)
+//
+// IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
+// game module. ES module imports are hoisted and evaluated in the
+// order they're listed — several games read their TikTok sign-in key
+// from process.env at their own module-load time, so the env-var
+// mirroring in env-bridge.js has to run before those modules load, or
+// a game imported earlier would still see an empty value for whichever
+// env var name it doesn't use directly. (This was previously a real
+// bug: the mirroring lived below the game imports in this file, so it
+// always ran too late to help.)
 // ===================================================================
 
 import "dotenv/config";
+import "./server/env-bridge.js";
+
 import express from "express";
 import http from "http";
 import path from "path";
@@ -22,24 +34,12 @@ import { Server } from "socket.io";
 
 import { registerFlagle } from "./server/flagle.js";
 import { registerTravle } from "./server/travle.js";
-import { mountWord500 } from "./server/word500/word500-server.js";
+import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Flagle/TRAVLE historically read TIKTOK_SIGN_API_KEY, while WORD500/
-// Findle/CROSSDLE (ported from separate projects) read EULERSTREAM_API_KEY.
-// Both names refer to the exact same EulerStream key, so mirror whichever
-// one is set onto the other — the host only ever needs to set ONE
-// environment variable on Render and every game picks it up.
-if (process.env.EULERSTREAM_API_KEY && !process.env.TIKTOK_SIGN_API_KEY) {
-  process.env.TIKTOK_SIGN_API_KEY = process.env.EULERSTREAM_API_KEY;
-}
-if (process.env.TIKTOK_SIGN_API_KEY && !process.env.EULERSTREAM_API_KEY) {
-  process.env.EULERSTREAM_API_KEY = process.env.TIKTOK_SIGN_API_KEY;
-}
 
 const app = express();
 const server = http.createServer(app);
@@ -66,10 +66,12 @@ registerTravle(io);
 registerFindle(app, io);
 await registerCrossdle(app, io);
 
-// WORD500 ships as a self-mounting module: it serves its own static
+// Blindle ships as a self-mounting module: it serves its own static
 // folder and opens its own WebSocketServer (bound to the shared
-// httpServer, on its own /word500-ws path) rather than using Socket.IO.
-mountWord500(app, server, { mountPath: "/word500", wsPath: "/word500-ws" });
+// httpServer, on its own /blindle-ws path) rather than using Socket.IO.
+// Awaited so the real ~370,000-word dictionary is loaded before the
+// server starts accepting connections.
+await mountBlindle(app, server, { mountPath: "/blindle", wsPath: "/blindle-ws" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

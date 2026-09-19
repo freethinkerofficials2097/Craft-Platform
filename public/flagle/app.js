@@ -123,6 +123,13 @@ modeTabsEl.addEventListener("click", (e) => {
 });
 
 // ---------- Setup screen ----------
+// Platform session: remember the TikTok username across every game, so
+// connecting once anywhere pre-fills (and auto-connects) the rest.
+if (window.PlatformSession) {
+  const saved = PlatformSession.getUsername();
+  if (saved && !usernameInput.value) usernameInput.value = saved;
+}
+
 connectBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim();
   if (!username) {
@@ -130,11 +137,29 @@ connectBtn.addEventListener("click", () => {
     setupStatus.className = "setup-status";
     return;
   }
+  if (window.PlatformSession) PlatformSession.setUsername(username);
   connectBtn.disabled = true;
   setupStatus.textContent = "Connecting to your live chat…";
   setupStatus.className = "setup-status";
   socket.emit("connect-tiktok", { username });
 });
+
+// Auto-connect once using the saved platform username, so switching to
+// this game from another one doesn't require re-entering it or tapping
+// Connect again. Only fires once per page load, and only while still
+// sitting on the Live tab (the default).
+if (window.PlatformSession) {
+  const savedForAutoConnect = PlatformSession.getUsername();
+  if (savedForAutoConnect) {
+    setupStatus.textContent = `Auto-connecting as @${savedForAutoConnect} (saved) — tap Go live & connect to use a different account.`;
+    setupStatus.className = "setup-status";
+    setTimeout(() => {
+      if (document.getElementById("live-panel") && !document.getElementById("live-panel").classList.contains("hidden")) {
+        connectBtn.click();
+      }
+    }, 600);
+  }
+}
 
 startTestBtn.addEventListener("click", () => {
   setupStatus.textContent = "Starting test round…";

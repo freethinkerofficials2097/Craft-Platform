@@ -3,7 +3,7 @@
 This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
-covers all five games (Flagle Live, TRAVLE Live, WORD500, Findle Live,
+covers all five games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
 CROSSDLE Live).
 
 ---
@@ -49,7 +49,7 @@ CROSSDLE Live).
 5. Wait for the upload to finish, scroll down, and click the green
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
-   `public/travle/`, `public/crossdle/`, `server/word500/`, and
+   `public/travle/`, `public/crossdle/`, `server/blindle/`, and
    `server/findle/` as real folders — if anything landed flat with slashes
    in the filename instead, open it and rename it with the full path to
    move it into place.
@@ -83,17 +83,23 @@ CROSSDLE Live).
    bookmark a game directly and skip the home screen:
    - Flagle Live → `/flagle/`
    - TRAVLE Live → `/travle/`
-   - WORD500 → `/word500/`
+   - Blindle → `/blindle/`
    - Findle Live → `/findle`
    - CROSSDLE Live → `/crossdle/`
 3. Inside a game, everything works as documented for that game — Live /
    Test / Offline modes, TikTok connect, host controls, etc. Every game
    also has a **🎨 theme picker** in its header — pick a color once and it
    carries over to every other game on the platform.
-4. Going live on TikTok: open the game's page in your browser, start
+4. **One-time login:** the first time you connect your TikTok username on
+   any game, every other game remembers it too (saved on this browser
+   only) and auto-connects with it the moment you open them — you never
+   have to re-type your username or tap Connect again when switching
+   games mid-broadcast. Typing a different username on any game's connect
+   screen updates it everywhere.
+5. Going live on TikTok: open the game's page in your browser, start
    TikTok LIVE in **Mobile Gaming** mode pointed at that tab, then
    connect from inside the game using your TikTok **@username**.
-5. **Switching games mid-stream:** navigate to another game's address in
+6. **Switching games mid-stream:** navigate to another game's address in
    the same browser tab you're broadcasting — the audience sees whatever's
    on screen. Each game reconnects to TikTok independently when opened,
    and tapping **🏠** inside any game takes you back to the home screen.
@@ -115,12 +121,12 @@ still works before relying on it live.
   recognized (e.g. a single word matching the round's length).
 - **Something looks broken** → each game is built so one bad message
   never crashes the whole server — everyone else's game keeps running.
-  Some games (WORD500, CROSSDLE, Findle) have an on-screen diagnostics
+  Some games (Blindle, CROSSDLE, Findle) have an on-screen diagnostics
   panel that shows exactly what's arriving and any recent errors.
 - **A leaderboard reset unexpectedly** → on Render's free tier, a full
   redeploy always starts fresh; ordinary restarts preserve leaderboards
   that are saved to disk (CROSSDLE). In-memory-only leaderboards (Flagle,
-  TRAVLE, WORD500, Findle) reset on every server restart. Ask if you'd
+  TRAVLE, Blindle, Findle) reset on every server restart. Ask if you'd
   like persistent storage added later — it's a small add-on.
 
 ---
@@ -140,7 +146,7 @@ You said you'll never touch code directly, so here's the safe way:
 
 Alongside `deploy`, you were given a second folder called `reupload`.
 It's **not** meant to be deployed — it's the same project with every file
-renamed with a game-specific prefix (`flagle-*`, `travle-*`, `word500-*`,
+renamed with a game-specific prefix (`flagle-*`, `travle-*`, `blindle-*`,
 `findle-*`, `crossdle-*`, `shared-*`, `root-*`) so nothing collides if you
 come back later and want to hand individual files back for edits or add a
 sixth game. Use `deploy` to actually run the site; use `reupload` only

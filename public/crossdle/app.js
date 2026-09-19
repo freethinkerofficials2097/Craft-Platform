@@ -526,10 +526,24 @@
   connectBtn.addEventListener('click', () => {
     const username = tiktokUsernameInput.value.trim();
     if (!username) { tiktokUsernameInput.focus(); return; }
+    if (window.PlatformSession) PlatformSession.setUsername(username);
     socket.emit('tiktok:connect', { username });
   });
 
   disconnectBtn.addEventListener('click', () => socket.emit('tiktok:disconnect'));
+
+  // Platform session: remember the TikTok username across every game.
+  // Pre-fill the connect field (it lives inside the host panel, opened
+  // via the floating ⚙️ button), and auto-connect once on load so
+  // switching to CROSSDLE from another game doesn't require re-entering
+  // the username or opening the host panel at all.
+  if (window.PlatformSession) {
+    const savedUsername = PlatformSession.getUsername();
+    if (savedUsername) {
+      if (!tiktokUsernameInput.value) tiktokUsernameInput.value = savedUsername;
+      setTimeout(() => connectBtn.click(), 600);
+    }
+  }
 
   testModeToggle.addEventListener('change', () => {
     socket.emit(testModeToggle.checked ? 'testMode:start' : 'testMode:stop');

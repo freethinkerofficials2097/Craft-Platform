@@ -7,7 +7,8 @@
 // TikTok viewer or from the built-in simulator.
 // ============================================================================
 
-import { WORD_LENGTH_OPTIONS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, randomWord, isKnownWord, poolSize } from './dictionary.js';
+import { WORD_LENGTH_OPTIONS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, randomWord, isKnownWord } from './dictionary.js';
+import { ANSWER_WORDS } from './crossdle-answers.js';
 
 export { WORD_LENGTH_OPTIONS };
 
@@ -111,7 +112,28 @@ const CHAT_NOISE_WORDS = new Set([
   'today', 'later', 'never', 'these', 'those', 'youre',
 ]);
 
+// The REAL answer and the DECOY word both come from this small curated
+// list (same word bank BLINDLE uses for its secret words) rather than
+// the full 300,000+ word guess-validation dictionary. This is what keeps
+// the word chat is trying to solve — and the decoy word muddying the
+// clues — always a common, recognizable word, never an obscure
+// dictionary entry nobody would guess. isKnownWord() (used to validate
+// viewer guesses) still checks against the full dictionary, unchanged.
+function curatedAnswerPoolSize(length) {
+  const pool = ANSWER_WORDS[length];
+  return pool ? pool.length : 0;
+}
+
 function pickWord(length, exclude = []) {
+  const curatedPool = ANSWER_WORDS[length];
+  if (curatedPool && curatedPool.length > 0) {
+    const ex = new Set(exclude);
+    const available = curatedPool.filter((w) => !ex.has(w));
+    const pool = available.length > 0 ? available : curatedPool;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  // Defensive fallback only — BLINDLE's curated list already covers
+  // every length from 4 to 20, so this should never actually trigger.
   return randomWord(length, exclude);
 }
 
@@ -181,7 +203,7 @@ export class GameEngine {
   setWordLength(n) {
     const len = Number(n);
     if (!Number.isInteger(len) || len < MIN_WORD_LENGTH || len > MAX_WORD_LENGTH) return;
-    if (poolSize(len) < 2) return; // guard against an empty/near-empty bank
+    if (curatedAnswerPoolSize(len) < 2) return; // guard against an empty/near-empty answer bank
     this.wordLength = len;
     this.onChange('settings');
   }

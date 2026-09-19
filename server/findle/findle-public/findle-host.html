@@ -6,6 +6,7 @@
 <title>Findle Live</title>
 <link rel="stylesheet" href="/shared/theme.css" />
 <script src="/shared/theme.js"></script>
+<script src="/shared/session.js"></script>
 <link rel="stylesheet" href="/findle-public/findle-theme.css">
 <style>
   html,body{ height:100%; overflow:hidden; }
@@ -20,7 +21,7 @@
     padding:8px 10px; gap:6px;
   }
   .brand{ font-size:15px; font-weight:700; white-space:nowrap; flex:none; }
-  .brand em{ font-style:normal; color:var(--findle-citrus); }
+  .brand em{ font-style:normal; color:var(--findle-citrus-text); }
   .topbar .pill{ font-size:11px; padding:5px 8px; flex:1; min-width:0; overflow:hidden; }
   .topbar .pill span#statusText{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .icon-btn{
@@ -28,7 +29,7 @@
     border-radius:10px; width:34px; height:34px; padding:0; flex:none;
     display:flex; align-items:center; justify-content:center; font-size:16px;
   }
-  .icon-btn.active{ border-color:var(--findle-citrus); color:var(--findle-citrus); }
+  .icon-btn.active{ border-color:var(--findle-citrus); color:var(--findle-citrus-text); }
   .icon-group{ display:flex; gap:6px; flex:none; }
 
   /* ---- theme + progress row ---- */
@@ -37,18 +38,30 @@
     padding:6px 14px 6px; gap:8px;
   }
   .theme-title{
-    font-family:'Fraunces',serif; font-weight:600; color:var(--findle-citrus);
+    font-family:'Fraunces',serif; font-weight:600; color:var(--findle-citrus-text);
     font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;
   }
   .progress-dots{ display:flex; flex-wrap:wrap; gap:4px; flex:none; max-width:90px; justify-content:flex-end; }
   .progress-dot{ width:8px; height:8px; border-radius:50%; background:var(--findle-surface-2); border:1px solid var(--findle-line); }
   .progress-dot.done{ background:var(--findle-leaf); border-color:var(--findle-leaf); }
   .timer{ font-family:'Fraunces',serif; font-weight:700; font-size:15px; color:var(--findle-ink); flex:none; min-width:30px; text-align:right; }
-  .timer.low{ color:var(--findle-berry); }
+  .timer.low{ color:var(--findle-berry-text); }
 
   /* ---- grid (majority of screen) ---- */
   .grid-wrap{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; padding:2px 14px; }
-  .grid-square{ position:relative; height:100%; max-height:100%; width:auto; aspect-ratio:1/1; max-width:100%; }
+  /* A true, self-contained square: sized from min(available width, available
+     height) via viewport units alone, with no dependency on JS-computed
+     custom properties or the parent's flex height chain being exactly
+     right. This is what keeps the grid's size AND shape stable no matter
+     what layout context it's in — including toggling fullscreen, where a
+     stale/late-updating height elsewhere could otherwise stretch or
+     squash it. */
+  .grid-square{
+    width: min(92vw, 70dvh, 640px);
+    height: min(92vw, 70dvh, 640px);
+    aspect-ratio: 1 / 1;
+    position:relative;
+  }
   .grid{
     position:absolute; inset:0; display:grid; gap:3px;
     background:var(--findle-surface); border:1px solid var(--findle-line); border-radius:var(--findle-radius-md);
@@ -102,7 +115,7 @@
   .diffs{ display:flex; gap:8px; }
   .diffs button{ flex:1; }
   .diffs button.active{ outline:2px solid var(--findle-citrus); }
-  .diag-counter{ font-size:26px; font-weight:700; color:var(--findle-leaf); font-family:'Fraunces',serif; line-height:1; }
+  .diag-counter{ font-size:26px; font-weight:700; color:var(--findle-leaf-text); font-family:'Fraunces',serif; line-height:1; }
   .diag-label{ font-size:11px; color:var(--findle-ink-faint); margin-top:2px; }
   .diag{ font-size:13px; color:var(--findle-ink-dim); line-height:1.6; }
   .diag b{ color:var(--findle-ink); }
@@ -478,11 +491,29 @@
   document.getElementById('connectBtn').onclick = () => {
     FindleAudio.unlock();
     const username = document.getElementById('usernameInput').value.trim();
+    if (window.PlatformSession) PlatformSession.setUsername(username);
     socket.emit('host:connectTikTok', { username });
     closeDrawer();
   };
   document.getElementById('disconnectBtn').onclick = () => socket.emit('host:disconnectTikTok');
   document.getElementById('testModeBtn').onclick = () => { FindleAudio.unlock(); socket.emit('host:toggleTestMode'); };
+
+  // Platform session: remember the TikTok username across every game.
+  // Pre-fill the connect field, and auto-connect once on load so
+  // switching to Findle from another game doesn't require re-entering
+  // the username or opening this drawer at all. (Sound stays muted until
+  // the host taps something themselves — browsers require a real click
+  // before audio can play, so the one-time auto-connect can't unlock it.)
+  if (window.PlatformSession) {
+    const savedUsername = PlatformSession.getUsername();
+    if (savedUsername) {
+      const usernameField = document.getElementById('usernameInput');
+      if (!usernameField.value) usernameField.value = savedUsername;
+      setTimeout(() => {
+        socket.emit('host:connectTikTok', { username: savedUsername });
+      }, 600);
+    }
+  }
 
   document.getElementById('nextBtn').onclick = () => { socket.emit('host:nextWord'); closeDrawer(); };
   document.getElementById('hintBtn').onclick = () => socket.emit('host:revealHint');

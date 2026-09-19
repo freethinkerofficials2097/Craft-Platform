@@ -16,9 +16,12 @@
   --theme-bg:      #F5E3C0;
   --theme-bg-deep: #EAD09C;
   --theme-card:    #FFFBF2;
+  --theme-surface-2: #F2E4C8; /* a visibly deeper step than --theme-card, for nested/secondary panels within a card */
   --theme-line:    #D9BE93;
   --theme-deep:    #6B4423;  /* heading / dark-accent color for this theme */
   --theme-ink:     #5B4636;  /* body text — constant across all themes */
+  --theme-ink-soft:#8A7864;  /* secondary/muted text — constant across all themes, still readable on every light card/bg below */
+  --theme-shadow:  rgba(70, 45, 20, .16); /* warm elevation shadow — constant across all themes */
   --theme-name:    "Cream";
 }
 
@@ -27,6 +30,7 @@
   --theme-bg:      #B9E0F2;
   --theme-bg-deep: #93CBE6;
   --theme-card:    #F2FAFD;
+  --theme-surface-2: #DCEFF7;
   --theme-line:    #6FAFCB;
   --theme-deep:    #1E5C7A;
   --theme-name:    "Sky Blue";
@@ -37,6 +41,7 @@
   --theme-bg:      #C4E7B4;
   --theme-bg-deep: #A2D68C;
   --theme-card:    #F4FBF0;
+  --theme-surface-2: #DDEED2;
   --theme-line:    #6FA867;
   --theme-deep:    #2E5B26;
   --theme-name:    "Meadow Green";
@@ -47,6 +52,7 @@
   --theme-bg:      #F6C0D9;
   --theme-bg-deep: #EE9CC0;
   --theme-card:    #FFF6FA;
+  --theme-surface-2: #FADCE7;
   --theme-line:    #D9678D;
   --theme-deep:    #8E2E52;
   --theme-name:    "Blossom Pink";
@@ -57,6 +63,7 @@
   --theme-bg:      #D9BEF2;
   --theme-bg-deep: #C199E8;
   --theme-card:    #F9F4FE;
+  --theme-surface-2: #E9DBF7;
   --theme-line:    #9C6FD1;
   --theme-deep:    #4E2E78;
   --theme-name:    "Lavender Violet";
@@ -67,6 +74,7 @@
   --theme-bg:      #FBD57F;
   --theme-bg-deep: #F2BC48;
   --theme-card:    #FFFBEF;
+  --theme-surface-2: #F7E7BE;
   --theme-line:    #D9A72E;
   --theme-deep:    #7A5109;
   --theme-name:    "Honey Gold";
