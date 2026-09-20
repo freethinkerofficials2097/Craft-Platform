@@ -488,6 +488,13 @@ function registerFindle(app, rootIO) {
 
       await tiktokConnection.connect();
 
+      try {
+        const { Engagement } = await import("../engagement/engagement-hub.js");
+        Engagement.attach(tiktokConnection, { game: "findle", tiktokUsername: username });
+      } catch (engErr) {
+        console.error("[findle] Could not attach shared Engagement module:", engErr);
+      }
+
       state.connection.mode = "live";
       state.connection.statusMessage = `✅ Connected! Reading live chat from @${username}.`;
       broadcastState();

@@ -39,6 +39,7 @@ import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./blindle-answers.js";
+import { Engagement } from "../engagement/engagement-hub.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "./blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "./blindle-difficulty.js";
 
@@ -499,6 +500,7 @@ async function connectToTikTok(username) {
 
       await connection.connect();
       liveConnection = connection;
+      Engagement.attach(connection, { game: "blindle", tiktokUsername: username });
       diagnostics.connectionStatus = "live";
       diagnostics.lastErrorMessage = null;
       broadcastState();

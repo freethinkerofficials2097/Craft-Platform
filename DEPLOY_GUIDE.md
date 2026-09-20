@@ -110,6 +110,15 @@ Every game has a Test Mode that simulates fake chat with no TikTok
 connection needed — use it after any future change to confirm the game
 still works before relying on it live.
 
+### Testing Gift/Like/Share alerts
+
+Every game screen has two small icon buttons in a corner: **📊** shows
+running Total Gifts / Shares / Likes counters, and **🧪** opens a
+Test Event panel with buttons to fire a fake Gift, Share, Milestone, or
+Room Milestone — use these to see the alert animations before you're
+live. They work in Test Mode, Offline mode, or even with no TikTok
+connection at all.
+
 ### Troubleshooting
 
 - **No chat is coming through** → double-check the exact TikTok username

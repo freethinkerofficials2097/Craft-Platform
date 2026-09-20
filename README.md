@@ -78,6 +78,37 @@ evaluated before the importing file's own code runs, and several games
 read their key from `process.env` at their own module-load time, so the
 mirroring has to happen before those modules load or it's too late to help.
 
+## Engagement alerts (Gifts, Likes, Shares) — every game
+
+On top of each game's own mechanics, the whole platform shares one
+**Engagement** layer (`server/engagement/`, `public/shared/engagement.js`)
+that watches whichever game currently has a live TikTok connection and
+shows on-screen alerts for gifts, likes, and shares — no per-game setup
+needed, it's already wired into all five games.
+
+- **Gift combos** (holding down a rose, etc.) are buffered until the combo
+  actually finishes, so a 10x rose doesn't fire ten separate alerts.
+- **Individual milestones** — a specific viewer hitting 100/300/500/700/
+  1k/2k/3k/4k/5k/10k+ likes (this session), or sharing the LIVE, gets a
+  personalized alert with their name and profile picture (when TikTok
+  provides one).
+- **Room milestones** — the whole session's cumulative likes/shares
+  crossing a big round number (1k, 10k, 100k, ...) gets a bigger,
+  confetti-tier alert.
+- **A queue, not a stack** — alerts show one at a time for ~3.5 seconds
+  each, so a burst of simultaneous events never piles up or breaks the UI.
+- **Two small icon buttons appear on every game screen**: 📊 (bottom-left)
+  is a live diagnostics readout — Total Gifts / Shares / Likes since the
+  server started, plus the same "raw payload" logging style already used
+  elsewhere on this platform. 🧪 (bottom-right) is a **host-only Test
+  Event panel** — Fake Gift / Fake Share / Fake Milestone / Fake Room
+  Milestone buttons that run the exact same code real events do, so you
+  can check the animations look right without ever going live.
+
+Like the rest of the platform, there's no account system — the diagnostics
+and test buttons are just always-there icons, the same trust model as
+every other host control already on these screens.
+
 ## Running it locally (optional — most people can skip straight to Render)
 
 ```bash

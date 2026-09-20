@@ -7,6 +7,7 @@
 // ===================================================================
 
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
+import { Engagement } from "./engagement/engagement-hub.js";
 
 if (process.env.TIKTOK_SIGN_API_KEY) {
   SignConfig.apiKey = process.env.TIKTOK_SIGN_API_KEY;
@@ -138,6 +139,7 @@ export function registerTravle(io) {
 
           const state = await conn.connect();
           liveConn = conn;
+          Engagement.attach(conn, { game: "travle", tiktokUsername: username });
           nsp.emit("tiktok-status", { connected: true, username, roomId: state?.roomId });
 
           setTimeout(() => {

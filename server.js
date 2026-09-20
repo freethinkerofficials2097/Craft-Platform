@@ -37,6 +37,7 @@ import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
+import { Engagement } from "./server/engagement/engagement-hub.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,6 +61,12 @@ process.on("unhandledRejection", (err) => {
 // matching URLs, plus the shared /shared/* theme + celebration assets
 // every game links to — one static middleware covers the whole platform.
 app.use(express.static(path.join(__dirname, "public")));
+
+// Platform-wide Gift/Like/Share alerts + diagnostics + host Test Event
+// panel — one shared module every game's TikTok connection reports into
+// (see server/engagement/engagement-hub.js). Initialized before any game
+// registers so Engagement.attach() is ready the instant a game connects.
+Engagement.init(io);
 
 registerFlagle(io);
 registerTravle(io);

@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { TikTokLiveConnection, SignConfig } from "tiktok-live-connector";
+import { Engagement } from "./engagement/engagement-hub.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -285,6 +286,7 @@ export function registerFlagle(io) {
           session.commentsSeen = 0;
 
           await connection.connect();
+          Engagement.attach(connection, { game: "flagle", tiktokUsername: clean });
           socket.emit("session-started", { mode: "live", label: "@" + clean, settings: session.settings });
 
           session.watchdog = setTimeout(() => {

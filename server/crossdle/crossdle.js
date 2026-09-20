@@ -12,11 +12,11 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-import { GameEngine, WORD_LENGTH_OPTIONS, NEXT_ROUND_DELAY_OPTIONS } from './engine.js';
-import { loadDictionary, getLoadInfo, getWordList } from './dictionary.js';
-import { Diagnostics } from './diagnostics.js';
-import { TikTokManager } from './tiktok.js';
-import { TestModeSimulator } from './testMode.js';
+import { GameEngine, WORD_LENGTH_OPTIONS, NEXT_ROUND_DELAY_OPTIONS } from './crossdle-engine.js';
+import { loadDictionary, getLoadInfo, getWordList } from './crossdle-dictionary.js';
+import { Diagnostics } from './crossdle-diagnostics.js';
+import { TikTokManager } from './crossdle-tiktok.js';
+import { TestModeSimulator } from './crossdle-testMode.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
