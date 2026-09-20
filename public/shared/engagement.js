@@ -4,24 +4,21 @@
    Drop this one script tag into any game page:
      <script src="/shared/engagement.js"></script>
 
-   It is entirely self-contained (injects its own <style>, same pattern as
-   shared/celebration.js) so no extra CSS file needs to be linked, and it
-   never touches game-specific DOM — it only adds its own small, fixed-
-   position layer on top of whatever game is on screen, so it can never
-   make the actual game board stutter or lag.
+   Entirely self-contained (injects its own <style>, same pattern as
+   shared/celebration.js) so no extra CSS file needs linking, and it never
+   touches game-specific DOM — only its own small, fixed-position layer on
+   top of whatever game is on screen, so it can never make the actual game
+   board stutter or lag (CSS transforms/opacity only, no per-frame JS).
 
-   What it does:
-     - Connects to the shared "/engagement" Socket.IO namespace (works
-       regardless of which game is currently live — the hub is platform-
-       wide, one process, one set of counters).
-     - QUEUES incoming alerts and shows exactly one at a time for ~3.5s,
-       so a burst of simultaneous events (a raid of gifts, a wave of
-       shares) never stacks multiple cards on screen at once.
-     - Renders a small, collapsible diagnostics panel (bottom-left) with
-       running Total Gifts / Total Shares / Total Likes counters.
-     - Renders a small, collapsible "Test Event" panel (bottom-right) with
-       buttons to fire a fake Gift / Share / Milestone / Room Milestone,
-       so animations can be checked without ever going live.
+   Card layout (clean, three rows, never cramped):
+     Row 1 — avatar + username
+     Row 2 — what happened
+     Row 3 — a short, warm appreciation line
+     Row 4 (optional) — a small stat pill (diamond count, milestone total)
+   ...next to a glossy, gently-rotating "3D badge" whose icon + color theme
+   echoes the actual gift (rose, galaxy, diamond, etc.) without reproducing
+   any of TikTok's own copyrighted artwork — every badge here is original,
+   pure-CSS gradient/shadow work.
    ========================================================================== */
 (function () {
   if (window.Engagement) return; // don't double-init if the tag is ever included twice
@@ -35,74 +32,99 @@
       #eng-alert-layer{
         position:fixed; top:14px; left:50%; transform:translateX(-50%);
         z-index:9600; pointer-events:none; display:flex; justify-content:center;
-        width:min(94vw, 420px);
+        width:min(94vw, 440px); perspective:700px;
       }
       .eng-card{
-        display:flex; align-items:center; gap:10px;
-        background:var(--theme-card, #1c1c22); color:var(--theme-ink, #fff);
-        border:2px solid rgba(255,255,255,.18);
-        border-radius:16px; padding:10px 16px 10px 10px;
-        box-shadow:0 10px 26px rgba(0,0,0,.35);
+        display:flex; align-items:center; gap:14px;
+        background:linear-gradient(180deg, rgba(28,28,34,.97), rgba(20,20,25,.97));
+        color:#fff;
+        border:1px solid rgba(255,255,255,.14);
+        border-radius:18px; padding:12px 18px 12px 12px;
+        box-shadow:0 14px 32px rgba(0,0,0,.4);
         font-family:"Quicksand","Manrope",system-ui,sans-serif;
-        font-weight:700; font-size:14px; line-height:1.3;
-        max-width:100%;
+        max-width:100%; width:100%;
         opacity:0; transform:translateY(-16px) scale(.92);
         transition:opacity .22s ease, transform .22s cubic-bezier(.34,1.56,.64,1);
         will-change:opacity, transform;
       }
       .eng-card.eng-show{ opacity:1; transform:translateY(0) scale(1); }
-      .eng-avatar{
-        width:34px; height:34px; border-radius:50%; flex:none; object-fit:cover;
-        background:rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center;
-        font-size:17px; border:2px solid rgba(255,255,255,.35);
-      }
-      .eng-text{ word-break:break-word; }
 
-      /* ---- tier: pop (small like milestones, ordinary gifts) ---- */
-      .eng-card.eng-pop{ animation: engPop .5s ease; }
+      /* ---- the 3D gift badge ---- */
+      .eng-badge-wrap{ position:relative; flex:none; width:56px; height:56px; }
+      .eng-badge{
+        position:absolute; inset:0; border-radius:50%;
+        display:flex; align-items:center; justify-content:center; font-size:26px;
+        background:
+          radial-gradient(circle at 32% 28%, rgba(255,255,255,.85), rgba(255,255,255,0) 42%),
+          linear-gradient(145deg, var(--eng-from, #ffd76a), var(--eng-to, #e0245e));
+        box-shadow:
+          inset 0 -7px 10px rgba(0,0,0,.28),
+          inset 0 5px 7px rgba(255,255,255,.4),
+          0 6px 16px rgba(0,0,0,.4);
+        animation: engBadgeSway 3.4s ease-in-out infinite;
+        transform-style:preserve-3d;
+      }
+      @keyframes engBadgeSway{
+        0%,100%{ transform:rotateY(0deg) rotateX(6deg) scale(1); }
+        50%{ transform:rotateY(20deg) rotateX(-4deg) scale(1.04); }
+      }
+      /* spinning glossy ring, confetti-tier only */
+      .eng-card.eng-confetti .eng-badge-wrap::before{
+        content:""; position:absolute; inset:-5px; border-radius:50%;
+        background:conic-gradient(from 0deg, transparent 0%, rgba(255,255,255,.85) 12%, transparent 30%);
+        animation: engRingSpin 1.4s linear infinite;
+      }
+      @keyframes engRingSpin{ to{ transform:rotate(360deg); } }
+      .eng-card.eng-confetti .eng-badge{ box-shadow: inset 0 -7px 10px rgba(0,0,0,.28), inset 0 5px 7px rgba(255,255,255,.4), 0 0 20px var(--eng-to, #e0245e), 0 6px 16px rgba(0,0,0,.4); }
+
+      /* ---- text rows ---- */
+      .eng-body{ min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
+      .eng-row-main{ display:flex; align-items:center; gap:7px; min-width:0; }
+      .eng-mini-avatar{
+        width:20px; height:20px; border-radius:50%; flex:none; object-fit:cover;
+        border:1.5px solid rgba(255,255,255,.5); background:rgba(255,255,255,.15);
+        display:flex; align-items:center; justify-content:center; font-size:11px;
+      }
+      .eng-username{ font-weight:800; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78%; }
+      .eng-action{ font-weight:600; font-size:13.5px; color:#EDEDF2; line-height:1.3; }
+      .eng-wish{ font-size:12px; font-style:italic; color:#C9C9D4; line-height:1.3; }
+      .eng-stat-row{ margin-top:1px; }
+      .eng-stat-pill{
+        display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.02em;
+        padding:2px 9px; border-radius:999px; color:#1a1a1f;
+        background:linear-gradient(120deg, #ffe9a8, #ffd76a);
+      }
+
+      /* ---- tier accents on the card border/shadow ---- */
+      .eng-card.eng-pop{ animation: engPop .5s ease; border-color:rgba(255,255,255,.14); }
       @keyframes engPop{
         0%{ transform:translateY(-16px) scale(.85); }
         55%{ transform:translateY(2px) scale(1.05); }
         100%{ transform:translateY(0) scale(1); }
       }
-
-      /* ---- tier: pop-big (1k-5k like milestones) ---- */
-      .eng-card.eng-pop-big{
-        border-color:#FFD866; box-shadow:0 10px 30px rgba(255,190,60,.35);
-        animation: engPopBig .6s ease;
-      }
+      .eng-card.eng-pop-big{ border-color:#FFD866; box-shadow:0 14px 34px rgba(255,190,60,.32); animation: engPopBig .6s ease; }
       @keyframes engPopBig{
         0%{ transform:translateY(-16px) scale(.8); }
         50%{ transform:translateY(4px) scale(1.12); }
         75%{ transform:translateY(-2px) scale(.98); }
         100%{ transform:translateY(0) scale(1); }
       }
-
-      /* ---- tier: glow-gold (shares) ---- */
-      .eng-card.eng-glow-gold{
-        border-color:#FFC94D;
-        animation: engGoldGlow 1.4s ease-in-out infinite;
-      }
+      .eng-card.eng-glow-gold{ border-color:#FFC94D; animation: engGoldGlow 1.4s ease-in-out infinite; }
       @keyframes engGoldGlow{
-        0%,100%{ box-shadow:0 10px 26px rgba(0,0,0,.35), 0 0 0 rgba(255,201,77,0); }
-        50%{ box-shadow:0 10px 26px rgba(0,0,0,.35), 0 0 22px rgba(255,201,77,.75); }
+        0%,100%{ box-shadow:0 14px 32px rgba(0,0,0,.4), 0 0 0 rgba(255,201,77,0); }
+        50%{ box-shadow:0 14px 32px rgba(0,0,0,.4), 0 0 20px rgba(255,201,77,.7); }
       }
+      .eng-card.eng-confetti{ border-color:#FF7AD9; box-shadow:0 14px 34px rgba(255,90,220,.38); animation: engPopBig .6s ease; }
 
-      /* ---- tier: confetti (big gift / 10k+ milestone / room milestone) ---- */
-      .eng-card.eng-confetti{
-        border-color:#FF7AD9; box-shadow:0 10px 30px rgba(255,90,220,.4);
-        animation: engPopBig .6s ease;
-      }
-      #eng-confetti-layer{
-        position:fixed; inset:0; z-index:9590; pointer-events:none; overflow:hidden;
-      }
+      /* ---- confetti burst (pseudo-3D tumble via combined rotate axes) ---- */
+      #eng-confetti-layer{ position:fixed; inset:0; z-index:9590; pointer-events:none; overflow:hidden; perspective:500px; }
       .eng-confetti-bit{
         position:absolute; top:-24px; font-size:20px; will-change:transform, opacity;
         animation: engConfettiFall linear forwards;
       }
       @keyframes engConfettiFall{
-        0%{ transform:translateY(0) rotate(0deg); opacity:1; }
-        100%{ transform:translateY(110vh) rotate(360deg); opacity:0; }
+        0%{ transform:translateY(0) rotateX(0deg) rotateY(0deg); opacity:1; }
+        100%{ transform:translateY(110vh) rotateX(540deg) rotateY(360deg); opacity:0; }
       }
 
       /* ---- diagnostics panel (bottom-left) ---- */
@@ -210,7 +232,7 @@
   }
 
   // --------------------------------------------------------- alert queue --
-  const CARD_VISIBLE_MS = 3600;
+  const CARD_VISIBLE_MS = 4000;
   const CARD_TRANSITION_MS = 240;
   let queue = [];
   let showing = false;
@@ -233,15 +255,45 @@
     return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
+  const DEFAULT_ICON = { gift: "🎁", share: "🔥", like_milestone: "👍", room_like_milestone: "🌟", room_share_milestone: "🌟" };
+
   function renderCard(alert) {
     const card = document.createElement("div");
     card.className = "eng-card eng-" + (alert.tier || "pop");
+    card.style.setProperty("--eng-from", alert.gradientFrom || "#ffd76a");
+    card.style.setProperty("--eng-to", alert.gradientTo || "#e0245e");
+
+    const icon = alert.icon || DEFAULT_ICON[alert.type] || "🎉";
+    const isRoomAlert = alert.type === "room_like_milestone" || alert.type === "room_share_milestone";
 
     const avatarHtml = alert.avatarUrl
-      ? `<img class="eng-avatar" src="${escapeHtml(alert.avatarUrl)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'eng-avatar',textContent:'👤'}))" />`
-      : `<div class="eng-avatar">${alert.type === "gift" ? "🎁" : alert.type === "share" ? "🔥" : "👍"}</div>`;
+      ? `<img class="eng-mini-avatar" src="${escapeHtml(alert.avatarUrl)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'eng-mini-avatar',textContent:'👤'}))" />`
+      : `<div class="eng-mini-avatar">👤</div>`;
 
-    card.innerHTML = `${avatarHtml}<div class="eng-text">${escapeHtml(alert.message || "")}</div>`;
+    const statHtml = alert.stat
+      ? `<div class="eng-stat-row"><span class="eng-stat-pill">${escapeHtml(alert.stat)}</span></div>`
+      : "";
+
+    const actionText = (alert.message || "").replace(/^@[^\s]+\s*/, "");
+
+    const bodyHtml = isRoomAlert
+      ? `
+        <div class="eng-action" style="font-size:14.5px;font-weight:800;">${escapeHtml(alert.message || "")}</div>
+        <div class="eng-wish">${escapeHtml(alert.appreciation || "")}</div>
+        ${statHtml}
+      `
+      : `
+        <div class="eng-row-main">${avatarHtml}<span class="eng-username">@${escapeHtml(alert.username || "viewer")}</span></div>
+        <div class="eng-action">${escapeHtml(actionText)}</div>
+        <div class="eng-wish">${escapeHtml(alert.appreciation || "")}</div>
+        ${statHtml}
+      `;
+
+    card.innerHTML = `
+      <div class="eng-badge-wrap"><div class="eng-badge">${icon}</div></div>
+      <div class="eng-body">${bodyHtml}</div>
+    `;
+
     alertLayer.appendChild(card);
 
     if (alert.tier === "confetti") burstConfetti();
@@ -261,9 +313,9 @@
   // A lightweight, CSS-driven confetti burst — plain positioned <div>s
   // animated purely with a CSS keyframe (no per-frame JS), so it stays
   // smooth even while a game's own board is animating at the same time.
-  const CONFETTI_EMOJI = ["🎉", "✨", "🎊", "💥", "🌟"];
+  const CONFETTI_EMOJI = ["🎉", "✨", "🎊", "💥", "🌟", "💛"];
   function burstConfetti() {
-    const count = 22;
+    const count = 24;
     for (let i = 0; i < count; i++) {
       const bit = document.createElement("div");
       bit.className = "eng-confetti-bit";

@@ -60,6 +60,84 @@ const BIG_GIFT_DIAMOND_THRESHOLD = 500;
 // we assume it's over even though repeatEnd never arrived.
 const COMBO_INACTIVITY_MS = 1500;
 
+// ---- appreciation wishes -------------------------------------------------
+// Every alert pairs its headline with a short, warm thank-you line so the
+// card reads as a genuine acknowledgement, not just a stat pop-up. Picked
+// at random (never the same one twice in a row) to keep a long stream from
+// feeling like a repeating template.
+function pickWish(list, exclude) {
+  if (list.length === 1) return list[0];
+  let choice;
+  do {
+    choice = list[Math.floor(Math.random() * list.length)];
+  } while (choice === exclude && list.length > 1);
+  return choice;
+}
+
+const GIFT_WISHES = [
+  "Thank you so much for the support!",
+  "Your generosity means the world to us!",
+  "We really appreciate you!",
+  "Sending love right back at you!",
+  "You're keeping this stream going — thank you!",
+];
+const BIG_GIFT_WISHES = [
+  "Absolutely incredible — thank you!",
+  "We are beyond grateful for this!",
+  "You just made our whole day!",
+  "That's a showstopper — thank you!",
+];
+const SHARE_WISHES = [
+  "Thanks for helping the stream grow!",
+  "Every share helps so much — appreciate you!",
+  "You're the best kind of viewer!",
+  "That means a lot — thank you!",
+];
+const MILESTONE_WISHES = [
+  "What a legend — thank you for being here!",
+  "You're on an absolute roll!",
+  "Incredible energy — thank you!",
+  "Loving the support today!",
+];
+const BIG_MILESTONE_WISHES = [
+  "Certified superfan — thank you!",
+  "That's a huge achievement — well done!",
+  "Absolutely unstoppable!",
+];
+const ROOM_WISHES = [
+  "Thank you all for the amazing energy!",
+  "This whole room is incredible right now!",
+  "Let's keep this energy going — thank you everyone!",
+  "What a community — thank you all!",
+];
+
+// ---- gift -> visual theme -------------------------------------------------
+// TikTok's own gift artwork is copyrighted, so instead of reproducing it we
+// map a gift's NAME to an original, purely-CSS "glossy badge" theme (an
+// icon + a two-tone gradient) that echoes the *feel* of the real gift
+// (Rose -> soft red/pink, Galaxy -> starry purple, Lion -> gold, etc.)
+// without copying any TikTok artwork. Matched by keyword, case-insensitive,
+// first match wins; anything unmatched gets a generic gift-box theme.
+const GIFT_THEMES = [
+  { test: /rose/i, icon: "🌹", from: "#ff8fb1", to: "#c81d5b" },
+  { test: /(galaxy|universe|planet)/i, icon: "🌌", from: "#8b5cf6", to: "#1e1b4b" },
+  { test: /lion/i, icon: "🦁", from: "#ffd76a", to: "#b8720a" },
+  { test: /(diamond|gem|ring)/i, icon: "💎", from: "#8fe3ff", to: "#0e7fa8" },
+  { test: /heart/i, icon: "💖", from: "#ff9ecb", to: "#d6336c" },
+  { test: /crown/i, icon: "👑", from: "#ffe27a", to: "#c98a0c" },
+  { test: /(rocket|spaceship)/i, icon: "🚀", from: "#9fd8ff", to: "#1d4ed8" },
+  { test: /(sports ?car|drift ?car|car)/i, icon: "🏎️", from: "#ff9a6a", to: "#b3260a" },
+  { test: /(ice ?cream)/i, icon: "🍦", from: "#ffe1f0", to: "#f472b6" },
+  { test: /(finger ?heart)/i, icon: "🫰", from: "#ffb3c6", to: "#e0245e" },
+  { test: /(perfume)/i, icon: "🧴", from: "#e0c3fc", to: "#8e2de2" },
+  { test: /(tiktok|banner)/i, icon: "✨", from: "#7cf5d0", to: "#0aa38a" },
+  { test: /corn/i, icon: "🌽", from: "#ffe36e", to: "#c9970c" },
+];
+function pickGiftTheme(giftName) {
+  const match = GIFT_THEMES.find((t) => t.test.test(giftName || ""));
+  return match || { icon: "🎁", from: "#ffd76a", to: "#e0245e" };
+}
+
 function firstNonEmpty(obj, paths) {
   for (const path of paths) {
     const val = path.split(".").reduce((acc, k) => (acc == null ? undefined : acc[k]), obj);
@@ -226,6 +304,7 @@ export class EngagementTracker {
         this.counters.totalGifts += 1;
         this.counters.totalDiamonds += data.totalDiamondValue;
         const big = data.totalDiamondValue >= BIG_GIFT_DIAMOND_THRESHOLD;
+        const theme = pickGiftTheme(data.giftName);
         this._fireAlert(
           "gift",
           {
@@ -237,10 +316,15 @@ export class EngagementTracker {
             diamondValue: data.diamondCount,
             totalDiamondValue: data.totalDiamondValue,
             big,
+            icon: theme.icon,
+            gradientFrom: theme.from,
+            gradientTo: theme.to,
             message:
               data.repeatCount > 1
-                ? `🎁 @${data.username} sent ${data.repeatCount}x ${data.giftName}!`
-                : `🎁 @${data.username} sent ${/^[aeiou]/i.test(data.giftName) ? "an" : "a"} ${data.giftName}!`,
+                ? `@${data.username} sent ${data.repeatCount}x ${data.giftName}!`
+                : `@${data.username} sent ${/^[aeiou]/i.test(data.giftName) ? "an" : "a"} ${data.giftName}!`,
+            appreciation: pickWish(big ? BIG_GIFT_WISHES : GIFT_WISHES),
+            stat: data.totalDiamondValue > 0 ? `${data.totalDiamondValue.toLocaleString()} diamonds` : null,
           },
           big ? "confetti" : "pop"
         );
@@ -314,7 +398,12 @@ export class EngagementTracker {
                 username,
                 avatarUrl,
                 milestone: m,
-                message: `👍 @${username} just hit ${tierLabel(m)} likes!`,
+                icon: big ? "🏆" : m >= 1000 ? "⭐" : "👍",
+                gradientFrom: big ? "#ffe27a" : m >= 1000 ? "#ffd76a" : "#a7f3d0",
+                gradientTo: big ? "#c98a0c" : m >= 1000 ? "#e0a409" : "#0f9b6c",
+                message: `@${username} just hit ${tierLabel(m)} likes!`,
+                appreciation: pickWish(big ? BIG_MILESTONE_WISHES : MILESTONE_WISHES),
+                stat: `${tierLabel(m)} likes this session`,
               },
               big ? "confetti" : m >= 1000 ? "pop-big" : "pop"
             );
@@ -343,7 +432,12 @@ export class EngagementTracker {
               {
                 game: meta.game || null,
                 milestone: m,
-                message: `🌟 THE ROOM JUST HIT ${tierLabel(m).toUpperCase()} LIKES!`,
+                icon: "🌟",
+                gradientFrom: "#ff9ecb",
+                gradientTo: "#8b5cf6",
+                message: `The room just hit ${tierLabel(m)} likes!`,
+                appreciation: pickWish(ROOM_WISHES),
+                stat: `${tierLabel(m)} total likes this session`,
               },
               "confetti"
             );
@@ -375,7 +469,12 @@ export class EngagementTracker {
           game: meta.game || null,
           username,
           avatarUrl,
-          message: `🔥 @${username} just shared the Live!`,
+          icon: "🔥",
+          gradientFrom: "#ffe27a",
+          gradientTo: "#e0a409",
+          message: `@${username} just shared the Live!`,
+          appreciation: pickWish(SHARE_WISHES),
+          stat: null,
         },
         "glow-gold"
       );
@@ -390,7 +489,12 @@ export class EngagementTracker {
             {
               game: meta.game || null,
               milestone: m,
-              message: `🌟 THE ROOM JUST HIT ${tierLabel(m).toUpperCase()} SHARES!`,
+              icon: "🌟",
+              gradientFrom: "#9fd8ff",
+              gradientTo: "#1d4ed8",
+              message: `The room just hit ${tierLabel(m)} shares!`,
+              appreciation: pickWish(ROOM_WISHES),
+              stat: `${tierLabel(m)} total shares this session`,
             },
             "confetti"
           );
