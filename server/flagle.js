@@ -373,7 +373,8 @@ export function registerFlagle(io) {
               const gifter =
                 data.user?.uniqueId || data.user?.nickname ||
                 data.uniqueId || data.nickname || "viewer";
-              const diamondValue =
+              // (TikTok's payload calls a gift's coin price "diamondCount" - field names stay as-is)
+              const coinValue =
                 (typeof giftDetails.diamondCount === "number" && giftDetails.diamondCount) ||
                 (typeof data.diamondCount === "number" && data.diamondCount) ||
                 (typeof data.diamond_count === "number" && data.diamond_count) || 0;
@@ -381,7 +382,7 @@ export function registerFlagle(io) {
               const avatarUrl = extractAvatarUrl(data);
               if (avatarUrl) session.avatars.set(gifter, avatarUrl);
 
-              session.gifts.set(gifter, (session.gifts.get(gifter) || 0) + diamondValue * repeatCount);
+              session.gifts.set(gifter, (session.gifts.get(gifter) || 0) + coinValue * repeatCount);
               socket.emit("fan-stats", fanStats(session));
             } catch (e) {
               console.error("[flagle] Error handling gift event:", e);

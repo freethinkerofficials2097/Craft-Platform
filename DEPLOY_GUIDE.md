@@ -112,12 +112,14 @@ still works before relying on it live.
 
 ### Testing Gift/Like/Share alerts
 
-Every game screen has two small icon buttons in a corner: **📊** shows
-running Total Gifts / Shares / Likes counters, and **🧪** opens a
-Test Event panel with buttons to fire a fake Gift, Share, Milestone, or
-Room Milestone — use these to see the alert animations before you're
+Open any game's **Settings** (the ⚙️ button; in CROSSDLE it's the **Host**
+button) and scroll to **Live event tools**. The **📊 Live statistics**
+box shows running Total Gifts / Coins / Shares / Likes counters, and the
+**🧪 Test alerts** box has buttons to fire a fake Gift, Share, Milestone,
+or Room Milestone — use these to see the alert animations before you're
 live. They work in Test Mode, Offline mode, or even with no TikTok
-connection at all.
+connection at all. (They're tucked away in Settings on purpose, so they
+never get in the way of the game while you're streaming.)
 
 ### Troubleshooting
 

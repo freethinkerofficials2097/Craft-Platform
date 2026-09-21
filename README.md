@@ -97,17 +97,21 @@ needed, it's already wired into all five games.
   confetti-tier alert.
 - **A queue, not a stack** — alerts show one at a time for ~3.5 seconds
   each, so a burst of simultaneous events never piles up or breaks the UI.
-- **Two small icon buttons appear on every game screen**: 📊 (bottom-left)
-  is a live diagnostics readout — Total Gifts / Shares / Likes since the
-  server started, plus the same "raw payload" logging style already used
-  elsewhere on this platform. 🧪 (bottom-right) is a **host-only Test
-  Event panel** — Fake Gift / Fake Share / Fake Milestone / Fake Room
-  Milestone buttons that run the exact same code real events do, so you
-  can check the animations look right without ever going live.
+- **Host tools live inside each game's Settings** (⚙️ — for CROSSDLE, the
+  Host panel), under **Live event tools**, so nothing floats over the game
+  while you're streaming. There you'll find a 📊 live statistics readout —
+  Total Gifts / Coins / Shares / Likes since the server started (the same
+  "raw payload" logging style already used elsewhere on this platform is
+  written to the server log) — and a 🧪 **host-only Test Event panel**:
+  Fake Gift / Fake Share / Fake Milestone / Fake Room Milestone buttons
+  that run the exact same code real events do, so you can check the
+  animations look right without ever going live.
+- **Gift values are shown in coins**, the way TikTok prices gifts (e.g.
+  "500 coins"), and a gift worth 500+ coins gets the confetti-tier alert.
 
-Like the rest of the platform, there's no account system — the diagnostics
-and test buttons are just always-there icons, the same trust model as
-every other host control already on these screens.
+Like the rest of the platform, there's no account system — the statistics
+and test buttons are just part of the Settings screen, the same trust
+model as every other host control already on these screens.
 
 ## Running it locally (optional — most people can skip straight to Render)
 

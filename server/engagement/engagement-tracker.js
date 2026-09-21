@@ -51,10 +51,10 @@ const ROOM_LIKE_MILESTONES = [
 ];
 const ROOM_SHARE_MILESTONES = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
 
-// A gift's total diamond value (single gift, or a whole finished combo) at
+// A gift's total coin value (single gift, or a whole finished combo) at
 // or above this is treated as a "big gift" -> confetti-tier alert instead
 // of the small pop used for an ordinary gift.
-const BIG_GIFT_DIAMOND_THRESHOLD = 500;
+const BIG_GIFT_COIN_THRESHOLD = 500;
 
 // How long to wait, with no further update to a streakable combo, before
 // we assume it's over even though repeatEnd never arrived.
@@ -192,7 +192,10 @@ const GIFT_NAME_PATHS = [
 ];
 const GIFT_ID_PATHS = ["giftDetails.giftId", "gift.id", "gift.giftId", "giftId", "gift_id"];
 const GIFT_TYPE_PATHS = ["giftDetails.giftType", "gift.type", "giftType", "gift_type"];
-const DIAMOND_PATHS = [
+// TikTok's payload still names the gift's coin price "diamondCount" internally,
+// so those raw field names must stay exactly as-is; everything we store and
+// show viewers calls it coins.
+const COIN_PATHS = [
   "giftDetails.diamondCount", "gift.diamondCount", "diamondCount", "diamond_count", "gift.diamond_count",
 ];
 const REPEAT_COUNT_PATHS = ["repeatCount", "repeat_count", "combo.repeatCount"];
@@ -225,7 +228,7 @@ export class EngagementTracker {
     this.onAlert = onAlert || (() => {});
     this.onDiagnosticsChange = onDiagnosticsChange || (() => {});
 
-    this.counters = { totalGifts: 0, totalLikes: 0, totalShares: 0, totalDiamonds: 0 };
+    this.counters = { totalGifts: 0, totalLikes: 0, totalShares: 0, totalCoins: 0 };
     this.rawSamples = []; // { kind, text, ts }
     this.errors = []; // { context, message, ts }
     this.lastEvents = { gift: null, like: null, share: null };
@@ -292,7 +295,7 @@ export class EngagementTracker {
       const giftId = firstNonEmpty(raw, GIFT_ID_PATHS);
       const giftType = firstNonEmpty(raw, GIFT_TYPE_PATHS);
       const isStreakable = Number(giftType) === 1; // TikTok convention: giftType 1 == streakable/combo-able
-      const diamondCount = Number(firstNonEmpty(raw, DIAMOND_PATHS)) || 0;
+      const coinCount = Number(firstNonEmpty(raw, COIN_PATHS)) || 0;
       const repeatCount = Number(firstNonEmpty(raw, REPEAT_COUNT_PATHS)) || 1;
       const repeatEndRaw = firstNonEmpty(raw, REPEAT_END_PATHS);
       const repeatEnd = typeof repeatEndRaw === "boolean" ? repeatEndRaw : true; // non-streakable gifts are always "done"
@@ -302,8 +305,8 @@ export class EngagementTracker {
 
       const finalize = (data) => {
         this.counters.totalGifts += 1;
-        this.counters.totalDiamonds += data.totalDiamondValue;
-        const big = data.totalDiamondValue >= BIG_GIFT_DIAMOND_THRESHOLD;
+        this.counters.totalCoins += data.totalCoinValue;
+        const big = data.totalCoinValue >= BIG_GIFT_COIN_THRESHOLD;
         const theme = pickGiftTheme(data.giftName);
         this._fireAlert(
           "gift",
@@ -313,8 +316,8 @@ export class EngagementTracker {
             avatarUrl: data.avatarUrl,
             giftName: data.giftName,
             repeatCount: data.repeatCount,
-            diamondValue: data.diamondCount,
-            totalDiamondValue: data.totalDiamondValue,
+            coinValue: data.coinCount,
+            totalCoinValue: data.totalCoinValue,
             big,
             icon: theme.icon,
             gradientFrom: theme.from,
@@ -324,7 +327,7 @@ export class EngagementTracker {
                 ? `@${data.username} sent ${data.repeatCount}x ${data.giftName}!`
                 : `@${data.username} sent ${/^[aeiou]/i.test(data.giftName) ? "an" : "a"} ${data.giftName}!`,
             appreciation: pickWish(big ? BIG_GIFT_WISHES : GIFT_WISHES),
-            stat: data.totalDiamondValue > 0 ? `${data.totalDiamondValue.toLocaleString()} diamonds` : null,
+            stat: data.totalCoinValue > 0 ? `${data.totalCoinValue.toLocaleString()} ${data.totalCoinValue === 1 ? "coin" : "coins"}` : null,
           },
           big ? "confetti" : "pop"
         );
@@ -333,7 +336,7 @@ export class EngagementTracker {
 
       if (!isStreakable) {
         // Single, non-combo gift — finalize immediately, nothing to buffer.
-        finalize({ username, avatarUrl, giftName, repeatCount, diamondCount, totalDiamondValue: diamondCount * repeatCount });
+        finalize({ username, avatarUrl, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount });
         return;
       }
 
@@ -342,7 +345,7 @@ export class EngagementTracker {
       const existing = this._comboBuffers.get(key);
       if (existing) clearTimeout(existing.timer);
 
-      const data = { username, avatarUrl, giftName, repeatCount, diamondCount, totalDiamondValue: diamondCount * repeatCount };
+      const data = { username, avatarUrl, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount };
 
       if (repeatEnd) {
         this._comboBuffers.delete(key);

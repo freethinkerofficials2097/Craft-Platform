@@ -14,11 +14,15 @@
      Row 1 — avatar + username
      Row 2 — what happened
      Row 3 — a short, warm appreciation line
-     Row 4 (optional) — a small stat pill (diamond count, milestone total)
+     Row 4 (optional) — a small stat pill (coin total, milestone total)
    ...next to a glossy, gently-rotating "3D badge" whose icon + color theme
-   echoes the actual gift (rose, galaxy, diamond, etc.) without reproducing
+   echoes the actual gift (rose, galaxy, lion, etc.) without reproducing
    any of TikTok's own copyrighted artwork — every badge here is original,
    pure-CSS gradient/shadow work.
+   HOST TOOLS (statistics + fake-alert tester) no longer float over the game.
+   They live inside each game's own Settings panel: put
+     <div data-engagement-tools></div>
+   anywhere in a settings panel and this script fills it in automatically.
    ========================================================================== */
 (function () {
   if (window.Engagement) return; // don't double-init if the tag is ever included twice
@@ -127,36 +131,31 @@
         100%{ transform:translateY(110vh) rotateX(540deg) rotateY(360deg); opacity:0; }
       }
 
-      /* ---- diagnostics panel (bottom-left) ---- */
-      #eng-diag-toggle, #eng-test-toggle{
-        position:fixed; bottom:14px; z-index:9550;
-        width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
-        background:rgba(20,20,26,.72); color:#fff; font-size:16px;
-        display:flex; align-items:center; justify-content:center;
-        box-shadow:0 4px 14px rgba(0,0,0,.3);
+      /* ---- host tools (statistics + test alerts), rendered inside each
+              game's Settings panel via <div data-engagement-tools> ---- */
+      .eng-tools{
+        display:flex; flex-direction:column; gap:12px;
+        font-family:"Quicksand","Manrope",system-ui,sans-serif;
+        color:var(--theme-ink,#5b4636); text-align:left;
       }
-      #eng-diag-toggle{ left:14px; }
-      #eng-test-toggle{ right:14px; }
-      #eng-diag-panel, #eng-test-panel{
-        position:fixed; bottom:60px; z-index:9550;
-        background:rgba(18,18,24,.92); color:#fff; border-radius:14px; padding:12px 14px;
-        font-family:"Quicksand","Manrope",system-ui,sans-serif; font-size:12.5px;
-        min-width:170px; box-shadow:0 10px 26px rgba(0,0,0,.4);
-        display:none; backdrop-filter: blur(4px);
+      .eng-tools-block{
+        background:var(--theme-surface-2,#f2e4c8);
+        border:1px solid var(--theme-line,#d9be93);
+        border-radius:12px; padding:10px 12px;
       }
-      #eng-diag-panel{ left:14px; }
-      #eng-test-panel{ right:14px; }
-      #eng-diag-panel.eng-open, #eng-test-panel.eng-open{ display:block; }
-      .eng-diag-row{ display:flex; justify-content:space-between; gap:14px; padding:3px 0; }
-      .eng-diag-row b{ color:#FFD866; font-weight:800; }
-      .eng-test-title{ font-weight:800; margin-bottom:8px; opacity:.85; }
-      .eng-test-btn{
-        display:block; width:100%; text-align:left; margin-bottom:6px;
-        background:rgba(255,255,255,.08); color:#fff; border:1px solid rgba(255,255,255,.16);
-        border-radius:8px; padding:7px 10px; font-weight:700; font-size:12.5px; cursor:pointer;
+      .eng-tools-title{ font-weight:800; font-size:13px; margin-bottom:6px; color:var(--theme-deep,#6b4423); }
+      .eng-tools-note{ font-size:11.5px; line-height:1.4; opacity:.8; margin:0 0 8px; font-weight:500; }
+      .eng-tools-row{ display:flex; justify-content:space-between; gap:14px; padding:3px 0; font-size:13px; font-weight:600; }
+      .eng-tools-row b{ font-weight:800; color:var(--theme-deep,#6b4423); }
+      .eng-tools-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+      .eng-tools-btn{
+        text-align:center; cursor:pointer; font-family:inherit;
+        background:var(--theme-card,#fffbf2); color:var(--theme-deep,#6b4423);
+        border:2px solid var(--theme-line,#d9be93); border-radius:10px;
+        padding:9px 8px; font-weight:700; font-size:12.5px; line-height:1.2;
+        width:auto; box-shadow:0 2px 0 rgba(0,0,0,.08);
       }
-      .eng-test-btn:last-child{ margin-bottom:0; }
-      .eng-test-btn:active{ transform:scale(.97); }
+      .eng-tools-btn:active{ transform:scale(.97); }
     `;
     document.head.appendChild(style);
   }
@@ -170,41 +169,7 @@
   confettiLayer.id = "eng-confetti-layer";
   document.body.appendChild(confettiLayer);
 
-  const diagToggle = document.createElement("button");
-  diagToggle.id = "eng-diag-toggle";
-  diagToggle.title = "Engagement diagnostics";
-  diagToggle.textContent = "📊";
-  document.body.appendChild(diagToggle);
-
-  const diagPanel = document.createElement("div");
-  diagPanel.id = "eng-diag-panel";
-  diagPanel.innerHTML = `
-    <div class="eng-diag-row"><span>Total Gifts</span><b id="eng-diag-gifts">0</b></div>
-    <div class="eng-diag-row"><span>Total Shares</span><b id="eng-diag-shares">0</b></div>
-    <div class="eng-diag-row"><span>Total Likes</span><b id="eng-diag-likes">0</b></div>
-  `;
-  document.body.appendChild(diagPanel);
-  diagToggle.addEventListener("click", () => diagPanel.classList.toggle("eng-open"));
-
-  const testToggle = document.createElement("button");
-  testToggle.id = "eng-test-toggle";
-  testToggle.title = "Test Event panel (host only)";
-  testToggle.textContent = "🧪";
-  document.body.appendChild(testToggle);
-
-  const testPanel = document.createElement("div");
-  testPanel.id = "eng-test-panel";
-  testPanel.innerHTML = `
-    <div class="eng-test-title">Test Event (host only)</div>
-    <button class="eng-test-btn" data-kind="gift">🎁 Fake Gift</button>
-    <button class="eng-test-btn" data-kind="share">🔥 Fake Share</button>
-    <button class="eng-test-btn" data-kind="milestone">👍 Fake Milestone</button>
-    <button class="eng-test-btn" data-kind="room">🌟 Fake Room Milestone</button>
-  `;
-  document.body.appendChild(testPanel);
-  testToggle.addEventListener("click", () => testPanel.classList.toggle("eng-open"));
-
-  // ------------------------------------------------------------- socket --
+  // ------------------------------------------------- host tools (in Settings) --
   let socket = null;
   try {
     if (window.io) socket = window.io("/engagement");
@@ -216,19 +181,67 @@
     return (n || 0).toLocaleString();
   }
 
+  let lastCounters = null;
+  function paintStats() {
+    if (!lastCounters) return;
+    const map = {
+      gifts: lastCounters.totalGifts,
+      coins: lastCounters.totalCoins,
+      shares: lastCounters.totalShares,
+      likes: lastCounters.totalLikes,
+    };
+    document.querySelectorAll("[data-eng-stat]").forEach((el) => {
+      el.textContent = fmt(map[el.getAttribute("data-eng-stat")]);
+    });
+  }
+
+  /** Fills a container with the statistics readout + fake-alert test buttons. */
+  function mountTools(container) {
+    if (!container || container.getAttribute("data-eng-mounted")) return;
+    container.setAttribute("data-eng-mounted", "1");
+    container.innerHTML = `
+      <div class="eng-tools">
+        <div class="eng-tools-block">
+          <div class="eng-tools-title">📊 Live statistics</div>
+          <p class="eng-tools-note">Running totals since the server started.</p>
+          <div class="eng-tools-row"><span>Total Gifts</span><b data-eng-stat="gifts">0</b></div>
+          <div class="eng-tools-row"><span>Total Coins</span><b data-eng-stat="coins">0</b></div>
+          <div class="eng-tools-row"><span>Total Shares</span><b data-eng-stat="shares">0</b></div>
+          <div class="eng-tools-row"><span>Total Likes</span><b data-eng-stat="likes">0</b></div>
+        </div>
+        <div class="eng-tools-block">
+          <div class="eng-tools-title">🧪 Test alerts (host only)</div>
+          <p class="eng-tools-note">Fires a fake alert on screen so you can check how it looks without going live.</p>
+          <div class="eng-tools-grid">
+            <button type="button" class="eng-tools-btn" data-kind="gift">🎁 Fake Gift</button>
+            <button type="button" class="eng-tools-btn" data-kind="share">🔥 Fake Share</button>
+            <button type="button" class="eng-tools-btn" data-kind="milestone">👍 Fake Milestone</button>
+            <button type="button" class="eng-tools-btn" data-kind="room">🌟 Fake Room Milestone</button>
+          </div>
+        </div>
+      </div>
+    `;
+    container.querySelectorAll(".eng-tools-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (socket) socket.emit("engagement:test", { kind: btn.dataset.kind });
+      });
+    });
+    paintStats();
+  }
+
+  function mountAll() {
+    document.querySelectorAll("[data-engagement-tools]").forEach(mountTools);
+  }
+  mountAll();
+  document.addEventListener("DOMContentLoaded", mountAll);
+
   if (socket) {
     socket.on("engagement:state", (state) => {
       if (!state || !state.counters) return;
-      document.getElementById("eng-diag-gifts").textContent = fmt(state.counters.totalGifts);
-      document.getElementById("eng-diag-shares").textContent = fmt(state.counters.totalShares);
-      document.getElementById("eng-diag-likes").textContent = fmt(state.counters.totalLikes);
+      lastCounters = state.counters;
+      paintStats();
     });
-
     socket.on("engagement:alert", (alert) => enqueueAlert(alert));
-
-    testPanel.querySelectorAll(".eng-test-btn").forEach((btn) => {
-      btn.addEventListener("click", () => socket.emit("engagement:test", { kind: btn.dataset.kind }));
-    });
   }
 
   // --------------------------------------------------------- alert queue --
@@ -329,5 +342,5 @@
     }
   }
 
-  window.Engagement = { enqueueAlert };
+  window.Engagement = { enqueueAlert, mountTools };
 })();
