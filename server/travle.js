@@ -23,7 +23,16 @@ function extractComment(data) {
     (typeof data?.content === "string" && data.content) ||
     (typeof data?.text === "string" && data.text) ||
     (typeof data?.message === "string" && data.message) || "";
-  return { commenter: String(commenter).trim(), text: text.trim() };
+  const avatarUrl =
+    data?.user?.profilePictureUrl ||
+    data?.user?.avatarThumb?.urlList?.[0] ||
+    data?.user?.avatarMedium?.urlList?.[0] ||
+    data?.user?.avatarLarger?.urlList?.[0] ||
+    data?.user?.avatarUrl ||
+    data?.profilePictureUrl ||
+    data?.avatarUrl ||
+    null;
+  return { commenter: String(commenter).trim(), text: text.trim(), avatarUrl };
 }
 
 function friendlyError(err, username) {
@@ -113,12 +122,12 @@ export function registerTravle(io) {
 
           conn.on(WebcastEvent.CHAT, (data) => {
             try {
-              const { commenter, text } = extractComment(data);
+              const { commenter, text, avatarUrl } = extractComment(data);
               commentsSeen += 1;
               if (commentsSeen <= 5) {
                 console.log(`[travle:${username}] raw chat payload keys:`, Object.keys(data));
               }
-              if (text) nsp.emit("tiktok-comment", { commenter, text });
+              if (text) nsp.emit("tiktok-comment", { commenter, text, avatarUrl });
             } catch (e) {
               console.error("[travle] Error handling chat event:", e);
             }

@@ -142,6 +142,17 @@ const TEXT_PATHS = [
   'chatMessage.comment',
 ];
 
+const AVATAR_PATHS = [
+  'user.profilePictureUrl',
+  'user.avatarThumb.urlList.0',
+  'user.avatarMedium.urlList.0',
+  'user.avatarLarger.urlList.0',
+  'user.avatarUrl',
+  'profilePictureUrl',
+  'avatarUrl',
+  'avatarThumb.urlList.0',
+];
+
 // A unique-per-message ID, used to detect the SAME message being delivered
 // more than once (see the de-duplication note in tiktok.js). Different
 // people typing the same word is normal and must NOT be treated as a
@@ -172,18 +183,21 @@ export function extractMessageId(raw) {
 }
 
 /**
- * Extracts { username, text } from a raw TikTok event using the fallback
- * chain above. Never throws - worst case it returns 'unknown' / ''.
+ * Extracts { username, text, avatarUrl } from a raw TikTok event using the
+ * fallback chain above. Never throws - worst case it returns 'unknown' / ''
+ * / null.
  */
 export function extractChatFields(raw) {
   try {
     const username = firstNonEmpty(raw, USERNAME_PATHS);
     const text = firstNonEmpty(raw, TEXT_PATHS);
+    const avatarUrl = firstNonEmpty(raw, AVATAR_PATHS);
     return {
       username: username != null ? String(username) : 'unknown',
       text: text != null ? String(text) : '',
+      avatarUrl: avatarUrl != null ? String(avatarUrl) : null,
     };
   } catch (e) {
-    return { username: 'unknown', text: '' };
+    return { username: 'unknown', text: '', avatarUrl: null };
   }
 }

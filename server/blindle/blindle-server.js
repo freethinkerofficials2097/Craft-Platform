@@ -88,12 +88,25 @@ const USERNAME_PATHS = [
   "username", "nickname", "user.nickname", "author.uniqueId", "author.nickname", "data.uniqueId"
 ];
 const MESSAGE_PATHS = ["comment", "message", "content", "text", "msg", "data.comment", "data.message"];
+const AVATAR_PATHS = [
+  "user.profilePictureUrl", "user.avatarThumb.urlList.0", "user.avatarMedium.urlList.0",
+  "user.avatarLarger.urlList.0", "user.avatarUrl", "profilePictureUrl", "avatarUrl", "avatarThumb.urlList.0"
+];
 
 function extractChatFields(raw) {
   const username = String(extractField(raw, USERNAME_PATHS, "viewer"));
   const text = String(extractField(raw, MESSAGE_PATHS, ""));
-  return { username, text };
+  const avatarUrl = extractField(raw, AVATAR_PATHS, null);
+  return { username, text, avatarUrl };
 }
+
+// Remembers each viewer's most-recently-seen profile picture for the
+// life of the server process (not tied to any one round), so the real
+// TikTok avatar can be shown next to every guess, win, and leaderboard
+// row that mentions them — not just the raw chat message that happened
+// to carry it. Host-typed guesses and Test/Offline mode simply have no
+// entry here, and the client falls back to a colored initial circle.
+const knownAvatars = new Map();
 
 function normalizeGuess(text) {
   return String(text)
@@ -228,7 +241,8 @@ function checkConsistency(word) {
 
 function processGuess(word, caller) {
   const counts = scoreCounts(word, game.secretWord);
-  game.guesses.push({ word, counts, caller });
+  const avatarUrl = knownAvatars.get(caller) || null;
+  game.guesses.push({ word, counts, caller, avatarUrl });
 
   if (word === game.secretWord) {
     // Scaled down from the original 100/10 split to 10/1, keeping the
@@ -238,7 +252,7 @@ function processGuess(word, caller) {
     awardPoints(caller, WIN_POINTS);
     game.status = "won";
     game.streak += 1;
-    game.lastWinInfo = { username: caller, points, word };
+    game.lastWinInfo = { username: caller, points, word, avatarUrl };
   } else {
     awardPoints(caller, GUESS_POINTS);
   }
@@ -377,7 +391,7 @@ function getLeaderboard(map) {
   return [...map.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 10)
-    .map(([username, score]) => ({ username, score }));
+    .map(([username, score]) => ({ username, score, avatarUrl: knownAvatars.get(username) || null }));
 }
 
 setInterval(
@@ -408,12 +422,13 @@ const diagnostics = {
 
 function handleIncomingRawEvent(raw) {
   diagnostics.rawEventCount += 1;
-  const { username, text } = extractChatFields(raw);
+  const { username, text, avatarUrl } = extractChatFields(raw);
   diagnostics.lastReceivedUser = username;
   diagnostics.lastReceivedText = text;
   diagnostics.lastReceivedAt = Date.now();
+  if (avatarUrl) knownAvatars.set(username, avatarUrl);
 
-  game.recentComments.unshift({ username, text, at: Date.now() });
+  game.recentComments.unshift({ username, text, avatarUrl: knownAvatars.get(username) || null, at: Date.now() });
   if (game.recentComments.length > 30) game.recentComments.length = 30;
 
   const normalized = normalizeGuess(text);

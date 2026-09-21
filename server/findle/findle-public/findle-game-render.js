@@ -16,6 +16,31 @@ const FindleRender = (() => {
     return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // Deterministic colored-initial fallback, used whenever a viewer's real
+  // TikTok profile picture isn't available (host-typed play, Test Mode,
+  // or the image URL failing to load).
+  const AVATAR_PALETTE = ['#e0699c', '#4fa0c4', '#6faa5c', '#e0a934', '#9c6fd1', '#e0724a', '#3aa6a6', '#c4577a'];
+  function hashString(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  function avatarColorFor(name) { return AVATAR_PALETTE[hashString(name || '?') % AVATAR_PALETTE.length]; }
+  function avatarInitial(name) { const c = String(name || '').trim(); return c ? c[0].toUpperCase() : '?'; }
+
+  function avatarChipHtml(name, avatarUrl, sizePx) {
+    sizePx = sizePx || 20;
+    const initial = escapeHtml(avatarInitial(name));
+    const color = avatarColorFor(name);
+    const title = escapeHtml(name || 'Unknown viewer');
+    if (avatarUrl) {
+      return `<span class="avatarChip" style="width:${sizePx}px;height:${sizePx}px;" title="${title}">` +
+        `<img class="avatarChipImg" alt="" referrerpolicy="no-referrer" src="${escapeHtml(avatarUrl)}" ` +
+        `onerror="this.parentElement.classList.add('avatarChipFallback');this.parentElement.style.background='${color}';this.replaceWith('${initial}')" /></span>`;
+    }
+    return `<span class="avatarChip avatarChipFallback" style="width:${sizePx}px;height:${sizePx}px;background:${color};" title="${title}">${initial}</span>`;
+  }
+
   function renderGrid(gridEl, gridSize, letters, words, clearedGrid) {
     gridEl.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
     gridEl.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
@@ -70,7 +95,7 @@ const FindleRender = (() => {
   function renderAnswers(answersEl, words) {
     answersEl.innerHTML = words.map((w) => {
       if (w.found) {
-        const credit = w.foundBy ? `<span class="credit">${escapeHtml(w.foundBy)}</span>` : '';
+        const credit = w.foundBy ? avatarChipHtml(w.foundBy, w.foundByAvatar, 18) + `<span class="credit">${escapeHtml(w.foundBy)}</span>` : '';
         return `<div class="answer-pill found">${escapeHtml(w.word)} ${credit}</div>`;
       }
       return `<div class="answer-pill">${escapeHtml(w.hint.split('').join(' '))}</div>`;
@@ -89,7 +114,7 @@ const FindleRender = (() => {
       return;
     }
     el.innerHTML = list.map((row, i) =>
-      `<div class="leader-row"><span class="leader-rank">${i + 1}</span><span class="leader-name">${escapeHtml(row.name)}</span><span class="leader-score">${row.score}</span></div>`
+      `<div class="leader-row"><span class="leader-rank">${i + 1}</span>${avatarChipHtml(row.name, row.avatarUrl, 22)}<span class="leader-name">${escapeHtml(row.name)}</span><span class="leader-score">${row.score}</span></div>`
     ).join('');
   }
 
@@ -148,7 +173,7 @@ const FindleRender = (() => {
     lastTickerSignature = signature;
 
     const itemsHtml = list.map((row, i) =>
-      `<span class="ticker-item">${medalFor(i)}${escapeHtml(row.name)} <span class="tscore">${row.score}</span></span>`
+      `<span class="ticker-item">${medalFor(i)}${avatarChipHtml(row.name, row.avatarUrl, 16)}${escapeHtml(row.name)} <span class="tscore">${row.score}</span></span>`
     ).join('');
     // duplicate the content once so the loop (0% -> -50%) is seamless
     trackEl.innerHTML = itemsHtml + itemsHtml;

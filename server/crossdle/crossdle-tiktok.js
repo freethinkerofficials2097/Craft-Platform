@@ -174,8 +174,8 @@ export class TikTokManager {
         if (this._isStale(myGeneration)) return; // a superseded connection's leftover events
         const msgId = extractMessageId(data);
         if (!this._isNewMessage(msgId)) return; // duplicate delivery of the same message
-        const { username: user, text } = extractChatFields(data);
-        this.onComment(user, text, 'tiktok');
+        const { username: user, text, avatarUrl } = extractChatFields(data);
+        this.onComment(user, text, 'tiktok', avatarUrl);
       } catch (err) {
         this.diagnostics.logError('tiktok.chatHandler', err);
       }

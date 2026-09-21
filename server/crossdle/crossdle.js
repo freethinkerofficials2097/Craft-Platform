@@ -62,13 +62,13 @@ export async function registerCrossdle(app, rootIo, options = {}) {
   const testMode = new TestModeSimulator(handleIncomingComment, () => getWordList(engine.round ? engine.round.wordLength : engine.wordLength));
   let testModeActive = false;
 
-  function handleIncomingComment(username, text, source) {
+  function handleIncomingComment(username, text, source, avatarUrl) {
     try {
       diagnostics.recordIncoming({ username, text, source });
       io.emit('diagnostics:update', diagnostics.getPublicState());
-      io.emit('chat:new', { username, text, source, ts: Date.now() });
+      io.emit('chat:new', { username, text, source, avatarUrl: avatarUrl || null, ts: Date.now() });
 
-      const result = engine.submitGuess(username, text);
+      const result = engine.submitGuess(username, text, avatarUrl);
       if (result && result.recognized) {
         diagnostics.recordRecognized();
         io.emit('diagnostics:update', diagnostics.getPublicState());

@@ -65,9 +65,15 @@
         overflow-y:auto; /* last-resort only — rows are pre-scaled to fit before this ever kicks in */
       }
       .cel-row{
-        display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
         background:rgba(0,0,0,.035); border-radius:12px; padding:8px 12px;
       }
+      .cel-avatar{
+        flex:none; display:flex; align-items:center; justify-content:center;
+        border-radius:50%; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.3);
+      }
+      .cel-avatar-img{ width:100%; height:100%; object-fit:cover; display:block; }
+      .cel-avatar-fallback{ font-weight:800; color:#fff; text-transform:uppercase; user-select:none; font-size:12px; }
       .cel-primary{ font-weight:600; font-size:15px; text-align:left; word-break:break-word; }
       .cel-secondary{ font-weight:600; font-size:12.5px; opacity:.75; white-space:nowrap; }
       .cel-primary.cel-large{ font-size:22px; }
@@ -86,11 +92,38 @@
     const primaryClass = "cel-primary" + (row.primaryLarge ? " cel-large" : "");
     const secondaryClass = "cel-secondary" + (row.secondaryLarge ? " cel-large" : "");
     const secondary = row.secondary ? `<span class="${secondaryClass}">${escapeHtml(row.secondary)}</span>` : "";
-    return `<div class="cel-row"><span class="${primaryClass}">${escapeHtml(String(row.primary))}</span>${secondary}</div>`;
+    // avatarUrl (even null) opts a row into showing a circular viewer photo
+    // (or a colored-initial fallback) to the left of its primary text —
+    // rows that never pass the key at all render exactly as before.
+    const avatar = "avatarUrl" in row ? avatarChipHtml(row.avatarName || row.primary, row.avatarUrl, 26) : "";
+    return `<div class="cel-row">${avatar}<span class="${primaryClass}">${escapeHtml(String(row.primary))}</span>${secondary}</div>`;
   }
 
   function escapeHtml(str) {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Deterministic colored-initial fallback, same convention used
+  // platform-wide (BLINDLE, FINDLE, CROSSDLE) — shown whenever a viewer's
+  // real TikTok profile picture isn't available or fails to load.
+  const AVATAR_PALETTE = ["#e0699c", "#4fa0c4", "#6faa5c", "#e0a934", "#9c6fd1", "#e0724a", "#3aa6a6", "#c4577a"];
+  function hashString(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  function avatarColorFor(name) { return AVATAR_PALETTE[hashString(name || "?") % AVATAR_PALETTE.length]; }
+  function avatarInitial(name) { const c = String(name || "").trim(); return c ? c[0].toUpperCase() : "?"; }
+  function avatarChipHtml(name, avatarUrl, sizePx) {
+    const initial = escapeHtml(avatarInitial(name));
+    const color = avatarColorFor(name);
+    const title = escapeHtml(name || "Unknown viewer");
+    if (avatarUrl) {
+      return `<span class="cel-avatar" style="width:${sizePx}px;height:${sizePx}px;" title="${title}">` +
+        `<img class="cel-avatar-img" alt="" referrerpolicy="no-referrer" src="${escapeHtml(avatarUrl)}" ` +
+        `onerror="this.parentElement.classList.add('cel-avatar-fallback');this.parentElement.style.background='${color}';this.replaceWith('${initial}')" /></span>`;
+    }
+    return `<span class="cel-avatar cel-avatar-fallback" style="width:${sizePx}px;height:${sizePx}px;background:${color};" title="${title}">${initial}</span>`;
   }
 
   // Shrinks the rows block down (as one unit — text, gaps, everything) so

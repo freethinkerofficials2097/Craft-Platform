@@ -357,7 +357,7 @@ body{
   gap:7px;
   font-size:13px;
 }
-.comment-row{line-height:1.4; word-break:break-word;}
+.comment-row{line-height:1.4; word-break:break-word; display:flex; align-items:center; flex-wrap:wrap; gap:6px;}
 .comment-row .name{font-weight:700; color:var(--ink-hi);}
 .comment-row.correct .name{color:var(--mint);}
 .comment-row .text{color:var(--ink-mid);}
@@ -377,7 +377,7 @@ body{
   color:var(--ink-mid);
   font-weight:600;
 }
-.leaderboard li b{color:var(--ink-hi); font-weight:700;}
+.leaderboard li b{color:var(--ink-hi); font-weight:700; display:inline-flex; align-items:center; gap:6px;}
 .leaderboard li span.pts{color:var(--amber-dim); font-family:var(--font-head); font-weight:700;}
 .leaderboard li:nth-child(1) b{color:var(--amber-dim);}
 .leaderboard li:nth-child(2) b{color:var(--blue-dim);}
@@ -501,6 +501,7 @@ body{
   border:3px dashed rgba(255,255,255,.55);
   box-shadow:0 8px 30px rgba(139,90,52,.35);
   pointer-events:none;
+  display:flex; align-items:center; justify-content:center; gap:10px;
   white-space:nowrap;
   max-width:88vw;
   overflow:hidden;
@@ -687,6 +688,7 @@ input[type="range"].settings-input,
 }
 .ticker-track .tk-rank{ color:var(--ink-mid); font-weight:600; margin-right:4px; }
 .ticker-track .tk-sep{ color:var(--navy-line); margin:0 18px; }
+.ticker-track .avatarChip{ margin-right:2px; vertical-align:middle; }
 @keyframes ticker-scroll{
   from{ transform:translateX(0); }
   to{ transform:translateX(-100%); }
@@ -709,3 +711,15 @@ input[type="range"].settings-input,
 .fans-section:first-child .panel-head{ color:var(--pink-dim); }
 .fans-section:last-child .panel-head{ color:var(--blue-dim); }
 .fans-section .leaderboard{ flex:1; min-height:0; }
+
+
+/* ---- circular viewer avatars: chat feed, fan lists, leaderboard, banner ---- */
+.avatarChip{
+  display:inline-flex; align-items:center; justify-content:center; flex:none;
+  border-radius:50%; overflow:hidden; vertical-align:middle;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.avatarChipImg{ width:100%; height:100%; object-fit:cover; display:block; }
+.avatarChipFallback{
+  font-weight:800; color:#fff; text-transform:uppercase; user-select:none; font-size:10px;
+}

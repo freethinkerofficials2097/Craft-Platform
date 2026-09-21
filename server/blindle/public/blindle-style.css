@@ -237,6 +237,26 @@ button { cursor: pointer; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.25);
 }
 .guessAvatarSpacer { flex-shrink: 0; visibility: hidden; }
+.avatarImg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+/* Shared circular avatar chip used in leaderboards and the win banner
+   (the bigger, per-guess-row avatar above has its own .guessAvatar
+   sizing but reuses .avatarImg for the actual photo). */
+.lbAvatar {
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+.lbAvatarFallback {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  user-select: none;
+}
 .tile {
   width: 34px;
   height: 40px;
@@ -782,6 +802,10 @@ button { cursor: pointer; }
   font-size: 20px;
   color: var(--text);
   word-break: break-word;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 .celebAnswerRow {
   font-family: var(--font-display);

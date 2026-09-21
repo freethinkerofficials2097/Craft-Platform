@@ -140,6 +140,7 @@ function newSession(socket) {
     scores: new Map(),
     likes: new Map(),
     gifts: new Map(),
+    avatars: new Map(), // username -> most-recently-seen TikTok profile picture URL
     usedCountries: new Set(),
     round: null,
     roundActive: false,
@@ -162,14 +163,27 @@ function topN(map, n = 10) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
 }
 
+function extractAvatarUrl(data) {
+  return (
+    data.user?.profilePictureUrl ||
+    data.user?.avatarThumb?.urlList?.[0] ||
+    data.user?.avatarMedium?.urlList?.[0] ||
+    data.user?.avatarLarger?.urlList?.[0] ||
+    data.user?.avatarUrl ||
+    data.profilePictureUrl ||
+    data.avatarUrl ||
+    null
+  );
+}
+
 function leaderboard(session) {
-  return topN(session.scores).map(([username, points]) => ({ username, points }));
+  return topN(session.scores).map(([username, points]) => ({ username, points, avatarUrl: session.avatars.get(username) || null }));
 }
 
 function fanStats(session) {
   return {
-    likes: topN(session.likes).map(([username, count]) => ({ username, count })),
-    gifts: topN(session.gifts).map(([username, value]) => ({ username, value })),
+    likes: topN(session.likes).map(([username, count]) => ({ username, count, avatarUrl: session.avatars.get(username) || null })),
+    gifts: topN(session.gifts).map(([username, value]) => ({ username, value, avatarUrl: session.avatars.get(username) || null })),
   };
 }
 
@@ -206,6 +220,7 @@ function endRound(session, winner) {
     code: country.code,
     fact: country.fact,
     winner: winner ? winner.username : null,
+    winnerAvatar: winner ? winner.avatarUrl || null : null,
     points: winner ? winner.points : 0,
     leaderboard: leaderboard(session),
   });
@@ -225,7 +240,7 @@ function processGuess(session, username, rawText) {
   if (guessedCountry.code === target.code) {
     const points = 1;
     session.scores.set(username, (session.scores.get(username) || 0) + points);
-    endRound(session, { username, points });
+    endRound(session, { username, points, avatarUrl: session.avatars.get(username) || null });
     return true;
   }
 
@@ -307,6 +322,8 @@ export function registerFlagle(io) {
                 (typeof data.content === "string" && data.content) ||
                 (typeof data.text === "string" && data.text) ||
                 (typeof data.message === "string" && data.message) || "";
+              const avatarUrl = extractAvatarUrl(data);
+              if (avatarUrl) session.avatars.set(commenter, avatarUrl);
 
               session.commentsSeen = (session.commentsSeen || 0) + 1;
               console.log(`[flagle:${clean}] chat #${session.commentsSeen} from ${commenter}: "${text}"`);
@@ -318,7 +335,7 @@ export function registerFlagle(io) {
               socket.emit("debug-last-comment", { username: commenter, text });
 
               const isCorrect = text ? processGuess(session, commenter, text) : false;
-              if (text) socket.emit("comment-feed", { username: commenter, text, correct: isCorrect });
+              if (text) socket.emit("comment-feed", { username: commenter, text, correct: isCorrect, avatarUrl: session.avatars.get(commenter) || null });
             } catch (e) {
               console.error("[flagle] Error handling chat event:", e);
             }
@@ -335,6 +352,8 @@ export function registerFlagle(io) {
               const batch =
                 (typeof data.likeCount === "number" && data.likeCount) ||
                 (typeof data.count === "number" && data.count) || 1;
+              const avatarUrl = extractAvatarUrl(data);
+              if (avatarUrl) session.avatars.set(liker, avatarUrl);
               session.likes.set(liker, (session.likes.get(liker) || 0) + batch);
               socket.emit("fan-stats", fanStats(session));
             } catch (e) {
@@ -359,6 +378,8 @@ export function registerFlagle(io) {
                 (typeof data.diamondCount === "number" && data.diamondCount) ||
                 (typeof data.diamond_count === "number" && data.diamond_count) || 0;
               const repeatCount = (typeof data.repeatCount === "number" && data.repeatCount) || 1;
+              const avatarUrl = extractAvatarUrl(data);
+              if (avatarUrl) session.avatars.set(gifter, avatarUrl);
 
               session.gifts.set(gifter, (session.gifts.get(gifter) || 0) + diamondValue * repeatCount);
               socket.emit("fan-stats", fanStats(session));

@@ -553,7 +553,7 @@ function renderCelebBoard(list) {
   }
   return list
     .map((row, i) =>
-      '<li><span class="rank">#' + (i + 1) + '</span><span class="lbName">' + escapeHtml(row.username) + '</span><span class="lbScore">' + row.score + "</span></li>"
+      '<li><span class="rank">#' + (i + 1) + '</span>' + avatarChipHtml(row.username, row.avatarUrl, 22) + '<span class="lbName">' + escapeHtml(row.username) + '</span><span class="lbScore">' + row.score + "</span></li>"
     )
     .join("");
 }
@@ -567,11 +567,12 @@ function showCelebrationStage(stageIndex, g) {
   if (stage === "winner") {
     const info = g.lastWinInfo;
     const winnerName = (info && info.username) || "Someone";
+    const winnerAvatar = info && info.avatarUrl;
     const word = ((info && info.word) || "").toUpperCase();
     const pointsLine = info && typeof info.points === "number" ? '<div class="celebPoints">+' + info.points + " points</div>" : "";
     el.celebrationBody.innerHTML =
       '<div class="celebLabel">🎉 Winner</div>' +
-      '<div class="celebWinnerRow">' + escapeHtml(winnerName) + "</div>" +
+      '<div class="celebWinnerRow">' + avatarChipHtml(winnerName, winnerAvatar, 34) + '<span>' + escapeHtml(winnerName) + "</span></div>" +
       '<div class="celebAnswerRow">' + escapeHtml(word) + "</div>" +
       pointsLine;
   } else if (stage === "round") {
@@ -785,19 +786,68 @@ function avatarInitial(username) {
   return clean ? clean[0].toUpperCase() : "?";
 }
 
+// Builds an actual DOM avatar node (used inside the guess grid, where
+// rows are built as real elements, not innerHTML strings). Shows the
+// viewer's real TikTok profile picture when we have one; if the image
+// URL is missing, blocked, or fails to load, it falls back to the
+// deterministic colored-initial circle instead of leaving a blank hole.
+function buildAvatarNode(username, avatarUrl, sizePx, fontPx, className) {
+  const wrap = document.createElement("div");
+  wrap.className = className || "guessAvatar";
+  wrap.style.width = sizePx + "px";
+  wrap.style.height = sizePx + "px";
+  wrap.title = username || "Unknown viewer";
+
+  function showFallback() {
+    wrap.innerHTML = "";
+    wrap.style.background = avatarColorFor(username);
+    wrap.style.fontSize = fontPx + "px";
+    wrap.textContent = avatarInitial(username);
+  }
+
+  if (avatarUrl) {
+    const img = document.createElement("img");
+    img.className = "avatarImg";
+    img.alt = "";
+    img.referrerPolicy = "no-referrer";
+    img.onerror = showFallback;
+    img.src = avatarUrl;
+    wrap.appendChild(img);
+  } else {
+    showFallback();
+  }
+  return wrap;
+}
+
+// Same idea as buildAvatarNode, but returns an HTML string for spots
+// that build their markup with innerHTML (leaderboard rows, the win
+// celebration banner) rather than individual DOM nodes.
+function avatarChipHtml(username, avatarUrl, sizePx) {
+  sizePx = sizePx || 22;
+  const initial = escapeHtml(avatarInitial(username));
+  const color = avatarColorFor(username);
+  const title = escapeHtml(username || "Unknown viewer");
+  if (avatarUrl) {
+    return (
+      '<span class="lbAvatar" style="width:' + sizePx + "px;height:" + sizePx + 'px;" title="' + title + '">' +
+      '<img class="avatarImg" alt="" referrerpolicy="no-referrer" src="' + escapeHtml(avatarUrl) + '" ' +
+      "onerror=\"this.parentElement.classList.add('lbAvatarFallback');this.parentElement.style.background='" + color + "';this.replaceWith('" + initial + "')\" />" +
+      "</span>"
+    );
+  }
+  return (
+    '<span class="lbAvatar lbAvatarFallback" style="width:' + sizePx + "px;height:" + sizePx + "px;background:" + color + ';" title="' + title + '">' +
+    initial +
+    "</span>"
+  );
+}
+
 function buildGuessBlock(guess, wordLength, metrics) {
   const block = document.createElement("div");
   block.className = "guessBlock";
 
   if (guess) {
-    const avatar = document.createElement("div");
-    avatar.className = "guessAvatar";
-    avatar.style.width = metrics.avatarSize + "px";
-    avatar.style.height = metrics.avatarSize + "px";
-    avatar.style.fontSize = metrics.avatarFontSize + "px";
-    avatar.style.background = avatarColorFor(guess.caller);
-    avatar.textContent = avatarInitial(guess.caller);
-    avatar.title = guess.caller || "Unknown viewer";
+    const avatar = buildAvatarNode(guess.caller, guess.avatarUrl, metrics.avatarSize, metrics.avatarFontSize, "guessAvatar");
     block.appendChild(avatar);
   } else {
     // Keeps the "current" (still-typing) row's tiles aligned under the
@@ -986,7 +1036,7 @@ function renderLeaderboardTab() {
   }
   el.leaderboardList.innerHTML = list
     .map((row, i) =>
-      '<li><span class="rank">#' + (i + 1) + '</span><span class="lbName">' + escapeHtml(row.username) + '</span><span class="lbScore">' + row.score + "</span></li>"
+      '<li><span class="rank">#' + (i + 1) + '</span>' + avatarChipHtml(row.username, row.avatarUrl, 22) + '<span class="lbName">' + escapeHtml(row.username) + '</span><span class="lbScore">' + row.score + "</span></li>"
     )
     .join("");
 }

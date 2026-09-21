@@ -249,7 +249,7 @@
       tickerTrack.innerHTML = '<span class="ticker-entry">No scores yet - guesses earn points!</span>';
     } else {
       const entryHtml = list
-        .map((e, i) => `<span class="ticker-entry">${medals[i] || (i + 1) + '.'} ${escapeHtml(e.username)}<span class="ticker-score">${e.score} pts</span></span>`)
+        .map((e, i) => `<span class="ticker-entry">${medals[i] || (i + 1) + '.'} ${avatarChipHtml(e.username, e.avatarUrl, 16)}${escapeHtml(e.username)}<span class="ticker-score">${e.score} pts</span></span>`)
         .join('');
       // Two copies back-to-back so the CSS marquee (translateX -50%) loops seamlessly.
       tickerTrack.innerHTML = entryHtml + entryHtml;
@@ -273,6 +273,7 @@
       rank.className = 'rank';
       rank.textContent = medals[i] || `${i + 1}.`;
       left.appendChild(rank);
+      left.appendChild(buildAvatarNode(entry.username, entry.avatarUrl, 22));
       left.appendChild(document.createTextNode(entry.username));
       const score = document.createElement('span');
       score.className = 'lb-score';
@@ -293,6 +294,60 @@
 
   function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Deterministic colored-initial fallback, used whenever a viewer's real
+  // TikTok profile picture isn't available (host-typed play, Test Mode,
+  // or the image URL failing to load) — same pattern used across the
+  // rest of the platform (BLINDLE, FINDLE).
+  const AVATAR_PALETTE = ['#e0699c', '#4fa0c4', '#6faa5c', '#e0a934', '#9c6fd1', '#e0724a', '#3aa6a6', '#c4577a'];
+  function hashString(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  function avatarColorFor(name) { return AVATAR_PALETTE[hashString(name || '?') % AVATAR_PALETTE.length]; }
+  function avatarInitial(name) { const c = String(name || '').trim(); return c ? c[0].toUpperCase() : '?'; }
+
+  function avatarChipHtml(name, avatarUrl, sizePx) {
+    sizePx = sizePx || 20;
+    const initial = escapeHtml(avatarInitial(name));
+    const color = avatarColorFor(name);
+    const title = escapeHtml(name || 'Unknown viewer');
+    if (avatarUrl) {
+      return `<span class="avatarChip" style="width:${sizePx}px;height:${sizePx}px;" title="${title}">` +
+        `<img class="avatarChipImg" alt="" referrerpolicy="no-referrer" src="${escapeHtml(avatarUrl)}" ` +
+        `onerror="this.parentElement.classList.add('avatarChipFallback');this.parentElement.style.background='${color}';this.replaceWith('${initial}')" /></span>`;
+    }
+    return `<span class="avatarChip avatarChipFallback" style="width:${sizePx}px;height:${sizePx}px;background:${color};" title="${title}">${initial}</span>`;
+  }
+
+  // DOM-node version of the same chip, for spots that build real elements
+  // (the guess board rows) instead of innerHTML strings.
+  function buildAvatarNode(name, avatarUrl, sizePx) {
+    const wrap = document.createElement('span');
+    wrap.className = 'avatarChip';
+    wrap.style.width = sizePx + 'px';
+    wrap.style.height = sizePx + 'px';
+    wrap.title = name || 'Unknown viewer';
+    function showFallback() {
+      wrap.innerHTML = '';
+      wrap.classList.add('avatarChipFallback');
+      wrap.style.background = avatarColorFor(name);
+      wrap.textContent = avatarInitial(name);
+    }
+    if (avatarUrl) {
+      const img = document.createElement('img');
+      img.className = 'avatarChipImg';
+      img.alt = '';
+      img.referrerPolicy = 'no-referrer';
+      img.onerror = showFallback;
+      img.src = avatarUrl;
+      wrap.appendChild(img);
+    } else {
+      showFallback();
+    }
+    return wrap;
   }
 
   // --------------------------------------------------------------------
@@ -425,7 +480,8 @@
 
     const userDiv = document.createElement('div');
     userDiv.className = 'attempt-user';
-    userDiv.textContent = attempt.username;
+    userDiv.appendChild(buildAvatarNode(attempt.username, attempt.avatarUrl, 20));
+    userDiv.appendChild(document.createTextNode(attempt.username));
     row.appendChild(userDiv);
 
     const guessSet = document.createElement('div');
@@ -490,7 +546,8 @@
       const quickTag = round.quickSolve ? ' ⚡' : '';
       const winnerRow = document.createElement('div');
       winnerRow.className = 'banner-row banner-row-winner';
-      winnerRow.textContent = `🎉 ${round.solvedBy} got it right!${quickTag}`;
+      winnerRow.appendChild(buildAvatarNode(round.solvedBy, round.solvedByAvatar, 26));
+      winnerRow.appendChild(document.createTextNode(`🎉 ${round.solvedBy} got it right!${quickTag}`));
       roundBanner.appendChild(winnerRow);
 
       // Row 2: the answer and points earned (smaller, supporting detail).
@@ -556,7 +613,7 @@
     if (!list || !list.length) return '<li class="empty">No scores yet</li>';
     const medals = ['🥇', '🥈', '🥉'];
     return list.map((row, i) =>
-      `<li><span class="rank">${medals[i] || '#' + (i + 1)}</span><span>${escapeHtml(row.username)}</span><span>${row.score} pts</span></li>`
+      `<li><span class="rank">${medals[i] || '#' + (i + 1)}</span>${avatarChipHtml(row.username, row.avatarUrl, 22)}<span>${escapeHtml(row.username)}</span><span>${row.score} pts</span></li>`
     ).join('');
   }
 
@@ -568,7 +625,7 @@
       const quickTag = round.quickSolve ? ' ⚡' : '';
       celebrationBody.innerHTML =
         '<div class="celebLabel">🎉 Winner</div>' +
-        `<div class="celebWinnerRow">${escapeHtml(round.solvedBy)}${quickTag}</div>` +
+        `<div class="celebWinnerRow">${avatarChipHtml(round.solvedBy, round.solvedByAvatar, 34)}<span>${escapeHtml(round.solvedBy)}${quickTag}</span></div>` +
         `<div class="celebAnswerRow">${escapeHtml((round.revealAnswer || '').toUpperCase())}</div>` +
         `<div class="celebPoints">+${round.solveBonus} points</div>`;
     } else {

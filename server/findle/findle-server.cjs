@@ -162,6 +162,7 @@ function registerFindle(app, rootIO) {
           length: w.length,
           found: w.found,
           foundBy: w.foundBy,
+          foundByAvatar: w.found ? w.foundByAvatar || null : null,
           cells: w.found ? w.cells : null,
           word: w.found ? w.word : null,
           hint: buildHintString(w),
@@ -183,7 +184,7 @@ function registerFindle(app, rootIO) {
 
   function getTopN(n) {
     return Object.entries(state.leaderboard)
-      .map(([username, v]) => ({ username, score: v.score, name: v.name || username }))
+      .map(([username, v]) => ({ username, score: v.score, name: v.name || username, avatarUrl: v.avatarUrl || null }))
       .sort((a, b) => b.score - a.score)
       .slice(0, n);
   }
@@ -361,15 +362,17 @@ function registerFindle(app, rootIO) {
 
     target.found = true;
     target.foundBy = displayName || username;
+    target.foundByAvatar = knownAvatars.get(username) || null;
     target.points = points;
 
     if (!state.leaderboard[username]) state.leaderboard[username] = { score: 0, name: displayName };
     state.leaderboard[username].score += points;
     state.leaderboard[username].name = displayName || username;
+    state.leaderboard[username].avatarUrl = knownAvatars.get(username) || null;
 
     const comboTag = multiplier > 1 ? ` 🔥 combo x${multiplier}` : "";
     pushFeed({ type: "win", text: `✅ ${target.foundBy} found "${target.word}" (+${points} pts)${comboTag}`, time: Date.now() });
-    io.emit("wordFound", { word: target.word, foundBy: target.foundBy, points, comboCount: g.comboCount, multiplier });
+    io.emit("wordFound", { word: target.word, foundBy: target.foundBy, foundByAvatar: target.foundByAvatar, points, comboCount: g.comboCount, multiplier });
 
     const allFound = g.words.every((w) => w.found);
     if (allFound) {
@@ -411,12 +414,26 @@ function registerFindle(app, rootIO) {
       "author.nickname", "data.nickname", "data.user.nickname",
     ]) || extractUsername(data) || "viewer";
   }
+  function extractAvatar(data) {
+    return getFirst(data, [
+      "user.profilePictureUrl", "user.avatarThumb.urlList.0", "user.avatarMedium.urlList.0",
+      "user.avatarLarger.urlList.0", "user.avatarUrl", "profilePictureUrl", "avatarUrl", "avatarThumb.urlList.0",
+    ]);
+  }
+
+  // Remembers each viewer's most-recently-seen profile picture for the
+  // life of the server process, so the real TikTok avatar can be shown
+  // next to their name on the found-word credit and the leaderboard, not
+  // just on the raw chat message that happened to carry it.
+  const knownAvatars = new Map();
 
   function processIncomingChat(rawData, source) {
     try {
       const username = extractUsername(rawData) || "unknown";
       const displayName = extractDisplayName(rawData);
       const text = extractComment(rawData) || "";
+      const avatarUrl = extractAvatar(rawData);
+      if (avatarUrl) knownAvatars.set(username, avatarUrl);
 
       if (isDuplicateEvent(rawData, username, text)) return;
 

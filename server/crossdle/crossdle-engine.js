@@ -309,11 +309,12 @@ export class GameEngine {
     this._clearTimers();
   }
 
-  _bumpScore(username, delta) {
+  _bumpScore(username, delta, avatarUrl) {
     const key = username.toLowerCase();
-    const existing = this.leaderboard.get(key) || { username, score: 0, solves: 0 };
+    const existing = this.leaderboard.get(key) || { username, score: 0, solves: 0, avatarUrl: null };
     existing.score += delta;
     existing.username = username; // keep latest display casing
+    if (avatarUrl) existing.avatarUrl = avatarUrl; // keep latest known photo, never overwrite with a blank
     this.leaderboard.set(key, existing);
   }
 
@@ -334,7 +335,7 @@ export class GameEngine {
    * result object describing what happened - the actual state change is
    * applied internally and broadcast via onChange.
    */
-  submitGuess(username, rawText) {
+  submitGuess(username, rawText, avatarUrl) {
     if (!this.round || this.round.status !== 'active') return { recognized: false, reason: 'no-active-round' };
 
     const length = this.round.wordLength;
@@ -354,6 +355,7 @@ export class GameEngine {
 
     const attempt = {
       username,
+      avatarUrl: avatarUrl || null,
       guess,
       decoy,
       colors,
@@ -365,17 +367,20 @@ export class GameEngine {
     const key = username.toLowerCase();
     if (!this.round.participants.has(key)) {
       this.round.participants.add(key);
-      this._bumpScore(username, PARTICIPATION_SCORE);
+      this._bumpScore(username, PARTICIPATION_SCORE, avatarUrl);
+    } else if (avatarUrl) {
+      this._bumpScore(username, 0, avatarUrl); // no new points, just refresh their photo
     }
 
     if (isCorrect) {
       const quickSolve = this.round.attempts.length <= QUICK_SOLVE_MAX_ATTEMPTS;
       const bonus = scoreForSolve(this.round.attempts.length, this.round.hints.length, quickSolve);
-      this._bumpScore(username, bonus);
+      this._bumpScore(username, bonus, avatarUrl);
       const entry = this.leaderboard.get(key);
       if (entry) entry.solves = (entry.solves || 0) + 1;
       this.round.solved = true;
       this.round.solvedBy = username;
+      this.round.solvedByAvatar = avatarUrl || null;
       this.round.solveBonus = bonus;
       this.round.quickSolve = quickSolve;
       this._endRound('solved');
@@ -409,6 +414,7 @@ export class GameEngine {
         hints: r.hints,
         solved: r.solved,
         solvedBy: r.solvedBy,
+        solvedByAvatar: r.solvedByAvatar || null,
         solveBonus: r.solveBonus,
         quickSolve: r.quickSolve,
         status: r.status,

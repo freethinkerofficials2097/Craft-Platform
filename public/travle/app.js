@@ -614,7 +614,46 @@
       .replace(/>/g, "&gt;");
   }
 
+  // Deterministic colored-initial fallback, same convention used
+  // platform-wide — shown whenever a viewer's real TikTok profile picture
+  // isn't available (host-typed play, offline mode) or fails to load.
+  const AVATAR_PALETTE = ["#e0699c", "#4fa0c4", "#6faa5c", "#e0a934", "#9c6fd1", "#e0724a", "#3aa6a6", "#c4577a"];
+  function hashString(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+  }
+  function avatarColorFor(name) { return AVATAR_PALETTE[hashString(name || "?") % AVATAR_PALETTE.length]; }
+  function avatarInitial(name) { const c = String(name || "").trim(); return c ? c[0].toUpperCase() : "?"; }
+  function avatarChipHtml(name, avatarUrl, sizePx) {
+    sizePx = sizePx || 16;
+    const initial = escapeHtml(avatarInitial(name));
+    const color = avatarColorFor(name);
+    const title = escapeHtml(name || "Unknown viewer");
+    if (avatarUrl) {
+      return `<span class="avatarChip" style="width:${sizePx}px;height:${sizePx}px;" title="${title}">` +
+        `<img class="avatarChipImg" alt="" referrerpolicy="no-referrer" src="${escapeHtml(avatarUrl)}" ` +
+        `onerror="this.parentElement.classList.add('avatarChipFallback');this.parentElement.style.background='${color}';this.replaceWith('${initial}')" /></span>`;
+    }
+    return `<span class="avatarChip avatarChipFallback" style="width:${sizePx}px;height:${sizePx}px;background:${color};" title="${title}">${initial}</span>`;
+  }
+
+  // Remembers each viewer's most-recently-seen TikTok profile picture for
+  // this browser session, keyed by lowercased name, so it can be shown
+  // next to their name in the feed, leaderboard, and celebration cards —
+  // not just on the raw chat line that happened to carry it. Populated
+  // from the "tiktok-comment" relay below; host-typed guesses (offline
+  // mode, or the manual "Viewer name" box) simply have no entry and fall
+  // back to the colored-initial chip.
+  const avatarsByUser = new Map();
+
   function arrowFor(side) { return side === "start" ? "→" : "←"; }
+
+  function viewerLabelHtml(viewerName) {
+    const label = viewerLabel(viewerName);
+    const avatarUrl = viewerName ? avatarsByUser.get(viewerName.trim().toLowerCase()) : null;
+    return `<span class="viewer">${avatarChipHtml(label, avatarUrl, 16)}${escapeHtml(label)}</span>`;
+  }
 
   function viewerLabel(viewerName) {
     if (viewerName) return viewerName;
@@ -697,7 +736,7 @@
       // visible, not just successful guesses), and additionally surface an
       // inline note next to the host's own input box if this came from
       // manual entry rather than TikTok auto-relay.
-      addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span>: <span class="chat-text">${escapeHtml(String(rawGuess).trim())}</span>`);
+      addFeed(`${viewerLabelHtml(viewerName)}: <span class="chat-text">${escapeHtml(String(rawGuess).trim())}</span>`);
       if (!silent) hostMsg.textContent = `"${String(rawGuess).trim()}" isn't a country name I recognize — check spelling.`;
       return;
     }
@@ -705,7 +744,7 @@
     focusThenRecenter(country);
 
     if (round.used.has(country)) {
-      addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="tag-bad">already on the board</span>`);
+      addFeed(`${viewerLabelHtml(viewerName)} guessed <b>${country}</b> — <span class="tag-bad">already on the board</span>`);
       if (!silent) hostMsg.textContent = `${country} is already on the board.`;
       return;
     }
@@ -726,7 +765,7 @@
       round.guessesUsed++;
       const pts = optimal ? 3 : 1;
       const tag = optimal ? "tag-optimal" : "tag-good";
-      addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="${tag}">bridged the trail! 🎉 (+${pts})</span>`);
+      addFeed(`${viewerLabelHtml(viewerName)} guessed <b>${country}</b> — <span class="${tag}">bridged the trail! 🎉 (+${pts})</span>`);
       if (mode === "live") addPoints(viewerName, pts);
       addSessionPoints(viewerName, pts);
       recordRoundScore(viewerName, pts);
@@ -743,7 +782,7 @@
       const side = connectsStart ? round.start : round.end;
       const tag = optimal ? "tag-optimal" : "tag-good";
       const note = optimal ? "on the optimal path" : "valid, but not the shortest route";
-      addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="${tag}">${note}, connects from ${side} ${arrowFor(connectsStart ? "start" : "end")} (+${pts})</span>`);
+      addFeed(`${viewerLabelHtml(viewerName)} guessed <b>${country}</b> — <span class="${tag}">${note}, connects from ${side} ${arrowFor(connectsStart ? "start" : "end")} (+${pts})</span>`);
       if (mode === "live") addPoints(viewerName, pts);
       addSessionPoints(viewerName, pts);
       recordRoundScore(viewerName, pts);
@@ -760,7 +799,7 @@
       round.floatingOptimal.add(country);
       round.used.add(country);
       round.guessesUsed++;
-      addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="tag-optimal">on the optimal path! (+3) — not connected to the trail yet</span>`);
+      addFeed(`${viewerLabelHtml(viewerName)} guessed <b>${country}</b> — <span class="tag-optimal">on the optimal path! (+3) — not connected to the trail yet</span>`);
       if (mode === "live") addPoints(viewerName, 3);
       addSessionPoints(viewerName, 3);
       recordRoundScore(viewerName, 3);
@@ -782,7 +821,7 @@
       const side = (dStart ?? Infinity) <= (dEnd ?? Infinity) ? round.start : round.end;
       hint = `${best} border${best === 1 ? "" : "s"} away from ${side}`;
     }
-    addFeed(`<span class="viewer">${viewerLabel(viewerName)}</span> guessed <b>${country}</b> — <span class="tag-bad">${hint} (+0)</span>`);
+    addFeed(`${viewerLabelHtml(viewerName)} guessed <b>${country}</b> — <span class="tag-bad">${hint} (+0)</span>`);
     renderRound();
   }
 
@@ -937,6 +976,7 @@
         title: "Round Scorers!",
         rows: entries.map(([name, pts]) => ({
           primary: name,
+          avatarUrl: avatarsByUser.get(name.trim().toLowerCase()) || null,
           primaryLarge: true,
           secondary: `+${pts} pt${pts === 1 ? "" : "s"}`,
         })),
@@ -955,7 +995,7 @@
     window.Celebration.showCard({
       emoji: "🏆",
       title: "All-Time Top Scorer",
-      rows: [{ primary: name, primaryLarge: true, secondary: `${pts} pt${pts === 1 ? "" : "s"}` }],
+      rows: [{ primary: name, avatarUrl: avatarsByUser.get(name.trim().toLowerCase()) || null, primaryLarge: true, secondary: `${pts} pt${pts === 1 ? "" : "s"}` }],
       durationMs: 4000,
     });
   }
@@ -1006,7 +1046,7 @@
     }
     entries.forEach(([name, score], i) => {
       const li = document.createElement("li");
-      li.innerHTML = `<span class="rank">#${i + 1}</span><span class="lb-name">${name}</span><span class="lb-score">${score}</span>`;
+      li.innerHTML = `<span class="rank">#${i + 1}</span>${avatarChipHtml(name, avatarsByUser.get(name.trim().toLowerCase()), 22)}<span class="lb-name">${escapeHtml(name)}</span><span class="lb-score">${score}</span>`;
       leaderboardList.appendChild(li);
     });
   }
@@ -1022,7 +1062,7 @@
     const itemsHtml = entries.map(([name, score], i) => {
       const medal = MEDALS[i] || `#${i + 1}`;
       const cls = MEDAL_CLASS[i] || "";
-      return `<span class="ticker-item ${cls}">${medal}<span class="ticker-name">${name}</span> — ${score}</span>`;
+      return `<span class="ticker-item ${cls}">${medal}${avatarChipHtml(name, avatarsByUser.get(name.trim().toLowerCase()), 16)}<span class="ticker-name">${escapeHtml(name)}</span> — ${score}</span>`;
     }).join("");
     // duplicated once so the CSS animation (translateX -50%) loops seamlessly
     tickerTrack.innerHTML = itemsHtml + itemsHtml;
@@ -1141,7 +1181,8 @@
       processGuess(text, commenter, { silent: true });
       tiktokDrainTimer = setTimeout(drainTiktokQueue, 180);
     }
-    socket.on("tiktok-comment", ({ commenter, text }) => {
+    socket.on("tiktok-comment", ({ commenter, text, avatarUrl }) => {
+      if (avatarUrl && commenter) avatarsByUser.set(commenter.trim().toLowerCase(), avatarUrl);
       tiktokQueue.push({ commenter, text });
       // Only trims during a genuinely huge, sustained flood — high enough
       // that a real guess is exceedingly unlikely to be the one dropped.

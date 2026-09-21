@@ -138,6 +138,18 @@ button:disabled{ opacity:.45; cursor:default; transform:none; }
 .answer-pill.found{ background:rgba(125,196,104,0.14); border-color:var(--findle-leaf); color:var(--findle-leaf-text); }
 .answer-pill .credit{ font-size:10.5px; font-weight:500; color:var(--findle-ink-faint); letter-spacing:normal; }
 
+/* ---- circular viewer avatars: found-word credit, leaderboard, ticker ---- */
+.avatarChip{
+  display:inline-flex; align-items:center; justify-content:center; flex:none;
+  border-radius:50%; overflow:hidden; vertical-align:middle;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.avatarChipImg{ width:100%; height:100%; object-fit:cover; display:block; }
+.avatarChipFallback{
+  font-family:'Manrope',sans-serif; font-weight:800; color:#fff; text-transform:uppercase; user-select:none;
+  font-size:10px;
+}
+
 .leader-row{ display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--findle-line); font-size:13.5px; }
 .leader-row:last-child{ border-bottom:none; }
 .leader-rank{ font-weight:800; width:20px; text-align:center; color:var(--findle-ink-faint); font-family:'Fraunces',serif; flex:none; }
