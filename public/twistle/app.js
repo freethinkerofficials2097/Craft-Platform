@@ -812,7 +812,7 @@ function renderHintLine(g) {
   const n = g.wordLength;
   el.hintLine.innerHTML = g.guessesMade === 0
     ? `Type a <strong>${n}-letter word</strong> in chat — a valid one goes straight onto the board. Type the <strong>secret word</strong> to win!`
-    : `Keep guessing! Any fresh <strong>${n}-letter word</strong> lands on the board. Type the <strong>secret word</strong> to win!`;
+    : "";
 }
 
 const CONCEPT_TEXT = { correct: "Right spot", misplaced: "Wrong spot", absent: "Not in your guess" };
@@ -868,16 +868,10 @@ function renderHeader(state) {
     el.roundLabel.textContent = "TWISTLE";
     el.roundSub.textContent = "waiting to start";
   } else {
-    el.roundLabel.textContent = "Round #" + state.game.roundNumber;
+    el.roundLabel.textContent = "TWISTLE";
     el.roundSub.textContent = "";
   }
-  const active = state.game.status === "live";
-  el.guessBadge.hidden = !active;
-  if (active) {
-    const n = state.game.guessesMade;
-    el.guessBadge.querySelector("span") || (el.guessBadge.innerHTML = "<span></span>");
-    el.guessBadge.querySelector("span").textContent = n === 1 ? "1 guess so far" : n + " guesses so far";
-  }
+  el.guessBadge.hidden = true;
 }
 
 const CONNECTION_LABELS = {
