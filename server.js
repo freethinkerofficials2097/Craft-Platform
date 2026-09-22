@@ -1,6 +1,6 @@
 // ===================================================================
 // PLATFORM ENTRY POINT
-// One always-on server hosting five independent games. Each game keeps
+// One always-on server hosting six independent games. Each game keeps
 // its own files and its own Socket.IO namespace (or WebSocket path, for
 // BLINDLE), so they never share state or event names — this file just
 // wires up Express + Socket.IO/HTTP once and lets each game register
@@ -11,7 +11,7 @@
 //   /blindle/   - Blindle          (its own WebSocket path /blindle-ws)
 //   /findle     - Findle Live      (Socket.IO namespace /findle)
 //   /crossdle/  - CROSSDLE Live    (Socket.IO namespace /crossdle)
-//   /twistle/   - TWISTLE          (Socket.IO namespace /twistle)
+//   /twistle/   - TWISTLE Live     (Socket.IO namespace /twistle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -59,9 +59,10 @@ process.on("unhandledRejection", (err) => {
 });
 
 // Serves /public/index.html at "/", and transparently serves
-// /public/flagle/*, /public/travle/*, and /public/crossdle/* at their
-// matching URLs, plus the shared /shared/* theme + celebration assets
-// every game links to — one static middleware covers the whole platform.
+// /public/flagle/*, /public/travle/*, /public/crossdle/*, and
+// /public/twistle/* at their matching URLs, plus the shared /shared/*
+// theme + celebration assets every game links to — one static
+// middleware covers the whole platform.
 app.use(express.static(path.join(__dirname, "public")));
 
 // Platform-wide Gift/Like/Share alerts + diagnostics + host Test Event
@@ -74,6 +75,10 @@ registerFlagle(io);
 registerTravle(io);
 registerFindle(app, io);
 await registerCrossdle(app, io);
+
+// TWISTLE loads its own ~370,000-word guess dictionary at startup (the
+// same BLINDLE fetches), same as CROSSDLE above — awaited so it's ready
+// before the server starts accepting connections.
 await registerTwistle(app, io);
 
 // Blindle ships as a self-mounting module: it serves its own static

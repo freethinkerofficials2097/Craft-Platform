@@ -4,7 +4,7 @@ This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
 covers all six games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
-CROSSDLE Live, and TWISTLE).
+CROSSDLE Live, TWISTLE).
 
 ---
 
@@ -49,11 +49,10 @@ CROSSDLE Live, and TWISTLE).
 5. Wait for the upload to finish, scroll down, and click the green
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
-   `public/travle/`, `public/crossdle/`, `public/twistle/`,
-   `server/blindle/`, `server/findle/`, and `server/twistle/` as real
-   folders — if anything landed flat with slashes in the filename
-   instead, open it and rename it with the full path to move it into
-   place.
+   `public/travle/`, `public/crossdle/`, `public/twistle/`, `server/blindle/`,
+   `server/findle/`, and `server/twistle/` as real folders — if anything
+   landed flat with slashes in the filename instead, open it and rename it
+   with the full path to move it into place.
 
 ---
 
@@ -114,8 +113,8 @@ still works before relying on it live.
 
 ### Testing Gift/Like/Share alerts
 
-Open any game's **Settings** (the ⚙️ button; in CROSSDLE and TWISTLE it's
-the **Host Controls** button) and scroll to **Live event tools**. The **📊 Live statistics**
+Open any game's **Settings** (the ⚙️ button; in CROSSDLE it's the **Host**
+button) and scroll to **Live event tools**. The **📊 Live statistics**
 box shows running Total Gifts / Coins / Shares / Likes counters, and the
 **🧪 Test alerts** box has buttons to fire a fake Gift, Share, Milestone,
 or Room Milestone — use these to see the alert animations before you're
@@ -134,14 +133,14 @@ never get in the way of the game while you're streaming.)
   recognized (e.g. a single word matching the round's length).
 - **Something looks broken** → each game is built so one bad message
   never crashes the whole server — everyone else's game keeps running.
-  Some games (Blindle, CROSSDLE, Findle) have an on-screen diagnostics
-  panel that shows exactly what's arriving and any recent errors.
+  Some games (Blindle, CROSSDLE, Findle, TWISTLE) have an on-screen
+  diagnostics panel that shows exactly what's arriving and any recent
+  errors.
 - **A leaderboard reset unexpectedly** → on Render's free tier, a full
   redeploy always starts fresh; ordinary restarts preserve leaderboards
-  that are saved to disk (CROSSDLE, TWISTLE). In-memory-only leaderboards
-  (Flagle, TRAVLE, Blindle, Findle) reset on every server restart. Ask if
-  you'd like persistent storage added to one of those later — it's a
-  small add-on.
+  that are saved to disk (CROSSDLE). In-memory-only leaderboards (Flagle,
+  TRAVLE, Blindle, Findle, TWISTLE) reset on every server restart. Ask if
+  you'd like persistent storage added later — it's a small add-on.
 
 ---
 
@@ -162,9 +161,9 @@ Alongside `deploy`, you were given a second folder called `reupload`.
 It's **not** meant to be deployed — it's the same project with every file
 renamed with a game-specific prefix (`flagle-*`, `travle-*`, `blindle-*`,
 `findle-*`, `crossdle-*`, `twistle-*`, `shared-*`, `root-*`) so nothing
-collides if you come back later and want to hand individual files back
-for edits or add another game. Use `deploy` to actually run the site;
-use `reupload` only when you need to share files back for more work.
+collides if you come back later and want to hand individual files back for
+edits or add a seventh game. Use `deploy` to actually run the site; use
+`reupload` only when you need to share files back for more work.
 
 ---
 

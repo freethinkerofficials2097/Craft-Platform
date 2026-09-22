@@ -1,4 +1,7 @@
 import { EventEmitter } from 'events';
+import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from './twistle-answers.js';
+import { isValidGuessWord, dictionaryState } from './twistle-dictionary.js';
+import { buildDifficultyIndex, getWordsForDifficulty } from './twistle-difficulty.js';
 
 // ===========================================================================
 // TWISTLE - the rules, in one place
@@ -22,30 +25,49 @@ import { EventEmitter } from 'events';
 // * The colours of the guessed tiles stay hidden until the round is over.
 //
 // HOW IT PLAYS ON TIKTOK LIVE
-// * Every valid word of the round's length typed in chat that hasn't been guessed yet goes
-//   straight onto the board as a new row, with no vote and no waiting.
+// * Every valid word of the round's length typed in chat that hasn't been
+//   guessed yet goes straight onto the board as a new row, with no vote and
+//   no waiting.
 // * Anyone who types the SECRET word wins the round instantly.
 // * There's no timer and no cap on the number of guesses: the round keeps
 //   going until someone solves it, the host reveals the answer, or the host
 //   skips the round.
 //
-// PLATFORM INTEGRATION (points/leaderboard)
-// * Landing a fresh, valid guess on the board earns a small "participation"
-//   point - same idea as CROSSDLE's leaderboard, so chat is rewarded just
-//   for playing along, not only for winning.
-// * Solving the round earns a bigger bonus, scaled up for longer (harder)
-//   secret words and scaled down the more guesses were already on the board
-//   when it was solved (so a fast, early solve is worth more than a lucky
-//   guess on row 40). Numbers are kept small on purpose - a live chat reads
-//   "24 points" faster than "2,400".
-// * The leaderboard itself (username -> { score, wins, avatarUrl }) lives on
-//   the engine and is persisted to disk by twistle-server.js, exactly the
-//   way CROSSDLE persists its own leaderboard.
+// WORD BANK, DIFFICULTY & SCORING - ported straight from BLINDLE
+// ---------------------------------------------------------------------------
+// * Secret words are drawn from the same curated ANSWER_WORDS bank BLINDLE
+//   uses (twistle-answers.js, an identical copy) - always a real,
+//   recognizable English word for every length from 4 to 20 letters.
+// * Guesses are checked against the same enormous (370,000+ word) dictionary
+//   BLINDLE fetches at startup (twistle-dictionary.js) - any real English
+//   word of the round's length is accepted onto the board, not just words
+//   from the curated answer bank.
+// * The same 4-factor difficulty engine (twistle-difficulty.js) scores every
+//   candidate secret word and buckets it into Normal / Medium / Hard, and
+//   the host picks which tier (or Random, which skips the filter entirely)
+//   is in play - exactly like BLINDLE's difficulty selector.
+// * Winning is worth WIN_POINTS, a valid-but-wrong guess is worth
+//   GUESS_POINTS, both tallied into a this-round leaderboard and an
+//   all-time leaderboard (Live mode only) - the same 10x ratio BLINDLE uses.
 // ===========================================================================
 
-export const MIN_LENGTH = 4;
-export const MAX_LENGTH = 20;
+export const MIN_LENGTH = MIN_WORD_LENGTH;
+export const MAX_LENGTH = MAX_WORD_LENGTH;
 export const DEFAULT_LENGTH_CONFIG = { mode: 'fixed', fixed: 5, min: 4, max: 8 };
+export const DEFAULT_DIFFICULTY = 'normal';
+
+// Points awarded per guess, same ratio as BLINDLE (solving is worth 10x a
+// plain wrong-but-valid guess, which still earns a small participation point).
+export const WIN_POINTS = 10;
+export const GUESS_POINTS = 1;
+
+const DEFAULT_LEADERBOARD_SHOW_SECONDS = 3;
+const DEFAULT_AUTO_CONTINUE_DELAY_SECONDS = 3;
+// A win walks through 3 celebration stages client-side (winner -> this
+// round's leaderboard -> all-time leaderboard), each shown for
+// leaderboardShowSeconds - see shared/celebration.js on the client. A
+// reveal/skip with no winner has no celebration at all.
+const CELEBRATION_STAGE_COUNT = 3;
 
 /**
  * Tidy up a word-length setting from the host.
@@ -64,9 +86,14 @@ export function normalizeLengthConfig(cfg = {}, base = DEFAULT_LENGTH_CONFIG) {
   if (min > max) [min, max] = [max, min];
   return { mode, fixed: clampLen(cfg.fixed ?? base.fixed, base.fixed), min, max };
 }
+
+export function normalizeDifficulty(value, fallback = DEFAULT_DIFFICULTY) {
+  return ['normal', 'medium', 'hard', 'random'].includes(value) ? value : fallback;
+}
+
 export const CONCEPTS = ['correct', 'misplaced', 'absent'];
 // ---------------------------------------------------------------------------
-// Symbols. Ids must match the SVG symbols drawn in public/twistle/app.js.
+// Symbols. Ids must match the SVG symbols drawn in public/twistle/index.html.
 //   hue   - the symbol's main colour as an angle on the colour wheel (0-360).
 //           null = white/neutral.
 //   tone  - 'light' or 'mid'. Two light symbols are never used together
@@ -113,29 +140,6 @@ export const SYMBOL_TRIPLES = (() => {
 })();
 
 const STATUS = { IDLE: 'idle', ACTIVE: 'active', REVEAL: 'reveal' };
-const ROUND_GAP_MS = 6500; // pause between rounds so the reveal is readable
-
-// ---------------------------------------------------------------------------
-// Scoring (leaderboard points). Deliberately small numbers - a live chat
-// reads "24 points" faster than "2,400", and small round-to-round swings
-// keep the leaderboard feeling meaningful instead of noisy. Mirrors the
-// shape of CROSSDLE's scoring engine for platform-wide consistency.
-// ---------------------------------------------------------------------------
-export const PARTICIPATION_SCORE = 1;   // for landing ANY fresh, valid guess on the board
-const SOLVE_BASE_SCORE = 14;            // base bonus for solving the round
-const SOLVE_SCORE_STEP = 1;             // minus this per guess already on the board before the solve
-const SOLVE_SCORE_MIN = 6;              // solving is always worth at least this many points
-const LENGTH_BONUS_PER_LETTER = 1;      // longer secret words are worth more (0 extra at 4 letters)
-const QUICK_SOLVE_BONUS = 5;            // solved with 2 or fewer guesses already on the board
-const QUICK_SOLVE_MAX_ROWS = 2;
-
-function scoreForSolve(length, rowsBeforeSolve) {
-  const lengthBonus = Math.max(0, length - MIN_LENGTH) * LENGTH_BONUS_PER_LETTER;
-  let score = SOLVE_BASE_SCORE + lengthBonus - SOLVE_SCORE_STEP * rowsBeforeSolve;
-  score = Math.max(SOLVE_SCORE_MIN, score);
-  if (rowsBeforeSolve <= QUICK_SOLVE_MAX_ROWS) score += QUICK_SOLVE_BONUS;
-  return score;
-}
 
 // ---------------------------------------------------------------------------
 // Small helpers
@@ -229,73 +233,98 @@ export function evaluateGuess(answer, guess) {
 
 export class GameEngine extends EventEmitter {
   /**
-   * @param {string[]} answers     words that can be the secret word (any mix of lengths 4-20)
-   * @param {string[]} validWords  extra words that are accepted as guesses
-   * @param {object}   lengthConfig  { mode, fixed, min, max } - see normalizeLengthConfig
-   * @param {Array}    savedLeaderboard  previously-persisted leaderboard rows to restore
+   * @param {object} lengthConfig    { mode, fixed, min, max } - see normalizeLengthConfig
+   * @param {string}  difficulty     'normal' | 'medium' | 'hard' | 'random'
+   * @param {string[]} customWords   extra host-added secret words, on top of ANSWER_WORDS
    */
-  constructor(answers = [], validWords = [], lengthConfig = {}, savedLeaderboard = []) {
+  constructor(lengthConfig = {}, difficulty = DEFAULT_DIFFICULTY, customWords = []) {
     super();
-    const clean = (list) => [...new Set(
-      (Array.isArray(list) ? list : [])
-        .map((w) => String(w?.answer ?? w ?? '').toUpperCase().trim())
-        .filter((w) => /^[A-Z]{4,20}$/.test(w))
-    )];
-    this.answers = clean(answers);
-    if (!this.answers.length) this.answers = ['SHAKE', 'THICK', 'SHOOK', 'STARE', 'SOLID'];
-    this.valid = new Set([...this.answers, ...clean(validWords)]);
-    this._indexAnswers();
+    this.difficultyIndex = buildDifficultyIndex(ANSWER_WORDS);
+    this.customWords = new Set();
+    this._answersByLength = null; // rebuilt lazily whenever custom words change
+    this.addCustomWords(customWords, { silent: true });
 
     this.config = normalizeLengthConfig(lengthConfig);
+    this.difficulty = normalizeDifficulty(difficulty);
     this.usedRecently = new Map(); // length -> recently used secret words of that length
     this.lastLength = null;
     this.roundNumber = 0;
 
+    this.mode = 'offline'; // 'live' | 'test' | 'offline' - only 'live' banks points
     this.status = STATUS.IDLE;
     this.current = null;
     this.nextRoundTimeout = null;
 
-    // -------------------------------------------------------------------
-    // Leaderboard: username (lowercased) -> { username, displayName, score, wins, avatarUrl }
-    // -------------------------------------------------------------------
-    this.leaderboard = new Map();
-    for (const row of Array.isArray(savedLeaderboard) ? savedLeaderboard : []) {
-      const key = String(row?.username || '').toLowerCase().trim();
-      if (!key) continue;
-      this.leaderboard.set(key, {
-        username: row.username,
-        displayName: row.displayName || row.username,
-        score: Number(row.score) || 0,
-        wins: Number(row.wins) || 0,
-        avatarUrl: row.avatarUrl || null,
-      });
-    }
+    // Live-mode scoring, mirroring BLINDLE.
+    this.roundScores = new Map();
+    this.totalScores = new Map();
+    this.leaderboardShowSeconds = DEFAULT_LEADERBOARD_SHOW_SECONDS;
+    this.autoContinue = true;
+    this.autoContinueDelaySeconds = DEFAULT_AUTO_CONTINUE_DELAY_SECONDS;
   }
 
   // -------------------------------------------------------------------
-  // Word bank
+  // Word bank - ANSWER_WORDS (BLINDLE's curated list) plus any host-added
+  // custom words layered on top, indexed by length exactly like BLINDLE.
   // -------------------------------------------------------------------
 
-  get wordBankSize() { return this.answers.length; }
-
-  _indexAnswers() {
-    this.byLength = new Map();
-    for (const w of this.answers) {
-      if (!this.byLength.has(w.length)) this.byLength.set(w.length, []);
-      this.byLength.get(w.length).push(w);
+  _rebuildAnswersByLength() {
+    // Secret words are compared uppercase against guesses (see
+    // parseGuess/handleGuess), but ANSWER_WORDS/the difficulty index are
+    // lowercase (BLINDLE's own convention) - keep an uppercase bank for
+    // picking/matching, and use lowercase only where BLINDLE's own helpers
+    // (difficulty scoring, dictionary lookups) expect it.
+    const byLength = new Map();
+    for (const [lenStr, words] of Object.entries(ANSWER_WORDS)) {
+      byLength.set(Number(lenStr), words.map((w) => w.toUpperCase()));
     }
+    for (const w of this.customWords) {
+      const len = w.length;
+      if (!byLength.has(len)) byLength.set(len, []);
+      if (!byLength.get(len).includes(w)) byLength.get(len).push(w);
+    }
+    this._answersByLength = byLength;
+    return byLength;
+  }
+
+  get answersByLength() {
+    if (!this._answersByLength) this._rebuildAnswersByLength();
+    return this._answersByLength;
   }
 
   /** Lengths that have at least one secret word, e.g. [4, 5, 6, ...]. */
   availableLengths() {
-    return [...this.byLength.keys()].sort((a, b) => a - b);
+    return [...this.answersByLength.keys()].sort((a, b) => a - b);
   }
 
-  /** How many secret words there are for each length: { 4: 669, 5: 885, ... } */
+  get wordBankSize() {
+    let total = 0;
+    for (const words of this.answersByLength.values()) total += words.length;
+    return total;
+  }
+
+  /** How many secret words there are for each length: { 4: 74, 5: 79, ... } */
   lengthCounts() {
     const out = {};
-    for (const n of this.availableLengths()) out[n] = this.byLength.get(n).length;
+    for (const n of this.availableLengths()) out[n] = this.answersByLength.get(n).length;
     return out;
+  }
+
+  addCustomWords(list, { silent } = {}) {
+    let added = false;
+    for (const raw of Array.isArray(list) ? list : []) {
+      const word = String(raw?.answer ?? raw ?? '').toUpperCase().trim();
+      if (/^[A-Z]{4,20}$/.test(word) && !this.customWords.has(word)) {
+        this.customWords.add(word);
+        added = true;
+      }
+    }
+    if (added) this._answersByLength = null; // force a rebuild on next read
+    if (added && !silent) {
+      this.emit('wordBankUpdated', this.wordBankSize);
+      this.emit('stateChanged', this.getPublicState());
+    }
+    return added;
   }
 
   addWord(entry) {
@@ -303,24 +332,30 @@ export class GameEngine extends EventEmitter {
     if (!/^[A-Z]{4,20}$/.test(answer)) {
       throw new Error(`A Twistle word must be ${MIN_LENGTH}-${MAX_LENGTH} letters (A-Z, no spaces).`);
     }
-    if (!this.answers.includes(answer)) {
-      this.answers.push(answer);
-      this._indexAnswers();
-    }
-    this.valid.add(answer);
-    this.emit('wordBankUpdated', this.answers.length);
-    this.emit('stateChanged', this.getPublicState());
+    this.addCustomWords([answer]);
     return { answer };
   }
 
   /** A familiar word of the current round's length, used by Test Mode for fake guesses. */
   randomValidWord(length = this.current?.length) {
-    const list = this.byLength.get(length) || this.answers;
-    return list[Math.floor(Math.random() * list.length)];
+    const list = this.answersByLength.get(length) || [];
+    if (list.length) return list[Math.floor(Math.random() * list.length)];
+    // Fall back to any real dictionary word of that length, if the curated
+    // bank happens to have nothing there.
+    return null;
+  }
+
+  /** True if `word` (already uppercased) would be accepted as a guess: the
+   *  round's own secret word, a curated answer-bank word, or any real word
+   *  in the 370,000+ word dictionary BLINDLE also uses. */
+  isAcceptedGuess(word) {
+    if (this.current && word === this.current.answer) return true;
+    return isValidGuessWord(word.toLowerCase());
   }
 
   // -------------------------------------------------------------------
-  // Word-length setting (host chooses fixed or a random range)
+  // Word-length + difficulty settings (host chooses fixed/random length,
+  // and Normal/Medium/Hard/Random difficulty - exactly like BLINDLE).
   // -------------------------------------------------------------------
 
   /** Change the word-length setting. It takes effect from the next round. */
@@ -331,7 +366,34 @@ export class GameEngine extends EventEmitter {
     return this.config;
   }
 
-  /** The lengths a new round may use under the current setting (only lengths that have words). */
+  setDifficulty(value) {
+    this.difficulty = normalizeDifficulty(value, this.difficulty);
+    this.emit('stateChanged', this.getPublicState());
+    return this.difficulty;
+  }
+
+  setMode(mode) {
+    if (['live', 'test', 'offline'].includes(mode)) {
+      this.mode = mode;
+      this.emit('stateChanged', this.getPublicState());
+    }
+    return this.mode;
+  }
+
+  setTiming({ leaderboardShowSeconds, autoContinue, autoContinueDelaySeconds } = {}) {
+    if (leaderboardShowSeconds !== undefined) {
+      const v = Number(leaderboardShowSeconds);
+      this.leaderboardShowSeconds = Number.isFinite(v) ? Math.min(15, Math.max(1, Math.round(v))) : this.leaderboardShowSeconds;
+    }
+    if (typeof autoContinue === 'boolean') this.autoContinue = autoContinue;
+    if (autoContinueDelaySeconds !== undefined) {
+      const v = Number(autoContinueDelaySeconds);
+      this.autoContinueDelaySeconds = Number.isFinite(v) ? Math.min(120, Math.max(2, Math.round(v))) : this.autoContinueDelaySeconds;
+    }
+    this.emit('stateChanged', this.getPublicState());
+  }
+
+  /** The lengths a new round may use under the current length + difficulty setting. */
   _allowedLengths() {
     const avail = this.availableLengths();
     const { mode, fixed, min, max } = this.config;
@@ -347,42 +409,6 @@ export class GameEngine extends EventEmitter {
     // In random mode, avoid the same length twice in a row when there's a choice.
     const options = allowed.length > 1 ? allowed.filter((n) => n !== this.lastLength) : allowed;
     return options[Math.floor(Math.random() * options.length)];
-  }
-
-  // -------------------------------------------------------------------
-  // Leaderboard
-  // -------------------------------------------------------------------
-
-  /** Add (or subtract) points for a viewer, and remember their latest photo/display name. */
-  _bumpScore(username, displayName, delta, avatarUrl) {
-    const key = String(username || '').toLowerCase().trim();
-    if (!key) return;
-    const existing = this.leaderboard.get(key) || {
-      username,
-      displayName: displayName || username,
-      score: 0,
-      wins: 0,
-      avatarUrl: null,
-    };
-    existing.score += delta;
-    if (displayName) existing.displayName = displayName;
-    if (avatarUrl) existing.avatarUrl = avatarUrl;
-    this.leaderboard.set(key, existing);
-    this.emit('leaderboardChanged', this.getLeaderboardTop(50));
-    return existing;
-  }
-
-  getLeaderboardTop(n = 10) {
-    return [...this.leaderboard.values()]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, n)
-      .map((row) => ({ name: row.displayName || row.username, score: row.score, wins: row.wins, avatarUrl: row.avatarUrl || null }));
-  }
-
-  resetLeaderboard() {
-    this.leaderboard.clear();
-    this.emit('leaderboardChanged', []);
-    this.emit('stateChanged', this.getPublicState());
   }
 
   // -------------------------------------------------------------------
@@ -411,6 +437,16 @@ export class GameEngine extends EventEmitter {
     if (this.status === STATUS.ACTIVE && this.current) this._endRound('skipped', null);
   }
 
+  resetRoundLeaderboard() {
+    this.roundScores.clear();
+    this.emit('stateChanged', this.getPublicState());
+  }
+
+  resetTotalLeaderboard() {
+    this.totalScores.clear();
+    this.emit('stateChanged', this.getPublicState());
+  }
+
   _clearTimers() {
     if (this.nextRoundTimeout) clearTimeout(this.nextRoundTimeout);
     this.nextRoundTimeout = null;
@@ -421,13 +457,27 @@ export class GameEngine extends EventEmitter {
   // -------------------------------------------------------------------
 
   _pickWord(length) {
-    const all = this.byLength.get(length);
+    // Difficulty-filtered pool first (same 4-factor engine BLINDLE uses).
+    // this.answersByLength is uppercase (secret words are matched against
+    // uppercased guesses - see handleGuess), but the difficulty index is
+    // keyed on BLINDLE's own lowercase words, so filter in lowercase and
+    // map back to the uppercase form afterwards.
+    const upperPool = this.answersByLength.get(length) || [];
+    const lowerToUpper = new Map(upperPool.map((w) => [w.toLowerCase(), w]));
+    const lowerCandidates = getWordsForDifficulty(
+      { [length]: [...lowerToUpper.keys()] },
+      this.difficultyIndex,
+      length,
+      this.difficulty
+    );
+    const filtered = lowerCandidates.map((w) => lowerToUpper.get(w)).filter(Boolean);
+    const pool = filtered.length ? filtered : upperPool;
     const used = this.usedRecently.get(length) || [];
-    const pool = all.filter((w) => !used.includes(w));
-    const source = pool.length ? pool : all;
+    const fresh = pool.filter((w) => !used.includes(w));
+    const source = fresh.length ? fresh : pool;
     const word = source[Math.floor(Math.random() * source.length)];
     used.push(word);
-    if (used.length > Math.min(150, Math.floor(all.length / 2))) used.shift();
+    if (used.length > Math.min(150, Math.max(1, Math.floor(pool.length / 2)))) used.shift();
     this.usedRecently.set(length, used);
     return word;
   }
@@ -448,7 +498,7 @@ export class GameEngine extends EventEmitter {
     this.current = {
       answer,
       length,
-      symbolMap,        // { correct: 'sun', misplaced: 'drop', absent: 'heart' } - secret until the reveal
+      symbolMap,        // { correct: 'star', misplaced: 'drop', absent: 'heart' } - secret until the reveal
       rows: [],          // guesses, in the order they landed on the board
       guessed: new Set(), // words already on the board, so nobody can repeat one
       startedAt: Date.now(),
@@ -457,16 +507,17 @@ export class GameEngine extends EventEmitter {
       over: false,
     };
     this.status = STATUS.ACTIVE;
+    this.roundScores.clear();
     this.emit('roundStarted', this.getPublicState());
     this.emit('stateChanged', this.getPublicState());
   }
 
-  _scheduleNextRound() {
+  _scheduleNextRound(delayMs) {
     if (this.nextRoundTimeout) clearTimeout(this.nextRoundTimeout);
     this.nextRoundTimeout = setTimeout(() => {
       this.nextRoundTimeout = null;
       if (this.status === STATUS.REVEAL) this._startRound(); // only continue if the game hasn't been stopped
-    }, ROUND_GAP_MS);
+    }, delayMs);
   }
 
   _endRound(reason, winner) {
@@ -476,9 +527,41 @@ export class GameEngine extends EventEmitter {
     c.reason = reason;
     c.winner = winner;
     this.status = STATUS.REVEAL;
-    this.emit('roundEnded', { reason, answer: c.answer, length: c.length, winner, leaderboard: this.getLeaderboardTop(10) });
+    this.emit('roundEnded', {
+      reason,
+      answer: c.answer,
+      winner,
+      legend: { ...c.symbolMap },
+      roundLeaderboard: this.getLeaderboard(this.roundScores),
+      totalLeaderboard: this.getLeaderboard(this.totalScores),
+    });
     this.emit('stateChanged', this.getPublicState());
-    this._scheduleNextRound();
+
+    if (this.autoContinue) {
+      // A win walks through the full 3-stage celebration (winner -> round
+      // leaderboard -> all-time leaderboard) on the client before the next
+      // round starts, so the server-side gap must never cut it short. A
+      // reveal/skip has no celebration and just uses the plain gap.
+      const celebrationMs = reason === 'guessed' ? this.leaderboardShowSeconds * CELEBRATION_STAGE_COUNT * 1000 : 0;
+      this._scheduleNextRound(celebrationMs + this.autoContinueDelaySeconds * 1000);
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Scoring / leaderboards - Live mode only, same points as BLINDLE.
+  // -------------------------------------------------------------------
+
+  _awardPoints(name, points) {
+    if (this.mode !== 'live' || !name) return;
+    this.roundScores.set(name, (this.roundScores.get(name) || 0) + points);
+    this.totalScores.set(name, (this.totalScores.get(name) || 0) + points);
+  }
+
+  getLeaderboard(map) {
+    return [...map.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, score]) => ({ name, score }));
   }
 
   // -------------------------------------------------------------------
@@ -496,33 +579,30 @@ export class GameEngine extends EventEmitter {
     if (!word) return null;
 
     const name = displayName || username || 'viewer';
-    const rowsBeforeThisGuess = c.rows.length;
 
     // The secret word always wins, no matter how many guesses are already on the board.
     if (word === c.answer) {
-      const points = scoreForSolve(c.length, rowsBeforeThisGuess);
-      const entry = this._bumpScore(username || name, name, points, avatarUrl);
-      if (entry) entry.wins += 1;
-      const winner = { name, avatarUrl: avatarUrl || null, points };
-      this._endRound('guessed', winner);
-      return { correct: true, name, points };
+      this._awardPoints(name, WIN_POINTS);
+      const points = this.mode === 'live' ? WIN_POINTS : null;
+      this._endRound('guessed', { name, points, avatarUrl });
+      return { correct: true, name };
     }
 
-    if (!this.valid.has(word)) return { rejected: 'not-a-word', word };
+    if (!this.isAcceptedGuess(word)) return { rejected: 'not-a-word', word };
     if (c.guessed.has(word)) return { rejected: 'already-played', word };
 
     // A fresh, valid guess that doesn't conflict with anything already on the
-    // board goes straight in as the next row - no vote, no waiting - and
-    // earns a small participation point on the leaderboard.
+    // board goes straight in as the next row - no vote, no waiting.
     const { states, symbols } = evaluateGuess(c.answer, word);
     c.guessed.add(word);
     c.rows.push({
       word,
       guessedBy: name,
+      avatarUrl,
       states,
       symbols: symbols.map((concept) => c.symbolMap[concept]),
     });
-    this._bumpScore(username || name, name, PARTICIPATION_SCORE, avatarUrl);
+    this._awardPoints(name, GUESS_POINTS);
 
     this.emit('rowAdded', { word, name });
     this.emit('stateChanged', this.getPublicState());
@@ -535,14 +615,20 @@ export class GameEngine extends EventEmitter {
 
   getPublicState() {
     const base = {
+      mode: this.mode,
       status: this.status,
       roundNumber: this.roundNumber,
-      wordBankSize: this.answers.length,
+      wordBankSize: this.wordBankSize,
+      difficulty: this.difficulty,
       // Length of the current round's word (or, before a game starts, the fixed length - or null for a random range).
       wordLength: this.current ? this.current.length : (this.config.mode === 'fixed' ? this.config.fixed : null),
       config: { ...this.config },
       lengthCounts: this.lengthCounts(),
-      leaderboard: this.getLeaderboardTop(10),
+      leaderboardShowSeconds: this.leaderboardShowSeconds,
+      autoContinue: this.autoContinue,
+      autoContinueDelaySeconds: this.autoContinueDelaySeconds,
+      roundLeaderboard: this.getLeaderboard(this.roundScores),
+      totalLeaderboard: this.getLeaderboard(this.totalScores),
     };
     if (!this.current) return { ...base, rows: [] };
 
@@ -553,6 +639,7 @@ export class GameEngine extends EventEmitter {
     const rows = c.rows.map((r) => ({
       word: r.word,
       guessedBy: r.guessedBy,
+      avatarUrl: r.avatarUrl || null,
       symbols: r.symbols,
       ...(revealed ? { states: r.states } : {}),
     }));
@@ -566,6 +653,15 @@ export class GameEngine extends EventEmitter {
       winner: revealed ? c.winner : null,
       reason: revealed ? c.reason : null,
       legend: revealed ? { ...c.symbolMap } : null,
+    };
+  }
+
+  /** Diagnostics helper: is the underlying 370k-word dictionary loaded yet, or on the small fallback? */
+  getDictionaryInfo() {
+    return {
+      source: dictionaryState.source,
+      wordCount: dictionaryState.wordCount,
+      loading: dictionaryState.loading,
     };
   }
 }

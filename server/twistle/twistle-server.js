@@ -1,427 +1,348 @@
-// ===================================================================
+// ============================================================================
 // TWISTLE — game module
-// Registered on its own Socket.IO namespace ("/twistle"), on the platform's
-// shared Express app + Socket.IO server + HTTP server, the same pattern
-// used by Flagle, TRAVLE, Findle and CROSSDLE (see server.js at the repo
-// root). Ported from Twistle's original standalone server.js — the game
-// rules, symbols and word lists are untouched; what changed is everything
-// around them: no more owning its own app/http/io, host-key handling
-// mirrors the platform's shared EulerStream key, gift/like/share alerts
-// go through the platform's Engagement hub, and a leaderboard/points
-// system (previously missing) now persists the same way CROSSDLE's does.
-// ===================================================================
+// Registered on its own Socket.IO namespace ("/twistle"), following the same
+// pattern as Flagle/TRAVLE/Findle/CROSSDLE, so its events never cross paths
+// with any other game on this platform.
+//
+// The secret-word mechanic (symbols, per-letter clues) is entirely Twistle's
+// own — see twistle-engine.js. What's ported straight from BLINDLE:
+//   - the curated word bank + difficulty engine (which word gets picked)
+//   - the 370,000+ word guess dictionary (which guesses are accepted)
+//   - the points/leaderboard system (Live mode only, 10/1 win/guess points)
+//   - the Live / Test / Offline mode split every other game on this
+//     platform already uses
+// ============================================================================
 
-import fs from 'fs';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
-import { GameEngine, SYMBOL_POOL, MIN_LENGTH, MAX_LENGTH, normalizeLengthConfig } from './twistle-engine.js';
-import { Engagement } from '../engagement/engagement-hub.js';
+
+import {
+  GameEngine,
+  SYMBOL_POOL,
+  MIN_LENGTH,
+  MAX_LENGTH,
+  normalizeLengthConfig,
+  normalizeDifficulty,
+} from './twistle-engine.js';
+import { loadDictionary, dictionaryState } from './twistle-dictionary.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** Run any function safely - log and continue instead of crashing the shared server. */
-function safe(label, fn) {
-  return (...args) => {
-    try {
-      return fn(...args);
-    } catch (err) {
-      console.error(`[twistle:SAFE-CATCH] Error in ${label}:`, err);
-      return undefined;
-    }
-  };
-}
+const MAX_CONNECT_ATTEMPTS = 3;
+const BACKOFF_MS = [2000, 4000, 8000];
 
-export async function registerTwistle(app, rootIo, options = {}) {
-  // There is intentionally no host password, matching Twistle's original
-  // design — Host Controls (the gear icon) are open to anyone with the
-  // page open, same trust model as every other game's host controls on
-  // this platform (see root README).
-  const DEFAULT_TIKTOK_USERNAME = process.env.DEFAULT_TIKTOK_USERNAME || '';
-  // Twistle originally read its own SIGN_API_KEY env var; server/env-bridge.js
-  // (imported first in server.js) already mirrors EULERSTREAM_API_KEY <->
-  // TIKTOK_SIGN_API_KEY onto each other, so accept all three names here —
-  // whichever one the host set on Render, Twistle picks it up too.
-  const ENV_SIGN_API_KEY = process.env.SIGN_API_KEY || process.env.EULERSTREAM_API_KEY || process.env.TIKTOK_SIGN_API_KEY || '';
+export async function registerTwistle(app, rootIo) {
+  const SIGN_API_KEY =
+    process.env.EULERSTREAM_API_KEY || process.env.TIKTOK_SIGN_API_KEY || process.env.SIGN_API_KEY || '';
+  const CUSTOM_WORDS_FILE = path.join(__dirname, '..', '..', 'data', 'twistle-custom-words.json');
+  const SETTINGS_FILE = path.join(__dirname, '..', '..', 'data', 'twistle-settings.json');
 
   const io = rootIo.of('/twistle');
 
-  // -----------------------------------------------------------------
-  // Word lists, loaded from disk
-  //   twistle-words.json        - the secret words (answers), lengths 4-20
-  //   twistle-guesses.json      - every other word viewers may guess
-  //   data/twistle-custom-words.json - secret words the host adds live
-  //   data/twistle-settings.json     - remembers the host's word-length setting
-  //   data/twistle-leaderboard.json  - persisted points/leaderboard
-  // Custom words/settings/leaderboard live under the platform's shared
-  // data/ folder (same convention as CROSSDLE/Findle) since Render's free
-  // tier wipes anything written elsewhere on redeploy anyway.
-  // -----------------------------------------------------------------
-  const WORDS_PATH = path.join(__dirname, 'twistle-words.json');
-  const GUESSES_PATH = path.join(__dirname, 'twistle-guesses.json');
-  const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-  const CUSTOM_WORDS_PATH = path.join(DATA_DIR, 'twistle-custom-words.json');
-  const SETTINGS_PATH = path.join(DATA_DIR, 'twistle-settings.json');
-  const LEADERBOARD_PATH = path.join(DATA_DIR, 'twistle-leaderboard.json');
-
-  function loadJsonSafe(filePath, fallback) {
+  function loadJsonSafe(file, fallback) {
     try {
-      if (!fs.existsSync(filePath)) return fallback;
-      const raw = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(raw);
+      if (!fs.existsSync(file)) return fallback;
+      return JSON.parse(fs.readFileSync(file, 'utf-8'));
     } catch (err) {
-      console.error(`[twistle:WORDS] Failed to read ${filePath}:`, err);
+      console.error(`[twistle] Failed to read ${file}:`, err.message);
       return fallback;
     }
   }
-
-  function saveJsonSafe(filePath, data) {
+  function saveJsonSafe(file, data) {
     try {
-      fs.mkdirSync(path.dirname(filePath), { recursive: true });
-      fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, JSON.stringify(data, null, 2));
     } catch (err) {
-      console.error(`[twistle:WORDS] Failed to write ${filePath}:`, err);
+      console.error(`[twistle] Failed to save ${file}:`, err.message);
     }
   }
 
-  const builtInWords = loadJsonSafe(WORDS_PATH, []);
-  const validGuesses = loadJsonSafe(GUESSES_PATH, []);
-  const customWords = loadJsonSafe(CUSTOM_WORDS_PATH, []);
-  const savedSettings = loadJsonSafe(SETTINGS_PATH, {});
-  const savedLeaderboard = loadJsonSafe(LEADERBOARD_PATH, []);
+  const savedSettings = loadJsonSafe(SETTINGS_FILE, {});
+  const customWords = loadJsonSafe(CUSTOM_WORDS_FILE, []);
 
-  const engine = new GameEngine(
-    [...builtInWords, ...customWords],
-    validGuesses,
-    savedSettings.lengthConfig || {},
-    savedLeaderboard
-  );
+  const engine = new GameEngine(savedSettings.lengthConfig || {}, savedSettings.difficulty || 'normal', customWords);
+
+  // Load the same 370,000+ word dictionary BLINDLE uses before accepting
+  // connections, so the very first round's guesses are validated correctly.
+  await loadDictionary();
   console.log(
-    `[twistle:WORDS] ${engine.wordBankSize} secret words, ${engine.valid.size} accepted guesses. ` +
-    `Word length: ${JSON.stringify(engine.config)}. Leaderboard: ${engine.leaderboard.size} viewers restored.`
+    `[twistle] Dictionary: ${dictionaryState.source} (${dictionaryState.wordCount.toLocaleString()} words). ` +
+      `Word bank: ${engine.wordBankSize} curated secret words.`
   );
 
-  function saveLeaderboard() {
-    saveJsonSafe(LEADERBOARD_PATH, [...engine.leaderboard.values()]);
-  }
-
-  // -----------------------------------------------------------------
-  // Connection state (remembered so a page opened mid-stream shows the
-  // right status straight away). Chat messages are NOT stored or
-  // rebroadcast to viewers — same privacy stance as Twistle's original
-  // build. The one narrow exception is the "!penguin"/"!fish" easter egg
-  // (see below): only that exact matched trigger word is ever relayed,
-  // never the guess/chat text itself.
-  // -----------------------------------------------------------------
+  // -------------------------------------------------------------------
+  // Diagnostics (mirrors BLINDLE/CROSSDLE's on-screen diagnostics panel)
+  // -------------------------------------------------------------------
   const diagnostics = {
-    connectionState: 'disconnected', // disconnected | connecting | connected | error
+    connectionState: 'idle', // idle | connecting | connected | reconnecting | error
     connectionMessage: '',
-    loggedSamples: 0,
+    tiktokUsername: null,
+    eventsReceived: 0,
+    recognizedCount: 0,
+    lastReceived: null,
+    rawSamples: [],
+    errors: [],
   };
 
-  let tiktokConnection = null;
-  const MAX_RETRIES = 3;
+  function setConnectionState(state, message = '') {
+    diagnostics.connectionState = state;
+    diagnostics.connectionMessage = message;
+    io.emit('tiktok:status', { state, message, username: diagnostics.tiktokUsername });
+  }
+  function logError(context, err) {
+    const entry = { context, message: err?.message || String(err), ts: Date.now() };
+    diagnostics.errors.unshift(entry);
+    if (diagnostics.errors.length > 25) diagnostics.errors.length = 25;
+    console.error(`[twistle:${context}]`, err?.stack || err);
+  }
 
   function extractChatFields(data) {
-    // Robust fallback chain - never trust a single hardcoded field name.
-    const text =
-      data?.comment ?? data?.content ?? data?.text ?? data?.message ?? data?.msg ?? '';
+    // Robust fallback chain — never trust a single hardcoded field name,
+    // matching the same pattern used by every other game on this platform.
+    const text = data?.comment ?? data?.content ?? data?.text ?? data?.message ?? data?.msg ?? '';
     const username =
-      data?.user?.uniqueId ??
-      data?.user?.nickname ??
-      data?.uniqueId ??
-      data?.nickname ??
-      data?.user?.displayId ??
-      'unknown_user';
-    const displayName =
-      data?.user?.nickname ?? data?.nickname ?? data?.user?.uniqueId ?? username;
+      data?.user?.uniqueId ?? data?.user?.nickname ?? data?.uniqueId ?? data?.nickname ?? data?.user?.displayId ?? 'unknown_user';
+    const displayName = data?.user?.nickname ?? data?.nickname ?? data?.user?.uniqueId ?? username;
     const avatarUrl =
-      data?.user?.profilePictureUrl ??
-      data?.user?.avatarThumb?.urlList?.[0] ??
-      data?.user?.avatarMedium?.urlList?.[0] ??
-      data?.user?.avatarLarger?.urlList?.[0] ??
-      data?.user?.avatarUrl ??
-      data?.profilePictureUrl ??
-      data?.avatarUrl ??
+      data?.user?.profilePictureUrl ||
+      data?.user?.avatarThumb?.urlList?.[0] ||
+      data?.user?.avatarMedium?.urlList?.[0] ||
+      data?.user?.avatarLarger?.urlList?.[0] ||
+      data?.user?.avatarUrl ||
       null;
-    return {
-      text: String(text || ''),
-      username: String(username || 'unknown_user'),
-      displayName: String(displayName || username),
-      avatarUrl: avatarUrl ? String(avatarUrl) : null,
-    };
+    return { text: String(text || ''), username: String(username || 'unknown_user'), displayName: String(displayName || username), avatarUrl };
   }
 
-  /** "!penguin" / "!fish" is a purely-decorative shared easter egg (see
-   *  public/shared/penguin-fun.js). Only the matched trigger word itself is
-   *  ever relayed to viewers — never the surrounding chat/guess text. */
-  function maybeTriggerFun(text) {
-    const t = String(text || '').trim().toLowerCase();
-    if (t === '!penguin' || t === '!fish') io.emit('fun:trigger', t);
-  }
-
-  function processGuess(username, displayName, text, avatarUrl) {
-    maybeTriggerFun(text);
-    const result = engine.handleGuess(username, displayName, text, avatarUrl);
-    if (result && (result.correct || result.added)) saveLeaderboard();
-    return result;
-  }
-
-  function wireConnectionEvents(connection) {
-    connection.on(
-      ControlEvent.CONNECTED,
-      safe('tiktok:connected', (state) => {
-        diagnostics.connectionState = 'connected';
-        diagnostics.connectionMessage = `Connected to room ${state?.roomId || ''}`;
-        io.emit('tiktok:status', { state: 'connected', message: diagnostics.connectionMessage });
-      })
-    );
-
-    connection.on(
-      ControlEvent.DISCONNECTED,
-      safe('tiktok:disconnected', ({ code, reason } = {}) => {
-        diagnostics.connectionState = 'disconnected';
-        diagnostics.connectionMessage = reason || `Disconnected (code ${code ?? 'n/a'})`;
-        io.emit('tiktok:status', { state: 'disconnected', message: diagnostics.connectionMessage });
-      })
-    );
-
-    connection.on(
-      ControlEvent.ERROR,
-      safe('tiktok:error', ({ info, exception } = {}) => {
-        console.error('[twistle:TIKTOK ERROR]', info, exception);
-        diagnostics.connectionState = 'error';
-        diagnostics.connectionMessage = String(info || exception?.message || 'Unknown error');
-        io.emit('tiktok:status', { state: 'error', message: diagnostics.connectionMessage });
-      })
-    );
-
-    connection.on(
-      WebcastEvent.CHAT,
-      safe('tiktok:chat', (data) => {
-        // One-time raw shape logging so a developer can inspect real payloads.
-        if (diagnostics.loggedSamples < 5) {
-          diagnostics.loggedSamples += 1;
-          console.log('[twistle:RAW CHAT SAMPLE]', JSON.stringify(data));
-        }
-        const { text, username, displayName, avatarUrl } = extractChatFields(data);
-        processGuess(username, displayName, text, avatarUrl);
-      })
-    );
-  }
-
-  async function connectToTikTok(username, signApiKey) {
-    const cleanUsername = String(username || '').replace(/^@/, '').trim();
-    if (!cleanUsername) {
-      io.emit('tiktok:status', { state: 'error', message: 'Please enter a TikTok username.' });
-      return;
-    }
-
-    if (tiktokConnection) {
-      try {
-        await tiktokConnection.disconnect();
-      } catch (err) {
-        console.error('[twistle:TIKTOK] Error disconnecting previous connection:', err);
+  function handleIncomingChat(username, displayName, text, avatarUrl, source) {
+    try {
+      diagnostics.eventsReceived += 1;
+      diagnostics.lastReceived = { username: displayName, text, ts: Date.now(), source };
+      io.emit('chat:raw', { text }); // lets every client's shared PenguinFun easter egg (!penguin / !fish) see chat
+      const result = engine.handleGuess(username, displayName, text, avatarUrl);
+      if (result) {
+        diagnostics.recognizedCount += 1;
+        if (result.rejected === 'not-a-word') io.emit('guess:rejected', { name: displayName, word: result.word });
       }
-      tiktokConnection = null;
+    } catch (err) {
+      logError('handleIncomingChat', err);
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // TikTok LIVE connection — retry + generation guard, same shape as
+  // BLINDLE/CROSSDLE's TikTok managers.
+  // -------------------------------------------------------------------
+  let connection = null;
+  let desiredUsername = null;
+  let manuallyDisconnected = false;
+  let generation = 0;
+
+  function friendlyConnectError(err, username) {
+    const msg = (err && err.message) || String(err);
+    if (/offline|not.*live|UserOfflineError|room.?id|not found/i.test(msg)) {
+      return `@${username} does not look like they're LIVE right now.`;
+    }
+    if (/rate.?limit/i.test(msg)) return 'Rate-limited by the signing service. Add a sign-in key or wait a bit.';
+    if (/sign/i.test(msg)) return 'The signing service rejected the connection. Double-check your sign API key.';
+    return msg || 'Unknown connection error.';
+  }
+
+  async function connectToTikTok(usernameRaw, signApiKeyOverride) {
+    const username = String(usernameRaw || '').replace(/^@/, '').trim();
+    if (!username) return setConnectionState('error', 'Please enter a TikTok username.');
+
+    generation += 1;
+    const myGeneration = generation;
+    manuallyDisconnected = false;
+    desiredUsername = username;
+    diagnostics.tiktokUsername = username;
+
+    if (connection) {
+      try { connection.disconnect(); } catch (_) { /* ignore */ }
+      connection = null;
     }
 
-    const apiKey = signApiKey || ENV_SIGN_API_KEY;
+    const apiKey = signApiKeyOverride || SIGN_API_KEY;
     if (!apiKey) {
-      io.emit('tiktok:status', {
-        state: 'error',
-        message: 'A Euler Stream signing API key is required. Paste it into the Host Controls panel, or set EULERSTREAM_API_KEY on Render (shared with the rest of the platform).',
-      });
-      return;
+      return setConnectionState('error', 'A EulerStream signing API key is required. Set EULERSTREAM_API_KEY on the server, or paste one into Host Controls.');
     }
 
-    diagnostics.connectionState = 'connecting';
-    diagnostics.connectionMessage = `Connecting to @${cleanUsername}...`;
-    io.emit('tiktok:status', { state: 'connecting', message: diagnostics.connectionMessage });
-
-    const connection = new TikTokLiveConnection(cleanUsername, { signApiKey: apiKey });
-    wireConnectionEvents(connection);
-    tiktokConnection = connection;
-
-    let attempt = 0;
-    while (attempt < MAX_RETRIES) {
+    for (let attempt = 1; attempt <= MAX_CONNECT_ATTEMPTS; attempt++) {
+      if (manuallyDisconnected || myGeneration !== generation) return;
+      setConnectionState('connecting', `Connecting to @${username} (attempt ${attempt}/${MAX_CONNECT_ATTEMPTS})...`);
       try {
-        const state = await connection.connect();
-        console.log(`[twistle:TIKTOK] Connected to roomId ${state.roomId}`);
-        // Platform-wide Gift/Like/Share alerts — one line, added on top of
-        // Twistle's own listeners, never interfering with them.
-        Engagement.attach(connection, { game: 'twistle', tiktokUsername: cleanUsername });
+        const conn = new TikTokLiveConnection(username, { signApiKey: apiKey });
+        connection = conn;
+
+        conn.on(WebcastEvent.CHAT, (data) => {
+          try {
+            if (myGeneration !== generation) return;
+            if (diagnostics.rawSamples.length < 6) diagnostics.rawSamples.push({ ts: Date.now(), text: JSON.stringify(data).slice(0, 2000) });
+            const { text, username: user, displayName, avatarUrl } = extractChatFields(data);
+            handleIncomingChat(user, displayName, text, avatarUrl, 'tiktok');
+          } catch (err) {
+            logError('chatHandler', err);
+          }
+        });
+        conn.on(ControlEvent.ERROR, (info) => logError('controlError', (info && info.exception) || info));
+        conn.on(ControlEvent.DISCONNECTED, () => {
+          if (manuallyDisconnected || myGeneration !== generation) return;
+          setConnectionState('reconnecting', 'Connection dropped. Reconnecting...');
+          connectToTikTok(username, apiKey);
+        });
+
+        const state = await conn.connect();
+        if (myGeneration !== generation) { try { conn.disconnect(); } catch (_) {} return; }
+        engine.setMode('live');
+        setConnectionState('connected', `Connected to @${username} (room ${state?.roomId || ''}).`);
+        try {
+          const { Engagement } = await import('../engagement/engagement-hub.js');
+          Engagement.attach(conn, { game: 'twistle', tiktokUsername: username });
+        } catch (err) {
+          logError('engagementAttach', err);
+        }
         return;
       } catch (err) {
-        attempt += 1;
-        console.error(`[twistle:TIKTOK] Connect attempt ${attempt} failed:`, err?.message || err);
-        diagnostics.connectionMessage = `Attempt ${attempt}/${MAX_RETRIES} failed: ${err?.message || err}`;
-        diagnostics.connectionState = attempt < MAX_RETRIES ? 'connecting' : 'error';
-        io.emit('tiktok:status', { state: diagnostics.connectionState, message: diagnostics.connectionMessage });
-
-        if (attempt >= MAX_RETRIES) {
-          io.emit('tiktok:status', {
-            state: 'error',
-            message:
-              'Could not connect after 3 attempts. Make sure the username is correct, the account is currently LIVE, and your signing key is valid.',
-          });
+        if (myGeneration !== generation) return;
+        logError('connect', err);
+        if (attempt === MAX_CONNECT_ATTEMPTS) {
+          setConnectionState('error', friendlyConnectError(err, username));
           return;
         }
-        const backoffMs = 2000 * attempt; // 2s, 4s, 6s
-        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+        setConnectionState('connecting', `Attempt ${attempt} failed (${friendlyConnectError(err, username)}). Retrying...`);
+        await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt - 1] || 8000));
       }
     }
   }
 
-  async function disconnectFromTikTok() {
-    if (tiktokConnection) {
-      try {
-        await tiktokConnection.disconnect();
-      } catch (err) {
-        console.error('[twistle:TIKTOK] Error during manual disconnect:', err);
-      }
-      tiktokConnection = null;
+  function disconnectFromTikTok() {
+    generation += 1;
+    manuallyDisconnected = true;
+    if (connection) {
+      try { connection.disconnect(); } catch (err) { logError('disconnect', err); }
+      connection = null;
     }
-    diagnostics.connectionState = 'disconnected';
-    diagnostics.connectionMessage = 'Disconnected by host.';
-    io.emit('tiktok:status', { state: 'disconnected', message: diagnostics.connectionMessage });
+    if (engine.mode === 'live') engine.setMode(testModeActive ? 'test' : 'offline');
+    setConnectionState('idle', 'Disconnected.');
   }
 
-  // -----------------------------------------------------------------
-  // Game engine -> broadcast bridge
-  // -----------------------------------------------------------------
-  engine.on('stateChanged', safe('emit:stateChanged', (state) => io.emit('game:state', state)));
-  engine.on('wordBankUpdated', safe('emit:wordBank', (count) => io.emit('game:wordBankSize', count)));
-  engine.on('roundEnded', safe('emit:roundEnded', (payload) => io.emit('round:ended', payload)));
-  engine.on('leaderboardChanged', safe('save:leaderboard', saveLeaderboard));
-  // Remember the word-length setting so it survives a restart (best effort - Render's free tier wipes files on redeploy).
-  engine.on('configChanged', safe('save:settings', (config) => {
-    saveJsonSafe(SETTINGS_PATH, { lengthConfig: config });
-  }));
-
-  // -----------------------------------------------------------------
-  // Test mode - simulate fake chat locally without going LIVE
-  // -----------------------------------------------------------------
+  // -------------------------------------------------------------------
+  // Test mode — fake chat feed, exercises the exact same handleGuess()
+  // path real TikTok chat goes through. Same idea as every other game's
+  // Test Mode on this platform.
+  // -------------------------------------------------------------------
   const FAKE_USERS = ['sparkle_fan22', 'tiktok_lurker', 'moon.child', 'xX_gamerpro_Xx', 'lisa.loves.cats', 'big_dave99', 'mango_mia', 'zed.zone'];
-  const FAKE_CHATTER = ['hi!', 'lol', 'omg', 'no way', '???', 'love this game', 'wait what', 'hmm', '😂😂😂', 'lets gooo', 'what do the symbols mean', 'sun = green??'];
+  const FAKE_CHATTER = ['hi!', 'lol', 'omg', 'no way', '???', 'love this game', 'wait what', 'hmm', 'lets gooo', 'what do the symbols mean'];
   let testModeTimer = null;
+  let testModeActive = false;
 
   function startTestMode() {
     stopTestMode();
-    testModeTimer = setInterval(
-      safe('testMode:tick', () => {
+    testModeActive = true;
+    if (!connection) engine.setMode('test');
+    testModeTimer = setInterval(() => {
+      try {
         const user = FAKE_USERS[Math.floor(Math.random() * FAKE_USERS.length)];
         const state = engine.getPublicState();
         const active = state.status === 'active' && engine.current;
         let text;
         const roll = Math.random();
-        if (active && roll < 0.04 + 0.01 * state.rows.length) {
-          text = engine.current.answer; // somebody cracked it - more likely the more guesses are on the board
-        } else if (active && roll < 0.7) {
-          text = engine.randomValidWord(); // a fresh guess for the board
-        } else {
-          text = FAKE_CHATTER[Math.floor(Math.random() * FAKE_CHATTER.length)];
-        }
-
-        processGuess(user, `${user} (test)`, text, null);
-      }),
-      1200
-    );
+        if (active && roll < 0.04 + 0.01 * state.rows.length) text = engine.current.answer;
+        else if (active) text = engine.randomValidWord() || FAKE_CHATTER[0];
+        else text = FAKE_CHATTER[Math.floor(Math.random() * FAKE_CHATTER.length)];
+        handleIncomingChat(user, `${user}`, text, null, 'test');
+      } catch (err) {
+        logError('testMode', err);
+      }
+    }, 1200);
+    io.emit('testMode:status', true);
   }
   function stopTestMode() {
     if (testModeTimer) clearInterval(testModeTimer);
     testModeTimer = null;
+    testModeActive = false;
+    if (!connection && engine.mode === 'test') engine.setMode('offline');
+    io.emit('testMode:status', false);
   }
 
-  // -----------------------------------------------------------------
-  // HTTP: health check, matching the other games' /<game>/healthz routes.
-  // The page itself (public/twistle/index.html) and its assets are served
-  // automatically by the platform's shared express.static(public/) in
-  // server.js — no extra route needed here.
-  // -----------------------------------------------------------------
+  // -------------------------------------------------------------------
+  // Engine -> broadcast bridge
+  // -------------------------------------------------------------------
+  engine.on('stateChanged', (state) => io.emit('game:state', state));
+  engine.on('wordBankUpdated', (count) => io.emit('game:wordBankSize', count));
+  engine.on('roundEnded', (info) => io.emit('round:ended', info));
+  engine.on('configChanged', (config) => saveJsonSafe(SETTINGS_FILE, { lengthConfig: config, difficulty: engine.difficulty }));
+
   app.get('/twistle/healthz', (req, res) => res.status(200).send('ok'));
 
-  // -----------------------------------------------------------------
-  // Socket.IO wiring - Host Controls are open to anyone on the page
-  // (no password gate - see note above).
-  // -----------------------------------------------------------------
   io.on('connection', (socket) => {
-    // Send current snapshot to the newly connected client.
     socket.emit('game:state', engine.getPublicState());
-    socket.emit('tiktok:status', { state: diagnostics.connectionState, message: diagnostics.connectionMessage });
+    socket.emit('tiktok:status', { state: diagnostics.connectionState, message: diagnostics.connectionMessage, username: diagnostics.tiktokUsername });
+    socket.emit('testMode:status', testModeActive);
     socket.emit('server:config', {
-      defaultUsername: DEFAULT_TIKTOK_USERNAME,
-      hasEnvSignKey: Boolean(ENV_SIGN_API_KEY),
+      hasEnvSignKey: Boolean(SIGN_API_KEY),
       symbols: SYMBOL_POOL,
       minLength: MIN_LENGTH,
       maxLength: MAX_LENGTH,
+      dictionary: { source: dictionaryState.source, wordCount: dictionaryState.wordCount },
     });
-    socket.emit('testMode:status', Boolean(testModeTimer));
+    socket.emit('diagnostics:update', diagnostics);
 
-    socket.on('host:connectTikTok', safe('socket:connectTikTok', ({ username, signApiKey } = {}) => {
-      connectToTikTok(username, signApiKey);
-    }));
+    socket.on('host:connectTikTok', ({ username, signApiKey } = {}) => connectToTikTok(username, signApiKey));
+    socket.on('host:disconnectTikTok', () => disconnectFromTikTok());
 
-    socket.on('host:disconnectTikTok', safe('socket:disconnectTikTok', () => {
-      disconnectFromTikTok();
-    }));
+    socket.on('host:startGame', () => engine.start());
+    socket.on('host:stopGame', () => engine.stop());
 
-    socket.on('host:startGame', safe('socket:startGame', () => {
-      engine.start();
-    }));
-
-    socket.on('host:stopGame', safe('socket:stopGame', () => {
-      engine.stop();
-    }));
-
-    socket.on('host:setLength', safe('socket:setLength', (cfg, ack) => {
+    socket.on('host:setLength', (cfg, ack) => {
       const config = engine.setLengthConfig(normalizeLengthConfig(cfg || {}, engine.config));
       if (typeof ack === 'function') ack({ ok: true, config });
-    }));
+    });
 
-    socket.on('host:revealAnswer', safe('socket:revealAnswer', () => {
-      engine.revealAnswer();
-    }));
+    socket.on('host:setDifficulty', (value, ack) => {
+      const difficulty = engine.setDifficulty(normalizeDifficulty(value));
+      saveJsonSafe(SETTINGS_FILE, { lengthConfig: engine.config, difficulty });
+      if (typeof ack === 'function') ack({ ok: true, difficulty });
+    });
 
-    socket.on('host:skipRound', safe('socket:skipRound', () => {
-      engine.skipRound();
-    }));
+    socket.on('host:revealAnswer', () => engine.revealAnswer());
+    socket.on('host:skipRound', () => engine.skipRound());
 
-    socket.on('host:sendMessage', safe('socket:sendMessage', ({ name, text } = {}) => {
+    socket.on('host:sendMessage', ({ name, text } = {}) => {
       const who = String(name || 'Host').trim() || 'Host';
       const clean = String(text || '').trim();
-      if (!clean) return;
-      processGuess(who, who, clean, null);
-    }));
+      if (clean) handleIncomingChat(who, who, clean, null, 'host');
+    });
 
-    socket.on('host:addWord', safe('socket:addWord', (entry, ack) => {
+    socket.on('host:addWord', (entry, ack) => {
       try {
         const clean = engine.addWord(entry || {});
-        const all = loadJsonSafe(CUSTOM_WORDS_PATH, []).map((w) => String(w?.answer ?? w)).filter((w) => /^[A-Za-z]{4,20}$/.test(w));
+        const all = loadJsonSafe(CUSTOM_WORDS_FILE, []).map((w) => String(w?.answer ?? w)).filter((w) => /^[A-Za-z]{4,20}$/.test(w));
         if (!all.includes(clean.answer)) all.push(clean.answer);
-        saveJsonSafe(CUSTOM_WORDS_PATH, all);
+        saveJsonSafe(CUSTOM_WORDS_FILE, all);
         if (typeof ack === 'function') ack({ ok: true });
       } catch (err) {
         if (typeof ack === 'function') ack({ ok: false, error: err.message });
       }
-    }));
+    });
 
-    socket.on('host:testMode', safe('socket:testMode', (enabled) => {
-      if (enabled) startTestMode();
-      else stopTestMode();
-      io.emit('testMode:status', Boolean(enabled));
-    }));
+    socket.on('host:testMode', (enabled) => (enabled ? startTestMode() : stopTestMode()));
 
-    socket.on('host:resetLeaderboard', safe('socket:resetLeaderboard', () => {
-      engine.resetLeaderboard();
-      saveLeaderboard();
-    }));
+    socket.on('host:setTiming', (cfg) => engine.setTiming(cfg || {}));
+    socket.on('host:resetRoundLeaderboard', () => engine.resetRoundLeaderboard());
+    socket.on('host:resetTotalLeaderboard', () => engine.resetTotalLeaderboard());
 
     socket.on('disconnect', () => {
-      // No per-socket cleanup needed - state lives on the server, not the socket.
+      // No per-socket cleanup needed — state lives on the engine, not the socket.
     });
   });
 
-  console.log('[twistle] registered on namespace /twistle');
-  return { diagnostics, engine };
+  console.log(
+    `[twistle] registered on namespace /twistle. ` +
+      (SIGN_API_KEY ? 'Sign API key detected.' : 'WARNING: no EULERSTREAM_API_KEY set — TikTok connections will use the unreliable free/no-key path.')
+  );
+
+  return { engine, diagnostics };
 }
