@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>TWISTLE live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/theme.css" />
+<script src="/shared/theme.js"></script>
+<script src="/shared/session.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-badge">🌀</div>
+      <h1>TWISTLE</h1>
+    </div>
+    <div class="header-right">
+      <span class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Offline</span></span>
+      <a href="/" class="icon-btn" id="homeBtn" title="Choose another game" aria-label="Choose another game">🏠</a>
+      <button class="icon-btn" id="leaderboardBtn" title="Leaderboard" aria-label="Leaderboard">🏆</button>
+      <button class="icon-btn" id="rulesBtn" title="How to play" aria-label="How to play">?</button>
+      <button class="icon-btn" id="settingsBtn" title="Host Controls & Settings" aria-label="Host controls">⚙️</button>
+    </div>
+  </header>
+
+  <div class="ticker-wrap" id="tickerWrap">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <main>
+
+    <section class="board" id="board">
+      <div class="confetti" id="confettiWrap"></div>
+
+      <div class="meta-row">
+        <span class="round-chip"><span id="roundLabel">TWISTLE</span><span class="sub" id="roundSub"></span></span>
+        <span class="guess-badge" id="guessBadge" hidden><span></span></span>
+      </div>
+
+      <div class="tried" id="tried" title="Keyboard — letters used in guesses so far"></div>
+      <div class="hint-line" id="hintLine"></div>
+
+      <div class="grid" id="grid"></div>
+
+      <div class="result" id="result" hidden>
+        <div class="answer-tiles" id="answerTiles"></div>
+        <div class="winner" id="resultWinner" hidden></div>
+        <div class="nowinner" id="resultNoWinner" hidden></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer></footer>
+
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+
+  <!-- ===== How to play ===== -->
+  <div class="sheet" id="rulesSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h2>How to play</h2>
+      <button class="sheet-close" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="tab-scroll">
+      <div class="rules-body">
+        <p>Guess the secret <strong>word</strong> (the host chooses how long, from 4 to 20 letters). Each round uses <strong>3 random symbols</strong> that always look very different from each other, and each one secretly means something different. You have to work out which is which.</p>
+        <div class="rules-key" id="rulesKey"></div>
+        <p>Here's the twist: the symbols line up with the letters of the <strong>secret word</strong>, not with the letters you guessed. Symbol 1 is about the secret word's 1st letter, symbol 2 about its 2nd letter, and so on. Every letter of the word gets its own symbol.</p>
+        <p><strong>Example:</strong> the secret word is SHAKE and the guess is THICK.</p>
+        <div class="rules-demo" id="rulesDemo"></div>
+        <p>The 2nd symbol says the secret's <strong>H</strong> is in your guess in the right spot. The 4th says the secret's <strong>K</strong> is in your guess but in the wrong spot. The other three say S, A and E aren't in THICK at all.</p>
+        <p><strong>Repeated letters:</strong> if you guess only one copy of a doubled letter and put it in the wrong spot, the <em>first</em> matching letter of the secret word gets the "wrong spot" symbol. If it's in the right spot, only that one gets "right spot" and you learn nothing about the other copy.</p>
+        <p><strong>Playing in chat:</strong> type any real word that has the same number of letters as the secret word. If it's valid and nobody's guessed it yet this round, it goes straight onto the board with its symbols — no vote, no waiting. Anyone who types the secret word wins the round straight away, and there's no timer or limit on how many guesses the board can hold, so keep trying!</p>
+        <p>When the round ends, the tiles flip to show their colours, and the symbols' meanings are revealed.</p>
+        <p><strong>Points:</strong> a fresh, valid guess earns a small point just for playing. Solving the round earns a bigger bonus — worth more for longer words and for solving quickly, before too many other guesses land on the board. Tap 🏆 any time to see the leaderboard.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Leaderboard (read-only, open to anyone) ===== -->
+  <div class="sheet" id="leaderboardSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h2>🏆 Leaderboard</h2>
+      <button class="sheet-close" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="tab-scroll">
+      <div id="leaderboardBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== Settings / Host Controls sheet (no password needed) ===== -->
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h2>Host Controls</h2>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <label class="theme-picker">
+          🎨
+          <select data-theme-select aria-label="Platform theme color">
+            <option value="cream">Cream</option>
+            <option value="blue">Sky Blue</option>
+            <option value="green">Meadow Green</option>
+            <option value="pink">Blossom Pink</option>
+            <option value="violet">Lavender Violet</option>
+            <option value="honey">Honey Gold</option>
+          </select>
+        </label>
+        <button class="sheet-close" data-close aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="connect">Connect</button>
+      <button class="tab-btn" data-tab="game">Game</button>
+      <button class="tab-btn" data-tab="message">Message</button>
+      <button class="tab-btn" data-tab="words">Add Word</button>
+      <button class="tab-btn" data-tab="test">Test</button>
+    </div>
+
+    <div class="tab-scroll">
+
+      <div class="tab-content active" data-tab="connect">
+        <div class="section-title">TikTok LIVE connection</div>
+        <label>TikTok Username (without @)</label>
+        <input type="text" id="tiktokUsername" placeholder="e.g. officialgeilegisela" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <label>Euler Stream Signing API Key</label>
+        <input type="text" id="signApiKey" placeholder="Paste your eulerstream.com API key" />
+        <div class="row">
+          <button class="primary" id="connectBtn">Connect to LIVE</button>
+          <button class="secondary danger" id="disconnectBtn">Disconnect</button>
+        </div>
+        <div class="conn-status" id="connStatus">Not connected.</div>
+        <div class="small-note">Get a free key at eulerstream.com, or set <code>EULERSTREAM_API_KEY</code> once on Render — it's shared with every other game on this platform. Your stream must be LIVE before connecting. This panel is open to anyone with the page link — there's no host password.</div>
+        <div class="small-note">Connecting here also saves your username for every other game on this platform (one-time login) — open any other game and it will pre-fill and auto-connect.</div>
+      </div>
+
+      <div class="tab-content" data-tab="game">
+        <div class="section-title">Round control</div>
+        <div class="row">
+          <button class="primary" id="startGameBtn">▶ Start Game</button>
+          <button class="secondary" id="stopGameBtn">■ Stop Game</button>
+        </div>
+        <div class="row">
+          <button class="secondary" id="revealAnswerBtn">👁 Reveal Answer</button>
+          <button class="secondary" id="skipRoundBtn">⏭ Skip Round</button>
+        </div>
+        <div class="section-title" style="margin-top:22px">Word length</div>
+        <div class="seg" id="lenMode">
+          <button type="button" data-mode="fixed" class="active">Fixed length</button>
+          <button type="button" data-mode="random">Random range</button>
+        </div>
+        <div id="lenFixedBox">
+          <label for="lenFixed">Every round uses a secret word of</label>
+          <select id="lenFixed"></select>
+        </div>
+        <div id="lenRangeBox" hidden>
+          <div class="row">
+            <div><label for="lenMin">Shortest</label><select id="lenMin"></select></div>
+            <div><label for="lenMax">Longest</label><select id="lenMax"></select></div>
+          </div>
+        </div>
+        <div class="len-summary" id="lenSummary"></div>
+        <div class="small-note">Changes apply from the next round — tap <strong>Skip Round</strong> to switch right away. The tiles and symbols resize automatically so every length stays easy to read.</div>
+
+        <div class="small-note" style="margin-top:18px">There's no timer and no limit on guesses — a round runs until someone solves it, or you reveal the answer or skip it here.</div>
+
+        <div class="section-title" style="margin-top:22px">Leaderboard</div>
+        <button class="secondary danger" id="resetLeaderboardBtn">🔄 Reset Leaderboard</button>
+        <div class="small-note">Clears everyone's points and win counts. This can't be undone.</div>
+      </div>
+
+      <div class="tab-content" data-tab="message">
+        <div class="section-title">Simulate a chat message</div>
+        <label>Name (optional)</label>
+        <input type="text" id="hostMsgName" placeholder="Host" />
+        <label>Message / Guess</label>
+        <input type="text" id="hostMsgText" placeholder="Type a guess..." />
+        <button class="primary" id="sendHostMsgBtn">Send</button>
+        <div class="small-note">This feeds directly into the game, just like a real TikTok comment: a fresh, valid word of the right length goes straight onto the board, and the secret word wins the round.</div>
+      </div>
+
+      <div class="tab-content" data-tab="words">
+        <div class="section-title">Add a secret word</div>
+        <label>Word (4 to 20 letters)</label>
+        <input type="text" id="newAnswer" maxlength="20" placeholder="e.g. VIBES" autocomplete="off" />
+        <button class="primary" id="addWordBtn">Add to Word Bank</button>
+        <div class="error-msg" id="addWordError"></div>
+        <div class="small-note" id="wordBankNote"></div>
+      </div>
+
+      <div class="tab-content" data-tab="test">
+        <div class="section-title">Test mode</div>
+        <div class="toggle-row">
+          <div>
+            <div class="lbl">Simulate fake TikTok chat</div>
+            <div class="sub">Fake viewers guess words (and sometimes solve it) every ~1.2s</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="testModeToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="section-title" style="margin-top:22px">Live event tools</div>
+        <div data-engagement-tools></div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/shared/engagement.js"></script>
+<script src="/shared/penguin-fun.js"></script>
+<script src="/shared/celebration.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

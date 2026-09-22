@@ -11,6 +11,7 @@
 //   /blindle/   - Blindle          (its own WebSocket path /blindle-ws)
 //   /findle     - Findle Live      (Socket.IO namespace /findle)
 //   /crossdle/  - CROSSDLE Live    (Socket.IO namespace /crossdle)
+//   /twistle/   - TWISTLE          (Socket.IO namespace /twistle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -37,6 +38,7 @@ import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
+import { registerTwistle } from "./server/twistle/twistle-server.js";
 import { Engagement } from "./server/engagement/engagement-hub.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -72,6 +74,7 @@ registerFlagle(io);
 registerTravle(io);
 registerFindle(app, io);
 await registerCrossdle(app, io);
+await registerTwistle(app, io);
 
 // Blindle ships as a self-mounting module: it serves its own static
 // folder and opens its own WebSocketServer (bound to the shared

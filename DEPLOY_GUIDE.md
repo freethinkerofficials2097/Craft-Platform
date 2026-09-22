@@ -3,8 +3,8 @@
 This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
-covers all five games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
-CROSSDLE Live).
+covers all six games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
+CROSSDLE Live, and TWISTLE).
 
 ---
 
@@ -28,7 +28,7 @@ CROSSDLE Live).
 1. Go to **https://www.eulerstream.com** and sign up for a free account.
 2. Find the **API Keys** section of their dashboard and create a new key.
 3. Copy the key somewhere safe — you'll paste it into Render in Part 3.
-   One key powers all five games.
+   One key powers all six games.
 
 ---
 
@@ -49,10 +49,11 @@ CROSSDLE Live).
 5. Wait for the upload to finish, scroll down, and click the green
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
-   `public/travle/`, `public/crossdle/`, `server/blindle/`, and
-   `server/findle/` as real folders — if anything landed flat with slashes
-   in the filename instead, open it and rename it with the full path to
-   move it into place.
+   `public/travle/`, `public/crossdle/`, `public/twistle/`,
+   `server/blindle/`, `server/findle/`, and `server/twistle/` as real
+   folders — if anything landed flat with slashes in the filename
+   instead, open it and rename it with the full path to move it into
+   place.
 
 ---
 
@@ -63,7 +64,7 @@ CROSSDLE Live).
    Command:** `npm start`.
 3. Before creating it, add one environment variable: **Key**
    `EULERSTREAM_API_KEY`, **Value** = the key from Part 1. (This one key
-   works for all five games — the server automatically shares it with
+   works for all six games — the server automatically shares it with
    whichever internal name each game expects.)
 4. **Create Web Service.** Wait for the first build (a couple of minutes).
    Your address will look like `https://your-app.onrender.com`.
@@ -77,7 +78,7 @@ CROSSDLE Live).
 
 ## Part 4 — Using the platform
 
-1. Open your Render link. You'll land on a **home screen** with five game
+1. Open your Render link. You'll land on a **home screen** with six game
    cards.
 2. Tap one to open it — each game has its own address, so you can also
    bookmark a game directly and skip the home screen:
@@ -86,6 +87,7 @@ CROSSDLE Live).
    - Blindle → `/blindle/`
    - Findle Live → `/findle`
    - CROSSDLE Live → `/crossdle/`
+   - TWISTLE → `/twistle/`
 3. Inside a game, everything works as documented for that game — Live /
    Test / Offline modes, TikTok connect, host controls, etc. Every game
    also has a **🎨 theme picker** in its header — pick a color once and it
@@ -112,8 +114,8 @@ still works before relying on it live.
 
 ### Testing Gift/Like/Share alerts
 
-Open any game's **Settings** (the ⚙️ button; in CROSSDLE it's the **Host**
-button) and scroll to **Live event tools**. The **📊 Live statistics**
+Open any game's **Settings** (the ⚙️ button; in CROSSDLE and TWISTLE it's
+the **Host Controls** button) and scroll to **Live event tools**. The **📊 Live statistics**
 box shows running Total Gifts / Coins / Shares / Likes counters, and the
 **🧪 Test alerts** box has buttons to fire a fake Gift, Share, Milestone,
 or Room Milestone — use these to see the alert animations before you're
@@ -136,9 +138,10 @@ never get in the way of the game while you're streaming.)
   panel that shows exactly what's arriving and any recent errors.
 - **A leaderboard reset unexpectedly** → on Render's free tier, a full
   redeploy always starts fresh; ordinary restarts preserve leaderboards
-  that are saved to disk (CROSSDLE). In-memory-only leaderboards (Flagle,
-  TRAVLE, Blindle, Findle) reset on every server restart. Ask if you'd
-  like persistent storage added later — it's a small add-on.
+  that are saved to disk (CROSSDLE, TWISTLE). In-memory-only leaderboards
+  (Flagle, TRAVLE, Blindle, Findle) reset on every server restart. Ask if
+  you'd like persistent storage added to one of those later — it's a
+  small add-on.
 
 ---
 
@@ -158,10 +161,10 @@ You said you'll never touch code directly, so here's the safe way:
 Alongside `deploy`, you were given a second folder called `reupload`.
 It's **not** meant to be deployed — it's the same project with every file
 renamed with a game-specific prefix (`flagle-*`, `travle-*`, `blindle-*`,
-`findle-*`, `crossdle-*`, `shared-*`, `root-*`) so nothing collides if you
-come back later and want to hand individual files back for edits or add a
-sixth game. Use `deploy` to actually run the site; use `reupload` only
-when you need to share files back for more work.
+`findle-*`, `crossdle-*`, `twistle-*`, `shared-*`, `root-*`) so nothing
+collides if you come back later and want to hand individual files back
+for edits or add another game. Use `deploy` to actually run the site;
+use `reupload` only when you need to share files back for more work.
 
 ---
 
