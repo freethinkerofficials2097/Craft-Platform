@@ -2,8 +2,8 @@
 
 One deployed link, a game-selector home screen, and **six** independent
 games — **Flagle Live**, **TRAVLE Live**, **Blindle**, **Findle Live**,
-**CROSSDLE Live**, and **TWISTLE** — each reading your TikTok LIVE chat
-directly as guesses. You never touch code; follow `DEPLOY_GUIDE.md`.
+**CROSSDLE Live**, and **TWISTLE Live** — each reading your TikTok LIVE
+chat directly as guesses. You never touch code; follow `DEPLOY_GUIDE.md`.
 
 ## Layout
 
@@ -15,7 +15,7 @@ public/
   flagle/           <- Flagle Live client
   travle/           <- TRAVLE Live client
   crossdle/         <- CROSSDLE Live client
-  twistle/          <- TWISTLE client
+  twistle/          <- TWISTLE Live client
 server/
   env-bridge.js     <- mirrors the two TikTok-key env var names onto each
                        other; MUST be imported before any game module
@@ -27,8 +27,9 @@ server/
   findle/           <- Findle's server logic + its own findle-public/
                        client folder, Socket.IO namespace /findle
   crossdle/         <- CROSSDLE's game engine, dictionary, TikTok manager
-  twistle/          <- TWISTLE's game engine, word bank + dictionary
-                       (ported from BLINDLE), TikTok manager
+  twistle/          <- TWISTLE's game engine (imports BLINDLE's word
+                       bank + dictionary directly), TikTok manager,
+                       Socket.IO namespace /twistle
 server.js           <- the ONE process Render runs — wires every game in
 package.json        <- one shared dependency list (every game needs the
                        same handful of packages)
@@ -45,6 +46,15 @@ server on a dedicated path (`/blindle-ws`) — a different real-time
 technology, but still bound to the one shared HTTP server, so it coexists
 safely with everything else.
 
+TWISTLE is BLINDLE's sibling: it imports BLINDLE's curated secret-word
+list, its 370,000+ word guess dictionary, and its difficulty-scoring engine
+directly (literally the same files, the same in-memory word bank, loaded
+only once even though two games use it), and follows BLINDLE's exact
+points (10 for solving, 1 per guess that lands on the board, Live mode
+only) and round-end celebration (winner → this round's top scorers →
+all-time top scorers). Only the guessing mechanic itself is TWISTLE's own —
+see "All six games" below.
+
 ### One-time login
 
 Every game shares one TikTok username via `public/shared/session.js`
@@ -57,7 +67,7 @@ connect screen updates it everywhere the next time you switch.
 
 ### Theme system
 
-All five share the same platform **theme picker** (cream / sky blue /
+All six share the same platform **theme picker** (cream / sky blue /
 meadow green / blossom pink / lavender violet / honey gold) via
 `public/shared/theme.css` + `theme.js` — pick a color on any page and it
 carries over to the rest via `localStorage`. Each game keeps its own
@@ -135,11 +145,11 @@ See `DEPLOY_GUIDE.md`.
 
 She opens your link, picks a game, and connects her own TikTok username
 (this overwrites the saved one-time-login username on her own browser
-only — it's stored per-device, not shared between people). Flagle and
-CROSSDLE support both of you hosting *simultaneously* on the same link
-(each browser tab gets its own independent connection). TRAVLE, Blindle, Findle,
-and TWISTLE currently support **one active TikTok connection at a time per
-game** — if you're both live on the same one of those at the exact same
+only — it's stored per-device, not shared between people). Flagle,
+CROSSDLE, and TWISTLE support both of you hosting *simultaneously* on the
+same link (each browser tab gets its own independent connection). TRAVLE,
+Blindle, and Findle currently support **one active TikTok connection at a
+time per game** — if you're both live on the same one of those at the exact same
 moment, the second person's connect takes over from the first. Not a bug
 to fix urgently — just tell me if you'd like any of those upgraded to
 Flagle's per-host model later.
@@ -180,19 +190,16 @@ real word) — so the word chat is solving is never an obscure dictionary
 entry nobody would guess. Unlimited guesses, no clock, a round runs until
 it's solved or the host skips/reveals it.
 
-**TWISTLE** — a Wordle-style secret word (4-20 letters, host-tunable
-difficulty) with its own twist: each round, 3 random symbols (always
-visually distinct from each other) are drawn, and each is secretly
-assigned one meaning — "correct spot", "wrong spot", or "not in the
-guess". Nobody's told which is which; chat has to work it out from the
-pattern of symbols shown next to every guess. Every valid guess of the
-round's length lands straight on the board with no vote and no wait, the
-secret word instantly wins the round, and there's no clock or guess
-limit. The secret-word bank, the 370,000+ word guess dictionary, the
-Normal/Medium/Hard/Random difficulty engine, and the points/leaderboard
-system (10 points for solving, 1 for a valid guess, Live mode only) are
-all ported straight from BLINDLE, so the two games share one word-quality
-bar and one scoring model.
+**TWISTLE Live** — BLINDLE's sibling: the SAME curated word bank, 370,000+
+word dictionary, difficulty tiers (Normal/Medium/Hard/Random), and points
+(10 for solving, 1 per guess, round + all-time leaderboards with TikTok
+profile pictures), but a different clue: each round draws 3 mystery
+symbols, each secretly meaning "right spot", "wrong spot", or "not in your
+guess" — nobody's told which is which. Every guess that lands on the board
+gets a row of symbols describing the SECRET word's letters (not the
+guess's), and the tiles' true colors only reveal once the round ends.
+Unlimited guesses, host-tunable word length (fixed or random range),
+unlimited hints, Live/Test/Offline modes, full TikTok engagement alerts.
 
 Full details for each game's own mechanics are documented inside that
 game — tap **?** / **How to Play** on its own screen.

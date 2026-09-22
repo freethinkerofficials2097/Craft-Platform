@@ -38,7 +38,7 @@ import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
-import { registerTwistle } from "./server/twistle/twistle-server.js";
+import { registerTwistle } from "./server/twistle/twistle.js";
 import { Engagement } from "./server/engagement/engagement-hub.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -76,9 +76,11 @@ registerTravle(io);
 registerFindle(app, io);
 await registerCrossdle(app, io);
 
-// TWISTLE loads its own ~370,000-word guess dictionary at startup (the
-// same BLINDLE fetches), same as CROSSDLE above — awaited so it's ready
-// before the server starts accepting connections.
+// TWISTLE shares BLINDLE's word bank + 370,000+ word dictionary (see
+// server/twistle/twistle.js) — the dictionary module only ever fetches
+// once no matter which of the two games loads first, so registering
+// TWISTLE here (before BLINDLE mounts, below) just means TWISTLE is the
+// one that kicks the fetch off; BLINDLE then reuses the same result.
 await registerTwistle(app, io);
 
 // Blindle ships as a self-mounting module: it serves its own static
@@ -92,3 +94,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Game platform running on port ${PORT}`);
 });
+

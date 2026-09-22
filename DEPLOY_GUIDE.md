@@ -4,7 +4,7 @@ This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
 covers all six games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
-CROSSDLE Live, TWISTLE).
+CROSSDLE Live, TWISTLE Live).
 
 ---
 
@@ -49,10 +49,11 @@ CROSSDLE Live, TWISTLE).
 5. Wait for the upload to finish, scroll down, and click the green
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
-   `public/travle/`, `public/crossdle/`, `public/twistle/`, `server/blindle/`,
-   `server/findle/`, and `server/twistle/` as real folders — if anything
-   landed flat with slashes in the filename instead, open it and rename it
-   with the full path to move it into place.
+   `public/travle/`, `public/crossdle/`, `public/twistle/`,
+   `server/blindle/`, `server/findle/`, and `server/twistle/` as real
+   folders — if anything landed flat with slashes
+   in the filename instead, open it and rename it with the full path to
+   move it into place.
 
 ---
 
@@ -86,7 +87,7 @@ CROSSDLE Live, TWISTLE).
    - Blindle → `/blindle/`
    - Findle Live → `/findle`
    - CROSSDLE Live → `/crossdle/`
-   - TWISTLE → `/twistle/`
+   - TWISTLE Live → `/twistle/`
 3. Inside a game, everything works as documented for that game — Live /
    Test / Offline modes, TikTok connect, host controls, etc. Every game
    also has a **🎨 theme picker** in its header — pick a color once and it
@@ -139,8 +140,8 @@ never get in the way of the game while you're streaming.)
 - **A leaderboard reset unexpectedly** → on Render's free tier, a full
   redeploy always starts fresh; ordinary restarts preserve leaderboards
   that are saved to disk (CROSSDLE). In-memory-only leaderboards (Flagle,
-  TRAVLE, Blindle, Findle, TWISTLE) reset on every server restart. Ask if
-  you'd like persistent storage added later — it's a small add-on.
+  TRAVLE, Blindle, Findle, TWISTLE) reset on every server restart. Ask if you'd
+  like persistent storage added later — it's a small add-on.
 
 ---
 
@@ -160,10 +161,10 @@ You said you'll never touch code directly, so here's the safe way:
 Alongside `deploy`, you were given a second folder called `reupload`.
 It's **not** meant to be deployed — it's the same project with every file
 renamed with a game-specific prefix (`flagle-*`, `travle-*`, `blindle-*`,
-`findle-*`, `crossdle-*`, `twistle-*`, `shared-*`, `root-*`) so nothing
-collides if you come back later and want to hand individual files back for
-edits or add a seventh game. Use `deploy` to actually run the site; use
-`reupload` only when you need to share files back for more work.
+`findle-*`, `crossdle-*`, `shared-*`, `root-*`) so nothing collides if you
+come back later and want to hand individual files back for edits or add a
+sixth game. Use `deploy` to actually run the site; use `reupload` only
+when you need to share files back for more work.
 
 ---
 

@@ -1,564 +1,142 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<meta name="twistle-build" content="6" />
-<title>TWISTLE Live</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<!-- Platform-shared modules: theme picker + one-time TikTok login. Twistle
-     keeps its own signature dark "plush toy" look (see :root below) rather
-     than repainting itself in the platform's light theme colors, the same
-     choice BLINDLE and CROSSDLE made — theme.css/theme.js are still loaded
-     so the <select data-theme-select> in Host Controls works and stays in
-     sync with the rest of the platform for anyone who switches games. -->
+<title>TWISTLE — Live Symbol Word Game</title>
+<meta name="description" content="A live symbol word-guessing game powered by TikTok LIVE chat." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+  rel="stylesheet"
+/>
 <link rel="stylesheet" href="/shared/theme.css" />
 <script src="/shared/theme.js"></script>
 <script src="/shared/session.js"></script>
-<style>
-  :root {
-    --bg-0: #0b0c1e;
-    --bg-1: #12142c;
-    --panel: #171938;
-    --panel-2: #1e2145;
-    --panel-3: #262a58;
-    --line: #2c2f5e;
-    --text: #f5f5fc;
-    --text-dim: #9c9fc9;
-    --text-faint: #6b6e9c;
-    --pink: #ff5f9e;
-    --mint: #35e6ab;
-    --gold: #ffcb47;
-    --danger: #ff5f6d;
-    --ok: #35e6ab;
-    --radius-lg: 22px;
-    --radius-md: 16px;
-    --radius-sm: 11px;
-    --vh: 1vh;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0; padding: 0;
-    background: radial-gradient(circle at 15% -10%, #24265a 0%, var(--bg-0) 45%) fixed;
-    color: var(--text);
-    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    overflow: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
-  h1, h2, .display-font { font-family: 'Fredoka', 'Nunito', sans-serif; }
-  #app { height: calc(var(--vh) * 100); display: flex; flex-direction: column; }
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-thumb { background: var(--panel-3); border-radius: 10px; }
-
-  /* ---------------- Header ---------------- */
-  header {
-    flex: 0 0 auto;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px;
-    background: linear-gradient(120deg, #17193a, #241a3c 60%, #1a1638);
-    border-bottom: 1px solid var(--line);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
-    position: relative; z-index: 5;
-  }
-  .brand { display: flex; align-items: center; gap: 8px; }
-  .brand h1 { letter-spacing: 1.5px; }
-  .brand-badge {
-    width: 34px; height: 34px; border-radius: 11px;
-    background: linear-gradient(145deg, var(--pink), #b23dff);
-    display: flex; align-items: center; justify-content: center; font-size: 18px;
-    box-shadow: 0 4px 10px rgba(255,95,158,0.4), inset 0 -2px 4px rgba(0,0,0,0.2), inset 0 2px 2px rgba(255,255,255,0.35);
-  }
-  header h1 {
-    font-size: 19px; margin: 0; font-weight: 700; letter-spacing: 0.2px;
-    background: linear-gradient(90deg, #fff, #ffd6ea);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  .header-right { display: flex; align-items: center; gap: 8px; }
-  .status-pill {
-    display: flex; align-items: center; gap: 6px;
-    background: var(--panel-2); border: 1px solid var(--line);
-    border-radius: 999px; padding: 6px 12px 6px 8px; font-size: 12px; color: var(--text-dim); font-weight: 700;
-  }
-  .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 8px currentColor; }
-  .status-dot.connected { background: var(--ok); color: var(--ok); }
-  .status-dot.connecting { background: var(--gold); color: var(--gold); animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-  .icon-btn {
-    width: 36px; height: 36px; border-radius: 11px;
-    background: var(--panel-2); border: 1px solid var(--line); color: var(--text);
-    font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: transform 0.12s ease, background 0.12s ease;
-  }
-  .icon-btn:active { transform: scale(0.92); }
-  .icon-btn:hover { background: var(--panel-3); }
-
-  /* ---------------- Main ---------------- */
-  main {
-    flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    padding: 10px 10px 18px; display: flex; flex-direction: column; gap: 10px;
-  }
-
-  /* ---------------- Board ---------------- */
-  .board {
-    background: linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%);
-    border-radius: var(--radius-lg);
-    padding: 14px 12px 18px;
-    flex: 1 0 auto;
-    border: 1px solid var(--line);
-    position: relative;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  }
-  .board { --content-w: 640px; }
-  .board .meta-row {
-    display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    margin: 0 auto 12px; max-width: max(var(--content-w, 640px), 320px);
-  }
-  .round-chip {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: var(--panel-3); border: 1px solid var(--line);
-    color: #fff; font-weight: 800; font-size: 12.5px;
-    padding: 6px 12px; border-radius: 999px;
-  }
-  .round-chip .sub { color: var(--text-dim); font-weight: 700; }
-  .guess-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12.5px; color: #1a1c1a; font-weight: 800;
-    background: linear-gradient(160deg, #ffe27a, var(--gold));
-    padding: 5px 12px; border-radius: 999px;
-    box-shadow: 0 4px 10px rgba(255,203,71,0.3);
-  }
-  .guess-badge[hidden] { display: none; }
-
-  /* The guess grid. Each guess is a block of letter tiles plus a block of symbols (one per letter).
-     JS (applyLayout) measures the width and picks the tile size and one of two layouts from the word length,
-     so it always stays comfortable to read:
-       .mode-side   letters on the left, symbols on the right (shorter words)
-       .mode-stack  symbols directly under the letters; very long words wrap onto extra lines */
-  .grid {
-    --cell: 40px; --cols: 5; --gap: 4px; --sp: 16px;
-    width: 100%; max-width: 1100px; margin: 0 auto;
-    display: flex; flex-direction: column; align-items: center; row-gap: 6px;
-  }
-  .grid.mode-stack { row-gap: 16px; }
-  .grow { display: flex; align-items: center; justify-content: center; gap: var(--sp); }
-  .mode-stack .grow { flex-direction: column; gap: calc(var(--gap) + 3px); }
-  .lets, .syms { display: grid; grid-template-columns: repeat(var(--cols), var(--cell)); gap: var(--gap); justify-content: center; }
-  .mode-stack .syms { position: relative; }
-  .mode-stack .syms::before { content: ''; position: absolute; inset: -4px -6px; border-radius: 14px; background: rgba(140,150,255,0.07); border: 1px solid rgba(140,150,255,0.11); }
-  .mode-stack .syms > * { position: relative; }
-  .tile {
-    width: var(--cell); height: var(--cell); border-radius: calc(var(--cell) * 0.22);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Fredoka', sans-serif; font-weight: 700; color: #fff; line-height: 1;
-    font-size: calc(var(--cell) * 0.58);
-    background: #0e0f26; border: max(1.5px, calc(var(--cell) * 0.055)) solid #23264f;
-    box-shadow: inset 0 2px 3px rgba(0,0,0,0.45);
-  }
-  .tile.filled { border-color: #6a6e9c; background: #14163a; }
-  .tile.flip { animation: flip 0.62s ease both; animation-delay: var(--d, 0ms); }
-  @keyframes flip {
-    0%   { transform: rotateX(0); border-color: #6a6e9c; background: #14163a; }
-    49%  { transform: rotateX(90deg); border-color: #6a6e9c; background: #14163a; }
-    50%  { transform: rotateX(90deg); border-color: var(--to-border); background: var(--to-bg); }
-    100% { transform: rotateX(0); border-color: var(--to-border); background: var(--to-bg); }
-  }
-  .grow.new .tile { animation: tile-pop 0.28s cubic-bezier(.34,1.56,.64,1) both; animation-delay: min(calc(var(--i) * 45ms), 600ms); }
-  @keyframes tile-pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  .sym { width: var(--cell); height: var(--cell); display: flex; align-items: center; justify-content: center; }
-  .sym:empty::before { content: ''; width: 26%; aspect-ratio: 1; border-radius: 50%; background: #23264f; }
-  .sym svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.45)); }
-  .grow.new .sym svg { animation: sym-in 0.4s cubic-bezier(.34,1.56,.64,1) both; animation-delay: calc(300ms + min(calc(var(--i) * 60ms), 700ms)); }
-  @keyframes sym-in { from { transform: scale(0) rotate(-40deg); } to { transform: scale(1) rotate(0); } }
-
-  /* Status line + keyboard (letters used so far) */
-  .hint-line { font-size: 12.5px; font-weight: 600; color: var(--text-dim); line-height: 1.45; text-align: center; max-width: max(var(--content-w, 640px), 320px); margin: 0 auto 14px; }
-  .hint-line strong { color: #fff; }
-  .tried { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; max-width: max(var(--content-w, 640px), 320px); margin: 0 auto 16px; }
-  .tried span {
-    width: 20px; height: 22px; display: flex; align-items: center; justify-content: center;
-    border-radius: 6px; font-size: 11px; font-weight: 800; color: var(--text-faint); background: #0e0f26;
-  }
-  .tried span.on { color: #fff; background: var(--panel-3); }
-
-  /* End-of-round result */
-  .result { max-width: max(var(--content-w, 640px), 320px); margin: 16px auto 0; text-align: center; animation: fadein 0.25s ease; }
-  .result[hidden] { display: none; }
-  .answer-tiles { --cell: 48px; --cols: 5; --gap: 5px; display: grid; grid-template-columns: repeat(var(--cols), var(--cell)); gap: var(--gap); justify-content: center; margin-bottom: 8px; }
-  .answer-tiles .tile { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 16%, #14163a); color: var(--gold); }
-  .result .winner { font-size: 16px; font-weight: 800; color: var(--mint); font-family: 'Fredoka', sans-serif; }
-  .result .nowinner { font-size: 14px; font-weight: 700; color: var(--text-dim); }
-  .legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-  .legend .chip {
-    display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px;
-    background: #0e0f26; border: 1px solid var(--line); border-radius: 999px;
-    font-size: 12px; font-weight: 700; color: var(--text);
-  }
-  .legend .chip svg { width: 30px; height: 30px; overflow: visible; }
-  .confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; border-radius: var(--radius-lg); }
-  .confetti span { position: absolute; top: -10%; opacity: 0.9; animation: confetti-fall 1.6s ease-in forwards; }
-  @keyframes confetti-fall { to { transform: translateY(520px) rotate(200deg); opacity: 0; } }
-  @keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
-
-  /* Rules sheet */
-  .rules-body { font-size: 13.5px; line-height: 1.5; color: var(--text); }
-  .rules-body p { margin: 0 0 10px; color: var(--text-dim); font-weight: 600; }
-  .rules-body p strong { color: #fff; }
-  .rules-demo { max-width: 360px; margin: 6px auto 14px; }
-  .rules-demo .grid { --cell: 30px; --cols: 5; --gap: 4px; --sp: 12px; row-gap: 4px; }
-  .rules-demo .tile { font-size: 17px; }
-  .rules-demo .sl { display: flex; align-items: center; justify-content: center; height: 16px; font-size: 12px; font-weight: 800; color: var(--text-faint); }
-  .rules-demo .cap { width: calc(var(--cols) * var(--cell) + (var(--cols) - 1) * var(--gap)); font-size: 11px; font-weight: 700; color: var(--text-faint); text-align: right; padding-right: 6px; }
-  .rules-key { display: grid; gap: 6px; margin: 4px 0 12px; }
-  .rules-key div { display: flex; gap: 10px; align-items: center; font-size: 13px; font-weight: 700; color: var(--text); }
-  .rules-key svg { width: 30px; height: 30px; flex: 0 0 auto; overflow: visible; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .tile.flip, .grow.new .tile, .grow.new .sym svg, .confetti span, .result { animation: none !important; }
-    .tile.flip { border-color: var(--to-border); background: var(--to-bg); }
-  }
-  :focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
-
-  /* ---------------- Footer / Settings trigger ---------------- */
-  footer { flex: 0 0 auto; }
-  .settings-fab-row { display: none; }
-
-  .sheet-backdrop {
-    position: fixed; inset: 0; background: rgba(6,6,16,0.6); backdrop-filter: blur(2px);
-    opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 20;
-  }
-  .sheet-backdrop.open { opacity: 1; pointer-events: auto; }
-
-  .sheet {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
-    background: linear-gradient(180deg, var(--panel), var(--bg-1));
-    border-radius: 22px 22px 0 0; border: 1px solid var(--line); border-bottom: none;
-    box-shadow: 0 -12px 40px rgba(0,0,0,0.5);
-    max-height: 82vh; display: flex; flex-direction: column;
-    transform: translateY(100%); transition: transform 0.26s cubic-bezier(.32,.72,0,1);
-  }
-  .sheet.open { transform: translateY(0); }
-  .sheet-handle { width: 40px; height: 4px; background: var(--line); border-radius: 3px; margin: 10px auto 4px; flex: 0 0 auto; }
-  .sheet-head {
-    display: flex; align-items: center; justify-content: space-between; padding: 8px 16px 10px;
-    flex: 0 0 auto;
-  }
-  .sheet-head h2 { margin: 0; font-size: 17px; font-weight: 700; }
-  .sheet-close {
-    width: 30px; height: 30px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--line);
-    color: var(--text-dim); font-size: 15px; cursor: pointer;
-  }
-
-  .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px 10px; flex: 0 0 auto; }
-  .tab-btn {
-    background: var(--panel-2); border: 1px solid var(--line); color: var(--text-dim);
-    border-radius: 999px; padding: 7px 13px; font-size: 12.5px; font-weight: 700; cursor: pointer;
-    white-space: nowrap; flex: 0 0 auto;
-  }
-  .tab-btn.active { color: #12132a; border-color: transparent; background: linear-gradient(120deg, var(--mint), #6ee7c8); }
-  .tab-scroll { overflow-y: auto; padding: 4px 16px 22px; flex: 1 1 auto; }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; animation: fadein 0.15s ease; }
-
-  label { display: block; font-size: 11.5px; color: var(--text-dim); font-weight: 700; margin: 12px 0 5px; }
-  label:first-child { margin-top: 2px; }
-  input[type=text], input[type=password], input[type=number], select {
-    width: 100%; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line);
-    background: #0e0f26; color: var(--text); font-size: 14.5px; font-family: inherit;
-  }
-  input:focus, select:focus { outline: none; border-color: var(--mint); }
-  .row { display: flex; gap: 8px; }
-  .row > * { flex: 1 1 0; }
-  button { font-family: inherit; }
-  button.primary {
-    margin-top: 12px; width: 100%; padding: 12px; border: none; border-radius: 13px;
-    background: linear-gradient(120deg, var(--pink), #ff8fc2); color: white; font-weight: 800;
-    font-size: 14.5px; cursor: pointer; box-shadow: 0 6px 16px rgba(255,95,158,0.32);
-  }
-  button.primary:active { transform: scale(0.98); }
-  button.secondary {
-    margin-top: 10px; width: 100%; padding: 11px; border-radius: 13px;
-    background: var(--panel-2); border: 1px solid var(--line); color: var(--text); font-size: 13.5px; font-weight: 700; cursor: pointer;
-  }
-  button.secondary:active { transform: scale(0.98); }
-  button.danger { background: rgba(255,95,109,0.13); border-color: var(--danger); color: var(--danger); }
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 10px; }
-  .toggle-row .lbl { font-size: 13.5px; font-weight: 700; }
-  .toggle-row .sub { font-size: 11.5px; color: var(--text-faint); font-weight: 500; margin-top: 1px; }
-  .switch { position: relative; width: 44px; height: 26px; flex: 0 0 auto; }
-  .switch input { opacity: 0; width: 0; height: 0; }
-  .slider { position: absolute; cursor: pointer; inset: 0; background-color: var(--line); border-radius: 999px; transition: 0.2s; }
-  .slider:before {
-    position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
-    background-color: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
-  input:checked + .slider { background-color: var(--mint); }
-  input:checked + .slider:before { transform: translateX(18px); }
-  .small-note { font-size: 11.5px; color: var(--text-faint); margin-top: 8px; line-height: 1.4; }
-  .error-msg { color: var(--danger); font-size: 12px; margin-top: 8px; min-height: 14px; font-weight: 700; }
-  .section-title { font-size: 12.5px; font-weight: 800; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; margin: 14px 0 8px; }
-  .section-title:first-child { margin-top: 2px; }
-
-  /* Word-length picker in Host Controls */
-  .seg { display: flex; gap: 4px; background: #0e0f26; border: 1px solid var(--line); border-radius: 14px; padding: 4px; margin-top: 4px; }
-  .seg button { flex: 1; border: none; background: transparent; color: var(--text-dim); font-weight: 800; font-size: 13px; padding: 10px 6px; border-radius: 10px; cursor: pointer; }
-  .seg button.active { background: linear-gradient(120deg, var(--mint), #6ee7c8); color: #12132a; }
-  .len-summary { margin-top: 12px; padding: 9px 11px; border-radius: 12px; background: var(--panel-2); border: 1px solid rgba(53,230,171,0.35); font-size: 12.5px; font-weight: 700; color: var(--mint); line-height: 1.4; }
-
-  /* Connection message under the Connect buttons */
-  .conn-status { margin-top: 12px; padding: 9px 11px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12.5px; font-weight: 700; color: var(--text-dim); line-height: 1.4; }
-  .conn-status.connected { color: var(--mint); border-color: rgba(53,230,171,0.4); }
-  .conn-status.connecting { color: var(--gold); border-color: rgba(255,203,71,0.4); }
-  .conn-status.error { color: var(--danger); border-color: rgba(255,95,109,0.45); }
-
-  .rules-key .q {
-    width: 22px; height: 22px; flex: 0 0 auto; border-radius: 50%; background: var(--panel-3);
-    border: 1px solid var(--line); color: var(--text-dim); font-weight: 800; font-size: 12px;
-    display: flex; align-items: center; justify-content: center;
-  }
-
-  /* ---------------- Platform integration additions ---------------- */
-  .mode-badge {
-    font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; padding: 4px 9px;
-    border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text-dim);
-  }
-  .mode-badge.live { color: #0c2109; background: var(--ok); border-color: var(--ok); }
-  .mode-badge.test { color: #3a2708; background: var(--gold); border-color: var(--gold); }
-
-  .theme-field { margin-top: 4px; }
-  .theme-field select {
-    width: auto; padding: 7px 26px 7px 12px; font-size: 12.5px; font-weight: 700;
-    border-radius: 999px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
-  }
-
-  /* Round / all-time leaderboard, opened from the 🏆 header button */
-  .lb-overlay {
-    position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
-    padding: 20px; background: rgba(4,5,14,0.62); opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
-  }
-  .lb-overlay.open { opacity: 1; pointer-events: auto; }
-  .lb-card {
-    width: 100%; max-width: 360px; max-height: 78vh; overflow-y: auto;
-    background: linear-gradient(160deg, var(--panel) 0%, var(--panel-2) 100%);
-    border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 18px;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.4);
-  }
-  .lb-title { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 18px; text-align: center; margin-bottom: 4px; color: var(--gold); }
-  .lb-tabs { display: flex; gap: 6px; margin: 12px 0 10px; }
-  .lb-tabs button {
-    flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2);
-    color: var(--text-dim); font-weight: 800; font-size: 12.5px; cursor: pointer;
-  }
-  .lb-tabs button.active { color: #12132a; border-color: transparent; background: linear-gradient(120deg, var(--mint), #6ee7c8); }
-  .lb-list { display: flex; flex-direction: column; gap: 6px; }
-  .lb-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 10px; background: var(--panel-3); font-size: 13.5px; font-weight: 700; }
-  .lb-rank { width: 20px; text-align: center; color: var(--text-faint); flex: none; }
-  .lb-row:nth-child(1) .lb-rank { color: var(--gold); }
-  .lb-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb-score { color: var(--mint); font-family: 'Fredoka', sans-serif; }
-  .lb-empty { text-align: center; color: var(--text-faint); font-size: 12.5px; padding: 10px 0; }
-  .lb-close { position: absolute; margin-top: -10px; margin-left: calc(100% - 30px - 18px); }
-
-  .diag-box {
-    margin-top: 12px; padding: 9px 11px; border-radius: 12px; background: var(--panel-2);
-    border: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--text-dim); line-height: 1.5;
-  }
-  .diag-box b { color: var(--text); }
-</style>
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div id="app">
+  <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
 
-  <header>
-    <div class="brand">
-      <div class="brand-badge">🌀</div>
-      <h1>TWISTLE</h1>
-    </div>
-    <div class="header-right">
-      <a href="/" class="icon-btn" id="homeBtn" title="Choose another game" aria-label="Choose another game">🏠</a>
-      <span class="mode-badge" id="modeBadge">Offline</span>
-      <span class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Offline</span></span>
-      <button class="icon-btn" id="leaderboardBtn" title="Leaderboard" aria-label="Leaderboard">🏆</button>
-      <button class="icon-btn" id="rulesBtn" title="How to play" aria-label="How to play">?</button>
-      <button class="icon-btn" id="settingsBtn" title="Host Controls & Settings" aria-label="Host controls">⚙️</button>
-    </div>
-  </header>
+  <div class="app" id="app">
 
-  <main>
-
-    <section class="board" id="board">
-      <div class="confetti" id="confettiWrap"></div>
-
-      <div class="meta-row">
-        <span class="round-chip"><span id="roundLabel">TWISTLE</span><span class="sub" id="roundSub"></span></span>
-        <span class="guess-badge" id="guessBadge" hidden><span></span></span>
+    <header class="topbar">
+      <div class="brandRow">
+        <span class="brandBadge">🌀</span>
+        <span class="brandDot" id="brandDot"></span>
+        <div class="brandTitle">TWISTLE</div>
       </div>
-
-      <div class="tried" id="tried" title="Keyboard — letters used in guesses so far"></div>
-      <div class="hint-line" id="hintLine"></div>
-
-      <div class="grid" id="grid"></div>
-
-      <div class="result" id="result" hidden>
-        <div class="answer-tiles" id="answerTiles"></div>
-        <div class="winner" id="resultWinner" hidden></div>
-        <div class="nowinner" id="resultNoWinner" hidden></div>
-        <div class="legend" id="legend"></div>
+      <div class="toolbarRow">
+        <a href="/" class="iconBtn" id="homeBtn" aria-label="Choose another game">🏠</a>
+        <span class="modeBadge" id="modeBadge">TEST</span>
+        <span class="lengthBadge" id="lengthBadge">— letters</span>
+        <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint">💡</button>
+        <button class="iconBtn" id="helpBtn" type="button" aria-label="How to play">❓</button>
+        <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
+        <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">⚙️</button>
+        <button class="iconBtn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">⛶</button>
       </div>
-    </section>
+    </header>
 
-  </main>
+    <div class="rejectionToast" id="rejectionToast" hidden></div>
 
-  <footer></footer>
+    <main class="stage" id="stage">
+      <section class="round-card">
 
-  <!-- ===== Leaderboard overlay (points, BLINDLE-style: 10 for solving, 1 per valid guess, Live mode only) ===== -->
-  <div class="lb-overlay" id="lbOverlay">
-    <div class="lb-card">
-      <button class="icon-btn lb-close" id="lbCloseBtn" aria-label="Close">✕</button>
-      <div class="lb-title">🏆 Leaderboard</div>
-      <div class="lb-tabs">
-        <button type="button" class="active" data-lb="round">This round</button>
-        <button type="button" data-lb="total">All-time</button>
-      </div>
-      <div class="lb-list" id="lbList"></div>
-    </div>
-  </div>
-
-  <div class="sheet-backdrop" id="sheetBackdrop"></div>
-
-  <!-- ===== How to play ===== -->
-  <div class="sheet" id="rulesSheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-head">
-      <h2>How to play</h2>
-      <button class="sheet-close" data-close aria-label="Close">✕</button>
-    </div>
-    <div class="tab-scroll">
-      <div class="rules-body">
-        <p>Guess the secret <strong>word</strong> (the host chooses how long, from 4 to 20 letters). Each round uses <strong>3 random symbols</strong> that always look very different from each other, and each one secretly means something different. You have to work out which is which.</p>
-        <div class="rules-key" id="rulesKey"></div>
-        <p>Here's the twist: the symbols line up with the letters of the <strong>secret word</strong>, not with the letters you guessed. Symbol 1 is about the secret word's 1st letter, symbol 2 about its 2nd letter, and so on. Every letter of the word gets its own symbol.</p>
-        <p><strong>Example:</strong> the secret word is SHAKE and the guess is THICK.</p>
-        <div class="rules-demo" id="rulesDemo"></div>
-        <p>The 2nd symbol says the secret's <strong>H</strong> is in your guess in the right spot. The 4th says the secret's <strong>K</strong> is in your guess but in the wrong spot. The other three say S, A and E aren't in THICK at all.</p>
-        <p><strong>Repeated letters:</strong> if you guess only one copy of a doubled letter and put it in the wrong spot, the <em>first</em> matching letter of the secret word gets the "wrong spot" symbol. If it's in the right spot, only that one gets "right spot" and you learn nothing about the other copy.</p>
-        <p><strong>Playing in chat:</strong> type any real word that has the same number of letters as the secret word. If it's valid and nobody's guessed it yet this round, it goes straight onto the board with its symbols — no vote, no waiting. Anyone who types the secret word wins the round straight away, and there's no timer or limit on how many guesses the board can hold, so keep trying!</p>
-        <p>When the round ends, the tiles flip to show their colours, and the symbols' meanings are revealed.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== Settings / Host Controls sheet (no password needed) ===== -->
-  <div class="sheet" id="sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-head">
-      <h2>Host Controls</h2>
-      <button class="sheet-close" data-close aria-label="Close">✕</button>
-    </div>
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="connect">Connect</button>
-      <button class="tab-btn" data-tab="game">Game</button>
-      <button class="tab-btn" data-tab="message">Message</button>
-      <button class="tab-btn" data-tab="words">Add Word</button>
-      <button class="tab-btn" data-tab="test">Test</button>
-      <button class="tab-btn" data-tab="platform">Platform</button>
-    </div>
-
-    <div class="tab-scroll">
-
-      <div class="tab-content active" data-tab="connect">
-        <div class="section-title">TikTok LIVE connection</div>
-        <label>TikTok Username (without @)</label>
-        <input type="text" id="tiktokUsername" placeholder="e.g. officialgeilegisela" />
-        <label>Euler Stream Signing API Key</label>
-        <input type="text" id="signApiKey" placeholder="Paste your eulerstream.com API key" />
-        <div class="row">
-          <button class="primary" id="connectBtn">Connect to LIVE</button>
-          <button class="secondary danger" id="disconnectBtn">Disconnect</button>
+        <div class="metaRow">
+          <div class="roundChip"><span id="roundLabel">TWISTLE</span> <span class="sub" id="roundSub">waiting to start</span></div>
+          <div class="guessBadge" id="guessBadge" hidden><span></span></div>
         </div>
-        <div class="conn-status" id="connStatus">Not connected.</div>
-        <div class="small-note">Get a free key at eulerstream.com, or set <code>EULERSTREAM_API_KEY</code> once on the server for every game on this platform to share. Your stream must be LIVE before connecting. This panel is open to anyone with the page link — there's no host password.</div>
-        <div class="diag-box" id="dictBox">Word bank &amp; dictionary — loading…</div>
-      </div>
 
-      <div class="tab-content" data-tab="game">
-        <div class="section-title">Round control</div>
-        <div class="row">
-          <button class="primary" id="startGameBtn">▶ Start Game</button>
-          <button class="secondary" id="stopGameBtn">■ Stop Game</button>
+        <div class="tried" id="tried"></div>
+
+        <div class="grid" id="grid"></div>
+        <div class="hintChips" id="hintChips"></div>
+        <p class="hintExplainer" id="hintExplainer" hidden>💡 suggests a word that fits every clue so far (never the answer itself). Unlimited uses.</p>
+        <p class="hintLine" id="hintLine"></p>
+
+        <div class="offlineNote" id="offlineNote" hidden>
+          <p>Solo practice — type your guess in the box below.</p>
         </div>
-        <div class="row">
-          <button class="secondary" id="revealAnswerBtn">👁 Reveal Answer</button>
-          <button class="secondary" id="skipRoundBtn">⏭ Skip Round</button>
+
+        <div class="resultBanner" id="resultBanner" hidden>
+          <p id="resultText"></p>
+          <div class="answerTiles" id="answerTiles"></div>
+          <div class="legendRow" id="legendRow"></div>
+          <button class="btn btnGold" id="playAgainBtn" type="button">Play again</button>
+          <p class="autoContinueNote" id="autoContinueNote" hidden></p>
         </div>
-        <div class="section-title" style="margin-top:22px">Word length</div>
-        <div class="seg" id="lenMode">
-          <button type="button" data-mode="fixed" class="active">Fixed length</button>
-          <button type="button" data-mode="random">Random range</button>
+
+        <div class="idleBanner" id="idleBanner">
+          <p>Open <strong>Settings</strong> (⚙️ top right) to choose a mode, word length, and difficulty, then tap Apply to begin.</p>
         </div>
-        <div id="lenFixedBox">
-          <label for="lenFixed">Every round uses a secret word of</label>
-          <select id="lenFixed"></select>
-        </div>
-        <div id="lenRangeBox" hidden>
+
+      </section>
+    </main>
+
+    <footer class="controls" id="controls">
+      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="true" aria-controls="controlsBody">
+        <span>Host controls</span>
+        <span id="handleArrow" class="handleArrow">▾</span>
+      </button>
+
+      <div class="controlsBody" id="controlsBody">
+
+        <div class="modeControls" id="liveControls" hidden>
           <div class="row">
-            <div><label for="lenMin">Shortest</label><select id="lenMin"></select></div>
-            <div><label for="lenMax">Longest</label><select id="lenMax"></select></div>
+            <input id="tiktokUsernameBottom" class="textInput" placeholder="TikTok username (no @)" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="connectBtnBottom" class="btn btnPrimary" type="button">Connect</button>
           </div>
-        </div>
-        <div class="len-summary" id="lenSummary"></div>
-        <div class="small-note">Changes apply from the next round — tap <strong>Skip Round</strong> to switch right away. The tiles and symbols resize automatically so every length stays easy to read.</div>
-
-        <div class="section-title" style="margin-top:22px">Difficulty</div>
-        <div class="seg" id="difficultySeg">
-          <button type="button" data-difficulty="normal" class="active">Normal</button>
-          <button type="button" data-difficulty="medium">Medium</button>
-          <button type="button" data-difficulty="hard">Hard</button>
-          <button type="button" data-difficulty="random">Random</button>
-        </div>
-        <div class="small-note">Ported straight from BLINDLE's difficulty engine — it scores every candidate secret word on vocabulary, letter structure, ambiguity and how much a clue narrows things down, then only offers words in the tier you pick. <strong>Random</strong> skips the filter entirely.</div>
-
-        <div class="small-note" style="margin-top:18px">There's no timer and no limit on guesses — a round runs until someone solves it, or you reveal the answer or skip it here.</div>
-      </div>
-
-      <div class="tab-content" data-tab="message">
-        <div class="section-title">Simulate a chat message</div>
-        <label>Name (optional)</label>
-        <input type="text" id="hostMsgName" placeholder="Host" />
-        <label>Message / Guess</label>
-        <input type="text" id="hostMsgText" placeholder="Type a guess..." />
-        <button class="primary" id="sendHostMsgBtn">Send</button>
-        <div class="small-note">This feeds directly into the game, just like a real TikTok comment: a fresh, valid word of the right length goes straight onto the board, and the secret word wins the round.</div>
-      </div>
-
-      <div class="tab-content" data-tab="words">
-        <div class="section-title">Add a secret word</div>
-        <label>Word (4 to 20 letters)</label>
-        <input type="text" id="newAnswer" maxlength="20" placeholder="e.g. VIBES" autocomplete="off" />
-        <button class="primary" id="addWordBtn">Add to Word Bank</button>
-        <div class="error-msg" id="addWordError"></div>
-        <div class="small-note" id="wordBankNote"></div>
-      </div>
-
-      <div class="tab-content" data-tab="test">
-        <div class="section-title">Test mode</div>
-        <div class="toggle-row">
-          <div>
-            <div class="lbl">Simulate fake TikTok chat</div>
-            <div class="sub">Fake viewers guess words (and sometimes solve it) every ~1.2s</div>
+          <div class="row">
+            <input id="setAnswerInputLive" class="textInput" placeholder="Set the secret word…" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="setAnswerBtnLive" class="btn btnGhost" type="button">Set</button>
           </div>
-          <label class="switch">
-            <input type="checkbox" id="testModeToggle" />
-            <span class="slider"></span>
-          </label>
+          <p class="miniStatus" id="setAnswerErrorLive"></p>
         </div>
-        <div class="small-note">Test Mode counts as its own mode — same as Live, but points aren't kept. Turn it off (or connect to TikTok) to leave Test Mode.</div>
+
+        <div class="modeControls" id="testControls" hidden>
+          <p class="sectionNote">Test Mode is simulating chat automatically — nothing to connect.</p>
+          <div class="row">
+            <input id="setAnswerInputTest" class="textInput" placeholder="Set the secret word…" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="setAnswerBtnTest" class="btn btnGhost" type="button">Set</button>
+          </div>
+          <p class="miniStatus" id="setAnswerErrorTest"></p>
+        </div>
+
+        <div class="modeControls" id="offlineControls" hidden>
+          <div class="row">
+            <input id="offlineGuessInput" class="textInput" placeholder="Type your guess…" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="offlineGuessBtn" class="btn btnPrimary" type="button">Guess</button>
+          </div>
+          <p class="miniStatus" id="offlineError"></p>
+        </div>
+
+        <button id="revealBtn" class="btn btnGhost btnFull" type="button">Reveal answer</button>
+        <p class="miniStatus" id="miniStatus"></p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Settings drawer -->
+  <div class="drawerOverlay" id="settingsOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Settings</h3>
+        <button class="iconBtn" id="closeSettings" type="button" aria-label="Close">✕</button>
       </div>
 
-      <div class="tab-content" data-tab="platform">
-        <div class="section-title">Platform theme</div>
-        <label class="theme-field">🎨 Main color
+      <div class="statusChips">
+        <div class="statusChip" id="modeChip">Mode: —</div>
+        <div class="statusChip" id="connChip">Connection: —</div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Appearance</h4>
+        <p class="sectionNote">This colors the whole platform (hub and every game).</p>
+        <label class="theme-picker">
+          🎨
           <select data-theme-select aria-label="Platform theme color">
             <option value="cream">Cream</option>
             <option value="blue">Sky Blue</option>
@@ -568,792 +146,198 @@
             <option value="honey">Honey Gold</option>
           </select>
         </label>
-        <div class="small-note">Twistle keeps its own dark look, but this stays in sync with the theme you pick on any other game.</div>
-
-        <div class="section-title" style="margin-top:20px">Scores</div>
-        <div class="row">
-          <button class="secondary danger" id="resetRoundScoresBtn">Reset this round's board</button>
-          <button class="secondary danger" id="resetTotalScoresBtn">Reset all-time leaderboard</button>
-        </div>
-        <div class="small-note">Points: 10 for solving the round, 1 for every other valid guess — Live mode only, same as BLINDLE. In-memory only; a full redeploy clears it (an ordinary restart does not).</div>
-
-        <div class="section-title" style="margin-top:20px">Live event tools</div>
-        <div data-engagement-tools></div>
       </div>
 
+      <div class="drawerSection">
+        <h4>Mode</h4>
+        <button class="pickerRow" id="modePickerBtn" type="button">
+          <span id="modePickerLabel">Test — practice, scores not saved</span>
+          <span class="chev">▾</span>
+        </button>
+      </div>
+
+      <div class="drawerSection" id="tiktokSection">
+        <h4>TikTok auto-chat</h4>
+        <p class="sectionNote">Connects to your LIVE room and feeds real chat guesses straight into the game. Only used in Live mode.</p>
+        <label class="fieldLabel">Your TikTok username</label>
+        <input id="tiktokUsername" class="textInput" placeholder="e.g. yourhandle (no @)" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <div class="row">
+          <button id="connectBtn" class="btn btnGold" type="button">Connect</button>
+          <button id="disconnectBtn" class="btn btnGhost" type="button">Disconnect</button>
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Word length</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="randomLengthToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Random length each round</span>
+        </label>
+
+        <div id="fixedLengthRow">
+          <select id="wordLengthSelect" class="selectInput"></select>
+        </div>
+
+        <div id="randomLengthRow" class="row" hidden>
+          <label class="fieldLabel delayLabel">From</label>
+          <select id="lengthMinSelect" class="selectInput selectNarrow"></select>
+          <label class="fieldLabel delayLabel">to</label>
+          <select id="lengthMaxSelect" class="selectInput selectNarrow"></select>
+          <span class="fieldLabel delayLabel">letters</span>
+        </div>
+        <p class="sectionNote" id="randomLengthNote" hidden>Each new round picks a random length in this range (still filtered by the difficulty tier below).</p>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Difficulty</h4>
+        <select id="difficultySelect" class="selectInput">
+          <option value="normal">Normal — common words, fast solving</option>
+          <option value="medium">Medium — trickier words, needs real deduction</option>
+          <option value="hard">Hard — tough but fair, minimal hand-holding</option>
+          <option value="random">Random — any difficulty, fully mixed</option>
+        </select>
+        <p class="sectionNote">Scored on word familiarity, letter structure, and puzzle ambiguity — not just obscure vocabulary. "Random" skips scoring entirely and draws from every word of that length. Very short/long word lengths may not have every tier available.</p>
+      </div>
+
+      <div class="drawerSection">
+        <label class="switchRow">
+          <input type="checkbox" id="autoContinueToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Auto-continue after each round</span>
+        </label>
+        <div class="row" id="delayRow">
+          <label class="fieldLabel delayLabel">Delay before next round (seconds)</label>
+          <input type="number" id="delayInput" class="textInput selectNarrow" min="3" max="120" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Round reveal &amp; win celebration</h4>
+        <p class="sectionNote">When a round ends, the tiles flip and the answer + symbol meanings show first, then — on a win — the leaderboard pops up automatically before closing on its own. Auto-continue (above) always waits for both to finish.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show the answer for (seconds)</label>
+          <input type="number" id="revealShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
+        </div>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show leaderboard for (seconds)</label>
+          <input type="number" id="leaderboardShowInput" class="textInput selectNarrow" min="1" max="30" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Guess rejection message</h4>
+        <p class="sectionNote">Shown briefly whenever a guess can't be added to the board.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show rejection message for (seconds)</label>
+          <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
+        </div>
+      </div>
+
+      <button class="btn btnGold btnFull" id="applyBtn" type="button">Apply settings &amp; start new round</button>
+      <p class="sectionNote">Word length, difficulty, auto-continue and this delay only take effect once you tap Apply. Reveal and win-celebration durations apply right away.</p>
+
+      <div class="drawerSection">
+        <h4>
+          Diagnostics
+          <button id="diagToggle" class="linkBtn" type="button" aria-expanded="true">hide</button>
+        </h4>
+        <div class="diagGrid" id="diagGrid"></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Scores</h4>
+        <button class="btn btnDanger btnFull" id="resetRoundBtn" type="button">Reset this round's leaderboard</button>
+        <button class="btn btnDanger btnFull" id="resetTotalBtn" type="button">Reset all-time leaderboard</button>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Live event tools</h4>
+        <div data-engagement-tools></div>
+      </div>
     </div>
   </div>
 
-</div>
+  <!-- Mode picker popup -->
+  <div class="pickerOverlay" id="modePickerOverlay" hidden>
+    <div class="pickerSheet">
+      <button class="pickerOption" data-mode="live" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Live</span>
+          <span class="pickerDesc">Counts for the chat leaderboard</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="test" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Test</span>
+          <span class="pickerDesc">Practice — scores not saved</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="offline" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Offline</span>
+          <span class="pickerDesc">Host plays solo</span>
+        </span>
+      </button>
+    </div>
+  </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script src="/shared/engagement.js"></script>
-<script src="/shared/penguin-fun.js"></script>
-<script src="/shared/celebration.js"></script>
-<script>
-(function () {
-  'use strict';
+  <!-- Leaderboard drawer -->
+  <div class="drawerOverlay" id="leaderboardOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Leaderboard</h3>
+        <button class="iconBtn" id="closeLeaderboard" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="tabRow">
+        <button class="tabBtn active" id="tabThisRound" type="button">This round</button>
+        <button class="tabBtn" id="tabAllTime" type="button">All-time</button>
+      </div>
+      <ol class="leaderboard" id="leaderboardList"></ol>
+      <p class="sectionNote" id="leaderboardNote" hidden></p>
+    </div>
+  </div>
 
-  // ---- Mobile viewport height fix (don't trust raw 100vh) ----
-  function setVh() {
-    document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
-  }
-  setVh();
-  window.addEventListener('resize', setVh);
-  window.addEventListener('orientationchange', setVh);
+  <!-- Win celebration: a sequence of floating windows -->
+  <div class="celebrationOverlay" id="celebrationOverlay" hidden>
+    <div class="celebrationCard" id="celebrationCard">
+      <button class="iconBtn celebrationClose" id="closeCelebration" type="button" aria-label="Close">✕</button>
+      <div class="celebrationBody" id="celebrationBody"></div>
+      <div class="celebrationDots" id="celebrationDots">
+        <span class="celebDot" data-stage="0"></span>
+        <span class="celebDot" data-stage="1"></span>
+        <span class="celebDot" data-stage="2"></span>
+      </div>
+    </div>
+  </div>
 
-  const socket = io('/twistle');
-  const $ = (id) => document.getElementById(id);
+  <!-- How-to-play modal -->
+  <div class="modalOverlay" id="howToOverlay" hidden>
+    <div class="modal">
+      <div class="modalHead">
+        <h3>How to play</h3>
+        <button class="iconBtn" id="closeHowTo" type="button" aria-label="Close">✕</button>
+      </div>
+      <ul class="howToList">
+        <li>Guess the hidden word — any length from 4 to 20 letters, chosen in Settings. <strong>Unlimited guesses</strong>, anyone can play, anytime.</li>
+        <li>Every round draws <strong>3 mystery symbols</strong>, always picked to look very different from each other. Each secretly means one thing, and nobody is told which: <em>right spot</em>, <em>wrong spot</em>, or <em>not in your guess</em>.</li>
+        <li>Each guess that lands on the board gets a row of symbols beside (or under) it — <strong>one per letter of the SECRET word</strong>, not the guess. Symbol 1 is about the secret word's 1st letter, symbol 2 its 2nd, and so on.</li>
+        <li>Any fresh word with the right number of letters goes straight onto the board — no vote, no waiting. Typing the secret word wins the round instantly.</li>
+        <li>The tiles' colors stay hidden until the round ends — then they flip, the answer appears, and the symbols' meanings are revealed.</li>
+        <li>💡 unlimited hints suggest a word that fits every clue so far (never the answer). Difficulty (Normal/Medium/Hard/Random) sets how tricky the word itself is.</li>
+        <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = just you, type guesses directly.</li>
+      </ul>
+      <div class="howToExample" id="howToExample"></div>
+      <button class="btn btnGold" id="closeHowTo2" type="button">Got it</button>
+    </div>
+  </div>
 
-  // ---- The symbol set --------------------------------------------------
-  // ids must match SYMBOL_INFO in gameEngine.js. Each symbol is drawn once as an
-  // SVG <symbol> (see buildSymbolSprite) and every board cell just points at it.
-  // Look: chunky "plush toy" - thick extruded base, dark contour, glossy gradient
-  // body lit from the top-left, tinted shading, a shine, a ground shadow and a face.
-  const INK = '#3a1d4d';
-  const SHADOW_TINT = '#2a0d4a';
-
-  const hex2rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
-  const mix = (a, b, t) => {
-    const A = hex2rgb(a), B = hex2rgb(b);
-    return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('');
-  };
-  const fx = (n) => Math.round(n * 100) / 100;
-
-  /** Closed polygon with rounded corners (quadratic curves). */
-  function roundPoly(pts, r) {
-    const n = pts.length;
-    let d = '';
-    for (let i = 0; i < n; i++) {
-      const p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n];
-      const v1 = [p0[0] - p1[0], p0[1] - p1[1]], v2 = [p2[0] - p1[0], p2[1] - p1[1]];
-      const l1 = Math.hypot(v1[0], v1[1]), l2 = Math.hypot(v2[0], v2[1]);
-      const k = Math.min(r, l1 / 2, l2 / 2);
-      const a = [p1[0] + (v1[0] / l1) * k, p1[1] + (v1[1] / l1) * k];
-      const b = [p1[0] + (v2[0] / l2) * k, p1[1] + (v2[1] / l2) * k];
-      d += `${i ? 'L' : 'M'}${fx(a[0])} ${fx(a[1])}Q${fx(p1[0])} ${fx(p1[1])} ${fx(b[0])} ${fx(b[1])}`;
-    }
-    return d + 'Z';
-  }
-
-  /** Rotate the points of an absolute M/C/Z path around (cx, cy). */
-  function rotatePath(cmds, deg, cx, cy) {
-    const t = (deg * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t);
-    const rot = ([x, y]) => [cx + (x - cx) * c - (y - cy) * s, cy + (x - cx) * s + (y - cy) * c];
-    return cmds.map(([op, ...pts]) => op + pts.map((p) => rot(p).map(fx).join(' ')).join(' ')).join('') + 'Z';
-  }
-
-  /** A face: blush, eyes, mouth. eyes: 'dot' | 'happy' | 'sleep'. */
-  function face(cx, cy, o = {}) {
-    const gap = o.gap ?? 13;
-    const rx = o.rx ?? 2.8, ry = o.ry ?? 3.6;
-    const x1 = cx - gap / 2, x2 = cx + gap / 2;
-    const eyeKind = o.eyes || 'dot';
-    const eye = (x) => {
-      if (eyeKind === 'happy') return `<path d="M${fx(x - 3.2)} ${fx(cy + 1.6)}Q${fx(x)} ${fx(cy - 4)} ${fx(x + 3.2)} ${fx(cy + 1.6)}" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
-      if (eyeKind === 'sleep') return `<path d="M${fx(x - 3.2)} ${fx(cy - 1)}Q${fx(x)} ${fx(cy + 3.6)} ${fx(x + 3.2)} ${fx(cy - 1)}" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`;
-      return `<ellipse cx="${fx(x)}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${INK}"/><circle cx="${fx(x + 0.95)}" cy="${fx(cy - 1.35)}" r="1.15" fill="#fff"/><circle cx="${fx(x - 0.9)}" cy="${fx(cy + 1.5)}" r=".55" fill="#fff" opacity=".85"/>`;
-    };
-    const my = cy + (o.mouthDy ?? 6.6);
-    let mouth;
-    if (o.mouth === 'open') {
-      mouth = `<path d="M${fx(cx - 3.4)} ${fx(my - 0.6)}Q${cx} ${fx(my + 6.4)} ${fx(cx + 3.4)} ${fx(my - 0.6)}Z" fill="${INK}" stroke="${INK}" stroke-width="1" stroke-linejoin="round"/><ellipse cx="${cx}" cy="${fx(my + 2.4)}" rx="1.9" ry="1.2" fill="#ff7f9d"/>`;
-    } else if (o.mouth === 'o') {
-      mouth = `<ellipse cx="${cx}" cy="${fx(my + 0.8)}" rx="1.9" ry="2.3" fill="${INK}"/>`;
-    } else if (o.mouth === 'cat') {
-      mouth = `<path d="M${fx(cx - 4.4)} ${fx(my)}Q${fx(cx - 2.2)} ${fx(my + 3.2)} ${cx} ${fx(my)}Q${fx(cx + 2.2)} ${fx(my + 3.2)} ${fx(cx + 4.4)} ${fx(my)}" fill="none" stroke="${INK}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`;
-    } else {
-      mouth = `<path d="M${fx(cx - 3)} ${fx(my)}Q${cx} ${fx(my + 3.8)} ${fx(cx + 3)} ${fx(my)}" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`;
-    }
-    const bx = gap / 2 + (o.blushDx ?? 6.6), by = cy + (o.blushDy ?? 4.4);
-    const bc = o.blush || '#ff6f9c';
-    const blush = `<ellipse cx="${fx(cx - bx)}" cy="${fx(by)}" rx="3.4" ry="2.1" fill="${bc}" opacity=".62"/><ellipse cx="${fx(cx + bx)}" cy="${fx(by)}" rx="3.4" ry="2.1" fill="${bc}" opacity=".62"/>`;
-    const inner = blush + eye(x1) + eye(x2) + mouth;
-    return o.rotate ? `<g transform="rotate(${o.rotate} ${cx} ${cy})">${inner}</g>` : inner;
-  }
-
-  const shine = (x, y, rx, ry, rot, dot) =>
-    `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" transform="rotate(${rot} ${x} ${y})" fill="#fff" opacity=".78"/>` +
-    (dot ? `<circle cx="${dot[0]}" cy="${dot[1]}" r="${dot[2] || 1.5}" fill="#fff" opacity=".9"/>` : '');
-
-  // --- silhouettes ---
-  const HEART = 'M32 54C10 40 5 28 5 19.5C5 11.5 11 6 18.5 6C24 6 29 9 32 14C35 9 40 6 45.5 6C53 6 59 11.5 59 19.5C59 28 54 40 32 54Z';
-  const DROP = 'M32 5C44 21 54 32 54 42.5A22 22 0 0 1 10 42.5C10 32 20 21 32 5Z';
-  const MOON = 'M56 34.1A24 24 0 1 1 29.9 8A18.7 18.7 0 0 0 56 34.1Z';
-  const STAR = roundPoly(
-    Array.from({ length: 10 }, (_, i) => {
-      const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 13.5 : 26.5;
-      return [32 + Math.cos(a) * r, 34.5 + Math.sin(a) * r];
-    }), 4.6);
-  const GEM = roundPoly([[19, 9], [45, 9], [58, 24], [32, 56], [6, 24]], 4);
-  const LEAF = [['M', [32, 32]], ['C', [24, 26], [17, 20], [17, 13]], ['C', [17, 8], [21, 5], [25, 5]], ['C', [28, 5], [31, 7], [32, 10]], ['C', [33, 7], [36, 5], [39, 5]], ['C', [43, 5], [47, 8], [47, 13]], ['C', [47, 20], [40, 26], [32, 32]]];
-  const CLOVER = [0, 90, 180, 270].map((a) => rotatePath(LEAF, a, 32, 32));
-  const EAR_L = roundPoly([[8, 28], [10, 6], [29, 17]], 3.4);
-  const EAR_R = roundPoly([[56, 28], [54, 6], [35, 17]], 3.4);
-  const DONUT_RING = 'M32 4A26 26 0 1 1 31.99 4ZM32 23.5A6.5 6.5 0 1 0 32.01 23.5Z';
-  const ICING = (() => {
-    const cx = 32, cy = 30, pts = [];
-    for (let i = 0; i < 56; i++) {
-      const a = (i / 56) * Math.PI * 2, r = 22.2 + 1.7 * Math.sin(a * 8);
-      pts.push(`${fx(cx + Math.cos(a) * r)} ${fx(cy + Math.sin(a) * r)}`);
-    }
-    return 'M' + pts.join('L') + 'ZM32 20.5A9.5 9.5 0 1 0 32.01 20.5Z';
-  })();
-
-  const MUSH_CAP = 'M5.5 33C5.5 17 17.5 6 32 6C46.5 6 58.5 17 58.5 33C58.5 35.2 56.8 36.5 54.8 36.5H9.2C7.2 36.5 5.5 35.2 5.5 33Z';
-  const GHOST = roundPoly([
-    ...Array.from({ length: 19 }, (_, i) => { const t = Math.PI + (i * Math.PI) / 18; return [32 + Math.cos(t) * 22, 28 + Math.sin(t) * 22]; }),
-    [54, 52], [43, 45], [32, 52], [21, 45], [10, 52],
-  ], 4.4);
-
-  // hue/tone/shape live in the engine (contrast rules); color/art live here.
-  const SYMBOLS = {
-    heart: {
-      color: '#ff3f6c', shadow: 25,
-      shape: (a) => `<path d="${HEART}" ${a}/>`,
-      hl: shine(17.5, 15.5, 6.2, 3.4, -35, [27, 11.5, 1.6]),
-      face: face(32, 27, { gap: 17, mouth: 'open', blush: '#ffa9c0', mouthDy: 6 }),
-    },
-    star: {
-      color: '#ffc419', shadow: 22,
-      shape: (a) => `<path d="${STAR}" ${a}/>`,
-      hl: shine(27.5, 18.5, 2.7, 6.4, 24, [33, 13.2, 1.4]),
-      face: face(32, 35, { gap: 12, eyes: 'happy', mouthDy: 6.4, blush: '#ff8f6b' }),
-    },
-    moon: {
-      color: '#8f6bff', shadow: 20,
-      shape: (a) => `<path d="${MOON}" ${a}/>`,
-      hl: shine(15.5, 27, 2.8, 6.2, 28, [21.5, 18.5, 1.5]),
-      face: face(27, 40, { gap: 12.5, eyes: 'sleep', rotate: -12, mouthDy: 6.2, blushDx: 6.4, blushDy: 4, blush: '#ff8fc0' }),
-    },
-    drop: {
-      color: '#2f8bff', shadow: 20,
-      shape: (a) => `<path d="${DROP}" ${a}/>`,
-      hl: shine(21.5, 38, 3.4, 8, 18, [27, 24.5, 1.7]),
-      face: face(32, 43, { gap: 13, mouth: 'o', mouthDy: 6.2, blush: '#ff8fc0' }),
-    },
-    clover: {
-      color: '#2fcf6d', shadow: 24,
-      shape: (a) => CLOVER.map((d) => `<path d="${d}" ${a}/>`).join(''),
-      decor: `<path d="M32 13V20M32 44V51M13 32H20M44 32H51" fill="none" stroke="${SHADOW_TINT}" stroke-opacity=".22" stroke-width="1.6" stroke-linecap="round"/>`,
-      hl: shine(20, 17, 4.6, 2.6, -32, [27, 11.5, 1.4]),
-      face: face(32, 31, { gap: 11, mouthDy: 5.8, blush: '#ffb0a8', blushDx: 6.2 }),
-    },
-    cat: {
-      color: '#ff8a2b', shadow: 24,
-      shape: (a) => `<path d="${EAR_L}" ${a}/><path d="${EAR_R}" ${a}/><ellipse cx="32" cy="36" rx="24" ry="18.5" ${a}/>`,
-      decor:
-        `<path d="${roundPoly([[13, 24], [14.4, 12.5], [24, 18.5]], 1.8)}" fill="#ffb3c6"/>` +
-        `<path d="${roundPoly([[51, 24], [49.6, 12.5], [40, 18.5]], 1.8)}" fill="#ffb3c6"/>`,
-      hl: shine(19, 26.5, 6, 2.9, -18, [28.5, 23.5, 1.4]),
-      face:
-        face(32, 35.5, { gap: 20, mouth: 'cat', mouthDy: 8.4, blush: '#ff6f8f', blushDx: 5.6, blushDy: 3.6 }) +
-        `<path d="M29.6 41.2Q32 39.6 34.4 41.2Q32 44 29.6 41.2Z" fill="#ff6f8f"/>`,
-    },
-    gem: {
-      color: '#17d4cf', shadow: 24,
-      shape: (a) => `<path d="${GEM}" ${a}/>`,
-      decor:
-        `<path d="M22.5 11.4H41.5L45 21.6H19Z" fill="#fff" opacity=".24"/>` +
-        `<path d="M32 56L58 24H45L32 40Z" fill="#0b3d7a" opacity=".13"/>` +
-        `<path d="M8 24H56M19.5 10.5L24.5 24M44.5 10.5L39.5 24" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="1.3" stroke-linecap="round"/>`,
-      hl: shine(14.5, 20.5, 1.9, 4.2, 42, null),
-      face: face(32, 32.5, { gap: 13, mouthDy: 6.2, blush: '#ff8fc0', blushDx: 5.4 }),
-    },
-    donut: {
-      color: '#ff5fb5', shadow: 24, base: '#f0b167',
-      shape: (a) => `<path d="${DONUT_RING}" fill-rule="evenodd" clip-rule="evenodd" ${a}/>`,
-      icing: true,
-      decor:
-        `<path d="${ICING}" fill="url(#ic-donut)" fill-rule="evenodd"/>` +
-        `<path d="${ICING}" fill="url(#sh)" fill-rule="evenodd" opacity=".7"/>` +
-        [[19, 24, 40, '#fff6a8'], [26, 13.5, -25, '#7ee8ff'], [40.5, 13, 30, '#fff'], [47.5, 22.5, -60, '#b6ff9a'], [15.5, 33.5, 70, '#fff'], [49, 36, 20, '#fff6a8']]
-          .map(([x, y, r, c]) => `<rect x="${x - 2.7}" y="${y - 1}" width="5.4" height="2.1" rx="1.05" transform="rotate(${r} ${x} ${y})" fill="${c}"/>`).join(''),
-      hl: shine(15, 21, 2.4, 5.6, 38, [20.5, 12.5, 1.4]),
-      face: face(32, 45.4, { gap: 11, rx: 2.2, ry: 2.9, mouthDy: 4.6, blushDx: 6, blushDy: 3, blush: '#ff2f9a' }),
-    },
-    cloud: {
-      color: '#eef1ff', shadow: 25, base: '#f4f6ff', deep: '#5a55b8',
-      shape: (a) => `<circle cx="21" cy="37" r="12" ${a}/><circle cx="34" cy="28" r="16" ${a}/><circle cx="47" cy="37" r="12" ${a}/><rect x="13" y="36" width="42" height="17" rx="8.5" ${a}/>`,
-      hl: shine(27, 19.5, 6.4, 3.2, -28, [37, 15.8, 1.5]),
-      face: face(34, 39, { gap: 14, mouth: 'o', mouthDy: 5.4, blush: '#ff8fb8', blushDx: 6.4 }),
-    },
-  };
-
-  Object.assign(SYMBOLS, {
-    frog: {
-      color: '#6bd83c', shadow: 24, deep: '#1f6a3a',
-      shape: (a) => `<ellipse cx="32" cy="37" rx="25.5" ry="17" ${a}/><circle cx="19.5" cy="20" r="10.5" ${a}/><circle cx="44.5" cy="20" r="10.5" ${a}/>`,
-      decor:
-        `<ellipse cx="32" cy="45.5" rx="14.5" ry="7.5" fill="#fff" opacity=".2"/>` +
-        [19.5, 44.5].map((x) => `<circle cx="${x}" cy="20" r="7.2" fill="#fff" stroke="#b9e3a3" stroke-width=".9"/><circle cx="${x + 0.9}" cy="21" r="4.1" fill="${INK}"/><circle cx="${x + 2.3}" cy="19.4" r="1.5" fill="#fff"/><circle cx="${x - 0.6}" cy="22.6" r=".7" fill="#fff" opacity=".85"/>`).join(''),
-      hl: shine(11, 36, 2.3, 5, 14, [13.5, 29, 1.3]),
-      face:
-        `<ellipse cx="14.5" cy="42" rx="3.6" ry="2.2" fill="#ff5f86" opacity=".8"/><ellipse cx="49.5" cy="42" rx="3.6" ry="2.2" fill="#ff5f86" opacity=".8"/>` +
-        `<circle cx="29.6" cy="34.2" r=".95" fill="${INK}"/><circle cx="34.4" cy="34.2" r=".95" fill="${INK}"/>` +
-        `<path d="M23 40Q32 47.5 41 40" fill="none" stroke="${INK}" stroke-width="2" stroke-linecap="round"/>`,
-    },
-    mushroom: {
-      color: '#ff4b3e', shadow: 22, base: '#fff4de', deep: '#e0905f', shadeOp: 0.42, icing: true,
-      shape: (a) => `<path d="${MUSH_CAP}" ${a}/><rect x="19" y="33" width="26" height="22" rx="10" ${a}/>`,
-      decor:
-        `<path d="M20 36.5H44Q32 44 20 36.5Z" fill="${SHADOW_TINT}" opacity=".24"/>` +
-        `<path d="${MUSH_CAP}" fill="url(#ic-mushroom)" stroke="#8e1d3a" stroke-width="3" stroke-linejoin="round"/>` +
-        `<path d="${MUSH_CAP}" fill="url(#sh)" opacity=".9"/>` +
-        [[18.5, 22, 4.6], [33, 13.5, 3.6], [46, 22.5, 5], [31, 27, 2.8]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".96"/>`).join(''),
-      hl: shine(15, 15.5, 5.4, 2.5, -40, [25, 10.5, 1.4]),
-      face: face(32, 46, { gap: 10.5, rx: 2.2, ry: 2.9, mouthDy: 4.6, blushDx: 3.6, blushDy: 3, blush: '#ff8f9c' }),
-    },
-    ghost: {
-      color: '#dc5ef2', shadow: 23,
-      shape: (a) => `<path d="${GHOST}" ${a}/>`,
-      hl: shine(20, 17, 5.8, 2.8, -36, [29.5, 11, 1.5]),
-      face: face(32, 28, { gap: 14, mouth: 'o', mouthDy: 6.8, blush: '#ff7ac8', blushDx: 6.4 }),
-    },
-    // Safety net: if the server ever sends a symbol this page has no art for,
-    // show this instead of nothing at all.
-    _fallback: {
-      color: '#9aa3ff', shadow: 22,
-      shape: (a) => `<circle cx="32" cy="32" r="23" ${a}/>`,
-      hl: shine(20, 20, 6, 3, -35, [29, 13, 1.5]),
-      face: face(32, 32, { gap: 13, mouth: 'o', mouthDy: 6 }),
-    },
-  });
-
-  function buildSymbolSprite() {
-    const defs = `
-      <linearGradient id="sh" gradientUnits="userSpaceOnUse" x1="0" y1="26" x2="0" y2="58">
-        <stop offset="0" stop-color="${SHADOW_TINT}" stop-opacity="0"/><stop offset="1" stop-color="${SHADOW_TINT}" stop-opacity=".34"/>
-      </linearGradient>
-      <radialGradient id="gs"><stop offset="0" stop-color="#000" stop-opacity=".42"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>`;
-    const grad = (id, base, deep) => `
-      <radialGradient id="${id}" gradientUnits="userSpaceOnUse" cx="20" cy="15" r="56">
-        <stop offset="0" stop-color="${mix(base, '#ffffff', 0.58)}"/>
-        <stop offset=".42" stop-color="${base}"/>
-        <stop offset="1" stop-color="${mix(base, deep || SHADOW_TINT, 0.42)}"/>
-      </radialGradient>`;
-    const symbols = Object.entries(SYMBOLS).map(([id, s]) => {
-      const base = s.base || s.color;
-      const rim = mix(base, s.deep || SHADOW_TINT, 0.5);
-      const deep = mix(base, s.deep || SHADOW_TINT, 0.68);
-      const extra = s.icing ? grad('ic-' + id, s.color) : '';
-      return `<symbol id="sym-${id}" viewBox="0 0 64 64" overflow="visible">
-        ${grad('gb-' + id, base, s.deep)}${extra}<clipPath id="cp-${id}">${s.shape('')}</clipPath>
-        <ellipse cx="32" cy="58.6" rx="${s.shadow}" ry="3.7" fill="url(#gs)"/>
-        <g transform="translate(0 3.3)">${s.shape(`fill="${deep}" stroke="${deep}" stroke-width="2.6" stroke-linejoin="round"`)}</g>
-        ${s.shape(`fill="${rim}" stroke="${rim}" stroke-width="2.6" stroke-linejoin="round"`)}
-        <g clip-path="url(#cp-${id})"><rect width="64" height="64" fill="url(#gb-${id})"/><rect width="64" height="64" fill="url(#sh)" opacity="${s.shadeOp ?? 1}"/></g>
-        ${s.decor || ''}${s.hl}${s.face}
-      </symbol>`;
-    }).join('');
-    document.body.insertAdjacentHTML('afterbegin',
-      `<svg id="symbolSprite" width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false"><defs>${defs}</defs>${symbols}</svg>`);
-  }
-  buildSymbolSprite();
-
-  const warnedSymbols = new Set();
-  function symbolSvg(id) {
-    if (!id) return '';
-    if (!SYMBOLS[id]) {
-      if (!warnedSymbols.has(id)) { warnedSymbols.add(id); console.warn('[Twistle] No artwork for symbol "' + id + '" - showing a placeholder. Is this page out of date?'); }
-      id = '_fallback';
-    }
-    return `<svg viewBox="0 0 64 64" aria-hidden="true"><use href="#sym-${id}"/></svg>`;
-  }
-
-  const CONCEPT_TEXT = { correct: 'Right spot', misplaced: 'Wrong spot', absent: 'Not in your guess' };
-  const REASON_TEXT = {
-    revealed: 'The host revealed the answer.',
-    skipped: 'Round skipped.',
-  };
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
-
-  // ---- Element refs ----
-  const statusDot = $('statusDot');
-  const statusText = $('statusText');
-  const gridEl = $('grid');
-  const guessBadge = $('guessBadge');
-  const resultEl = $('result');
-  const confettiWrap = $('confettiWrap');
-
-  let lastState = null;
-
-  // ---- One-time platform login: connecting once on any game pre-fills
-  // and auto-connects every other game (see /shared/session.js). ----
-  let autoConnectTried = false;
-  if (window.PlatformSession) {
-    window.PlatformSession.onChange((username) => {
-      if (!username) return;
-      if (document.activeElement !== $('tiktokUsername')) $('tiktokUsername').value = username;
-      if (!autoConnectTried) {
-        autoConnectTried = true;
-        socket.emit('host:connectTikTok', { username, signApiKey: $('signApiKey').value });
-      }
-    });
-  }
-
-  // ---- Connection status ----
-  socket.on('server:config', (cfg) => {
-    const missing = (cfg.symbols || []).filter((id) => !SYMBOLS[id]);
-    if (missing.length) console.warn('[Twistle] This page has no artwork for: ' + missing.join(', ') + ' - it is out of date. Replace public/twistle/index.html with the newest version.');
-    if (cfg.dictionary) renderDictBox(cfg.dictionary);
-  });
-  socket.on('diagnostics:update', (d) => {
-    if (d && d.errors) { /* reserved for a future on-screen diagnostics panel */ }
-  });
-  function renderDictBox(dict) {
-    const box = $('dictBox');
-    if (!box) return;
-    const n = dict.wordCount ? dict.wordCount.toLocaleString() : '?';
-    const label = dict.source === 'full' ? `The full ${n}-word dictionary is loaded — any real word of the round's length is accepted.`
-      : `Using the small built-in fallback list (${n} words) — the full 370,000+ word dictionary couldn't be fetched. The game still works, just with fewer accepted guesses.`;
-    box.innerHTML = `<b>Guess dictionary:</b> ${label}<br/><b>Secret word bank:</b> ${lastState ? lastState.wordBankSize : '?'} curated words (BLINDLE's list) plus any you add below.`;
-  }
-  socket.on('tiktok:status', (payload) => {
-    const st = ['connected', 'connecting', 'error'].includes(payload.state) ? payload.state : '';
-    statusDot.className = 'status-dot ' + (payload.state === 'connected' ? 'connected' : payload.state === 'connecting' || payload.state === 'reconnecting' ? 'connecting' : '');
-    statusText.textContent = payload.state.charAt(0).toUpperCase() + payload.state.slice(1);
-    const box = $('connStatus');
-    box.className = 'conn-status ' + st;
-    box.textContent = payload.message || (payload.state === 'idle' ? 'Not connected.' : payload.state);
-  });
-  socket.on('testMode:status', (enabled) => { $('testModeToggle').checked = enabled; });
-  socket.on('chat:raw', ({ text } = {}) => { if (window.PenguinFun) window.PenguinFun.handleChatText(text); });
-
-  // ---------------------------------------------------------------------
-  // Board
-  // ---------------------------------------------------------------------
-  function scrollToLatest() {
-    const m = document.querySelector('main');
-    requestAnimationFrame(() => m.scrollTo({ top: m.scrollHeight, behavior: 'smooth' }));
-  }
-  // ---- Adaptive layout: pick tile size + arrangement from the word length and the width we have ----
-  // Smallest tile (px) we accept for the letters-beside-symbols layout. Wide windows demand bigger tiles
-  // (a wide capture gets shrunk onto viewers' phones); narrow phones settle for 26px.
-  const sideMin = (W) => Math.min(44, Math.max(26, W * 0.055));
-  const STACK_MIN = 30;  // smallest tile (px) before a stacked line is wrapped onto another line
-  const CELL_CAP = 72;   // biggest tile (px) so short words don't look oversized
-  const SIDE_GAP = 16;   // space between the letters and the symbols in the side layout
-  const px = (n) => Math.floor(n * 10) / 10;
-
-  /** Fit `n` equal cells on as few lines as possible while keeping each at least STACK_MIN wide. */
-  function fitLine(n, W, cap, gap) {
-    let lines = 1, cols = n, cell;
-    for (;;) {
-      cols = Math.ceil(n / lines);
-      cell = (W - (cols - 1) * gap) / cols;
-      if (cell >= STACK_MIN || cols <= 3 || lines >= 8) break;
-      lines++;
-    }
-    return { cell: px(Math.max(14, Math.min(cap, cell))), cols };
-  }
-
-  function computeLayout(n, W) {
-    let gap = 4;
-    let side = (W - SIDE_GAP - (2 * n - 2) * gap) / (2 * n);
-    if (side >= sideMin(W)) {
-      if (side >= 44) { gap = 6; side = (W - SIDE_GAP - (2 * n - 2) * gap) / (2 * n); }
-      const cell = px(Math.min(CELL_CAP, side));
-      return { mode: 'side', cell, cols: n, gap, width: Math.ceil(2 * n * cell + (2 * n - 2) * gap + SIDE_GAP) };
-    }
-    let f = fitLine(n, W, 56, gap);
-    if (f.cell >= 44) { gap = 6; f = fitLine(n, W, 56, gap); }
-    return { mode: 'stack', cell: f.cell, cols: f.cols, gap, width: Math.ceil(f.cols * f.cell + (f.cols - 1) * gap) };
-  }
-
-  let layoutN = 5;
-  function applyLayout(n) {
-    if (n) layoutN = n;
-    const W = gridEl.clientWidth;
-    if (W < 120) return; // page not laid out yet (or hidden)
-    const L = computeLayout(layoutN, W);
-    gridEl.style.setProperty('--cell', L.cell + 'px');
-    gridEl.style.setProperty('--cols', L.cols);
-    gridEl.style.setProperty('--gap', L.gap + 'px');
-    gridEl.classList.toggle('mode-side', L.mode === 'side');
-    gridEl.classList.toggle('mode-stack', L.mode === 'stack');
-    $('board').style.setProperty('--content-w', L.width + 'px');
-    // The revealed answer gets its own comfortable size (and wraps for very long words).
-    const A = fitLine(layoutN, W, 60, 5);
-    const at = $('answerTiles');
-    at.style.setProperty('--cell', A.cell + 'px');
-    at.style.setProperty('--cols', A.cols);
-  }
-  if (window.ResizeObserver) new ResizeObserver(() => applyLayout()).observe(gridEl);
-  window.addEventListener('resize', () => applyLayout());
-
-  let lastGridSig = '';
-  let lastGridRound = null;
-  let lastRowCount = 0;
-
-  function stateColors(state, legend) {
-    if (state === 'absent') return { border: '#2b2e5c', bg: '#0b0c1e' };
-    const sym = legend && SYMBOLS[legend[state]];
-    const c = sym ? sym.color : (state === 'correct' ? '#ff4d4d' : '#3b82ff');
-    return { border: c, bg: c + '33' };
-  }
-
-  function renderGrid(state) {
-    const rows = state.rows || [];
-    const sig = [state.roundNumber, state.status, rows.map((r) => r.word + (r.states ? '*' : '')).join(',')].join('|');
-    if (sig === lastGridSig) return;
-    lastGridSig = sig;
-
-    // Only animate rows that appeared since the last render of this same round.
-    const firstRender = lastGridRound === null;
-    const sameRound = lastGridRound === state.roundNumber;
-    const prevCount = sameRound ? lastRowCount : rows.length;
-    lastGridRound = state.roundNumber;
-    lastRowCount = rows.length;
-
-    if (!rows.length) { gridEl.innerHTML = ''; return; }
-
-    let html = '';
-    for (let r = 0; r < rows.length; r++) {
-      const row = rows[r];
-      const n = row.word.length;
-      const step = Math.min(90, Math.floor(1400 / n)); // keep the flip quick even for 20 letters
-      const isNew = r >= prevCount;
-      let tiles = '';
-      let syms = '';
-      for (let i = 0; i < n; i++) {
-        const ch = escapeHtml(row.word[i]);
-        let cls = 'tile filled';
-        let style = `--i:${i};`;
-        if (row.states) {
-          const col = stateColors(row.states[i], state.legend);
-          cls += ' flip';
-          style += `--d:${i * step}ms;--to-border:${col.border};--to-bg:${col.bg};`;
-        }
-        tiles += `<div class="${cls}" style="${style}">${ch}</div>`;
-        syms += `<div class="sym" style="--i:${i}">${symbolSvg(row.symbols[i])}</div>`;
-      }
-      html += `<div class="grow${isNew ? ' new' : ''}"><div class="lets">${tiles}</div><div class="syms">${syms}</div></div>`;
-    }
-    gridEl.innerHTML = html;
-    if (rows.length > prevCount || (firstRender && rows.length)) scrollToLatest();
-  }
-
-  function renderTried(state) {
-    const used = new Set();
-    for (const r of state.rows || []) for (const ch of r.word) used.add(ch);
-    $('tried').innerHTML = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((ch) => `<span class="${used.has(ch) ? 'on' : ''}">${ch}</span>`).join('');
-  }
-
-  function renderHint(state) {
-    const hint = $('hintLine');
-    if (state.status === 'idle') {
-      hint.innerHTML = 'Tap ⚙️ → Game → <strong>Start Game</strong> to begin. New here? Tap <strong>?</strong> for the rules.';
-      return;
-    }
-    if (state.status === 'reveal') { hint.innerHTML = ''; return; }
-    const n = state.wordLength;
-    hint.innerHTML = (state.rows || []).length === 0
-      ? `Type a <strong>${n}-letter word</strong> in chat — a valid one goes straight onto the board. Type the <strong>secret word</strong> to win!`
-      : `Keep guessing! Any fresh <strong>${n}-letter word</strong> lands on the board. Type the <strong>secret word</strong> to win!`;
-  }
-
-  let confettiRound = null;
-  function renderResult(state) {
-    const revealed = state.status === 'reveal';
-    resultEl.hidden = !revealed;
-    if (!revealed) { confettiWrap.innerHTML = ''; return; }
-
-    $('answerTiles').innerHTML = (state.answer || '').split('').map((ch) => `<div class="tile">${escapeHtml(ch)}</div>`).join('');
-    const yes = $('resultWinner');
-    const no = $('resultNoWinner');
-    if (state.winner) {
-      yes.hidden = false; no.hidden = true;
-      yes.textContent = '🎉 ' + state.winner.name + ' solved it!';
-    } else {
-      yes.hidden = true; no.hidden = false;
-      no.textContent = REASON_TEXT[state.reason] || 'Round over.';
-    }
-    $('legend').innerHTML = ['correct', 'misplaced', 'absent'].map((c) =>
-      `<span class="chip">${state.legend ? symbolSvg(state.legend[c]) : ''}${CONCEPT_TEXT[c]}</span>`
-    ).join('');
-
-    if (state.winner && confettiRound !== state.roundNumber) {
-      burstConfetti();
-      runWinCelebration(state);
-    }
-    if (confettiRound !== state.roundNumber) scrollToLatest();
-    confettiRound = state.roundNumber;
-  }
-
-  // ---- Win celebration: same 3-stage flow (winner -> this round's
-  // leaderboard -> all-time leaderboard) BLINDLE uses, built from the
-  // platform's shared Celebration popup so it looks and feels the same
-  // as every other game here. Points/leaderboards only exist in Live mode. ----
-  function runWinCelebration(state) {
-    if (!window.Celebration) return;
-    const showSeconds = state.leaderboardShowSeconds || 3;
-    const winner = state.winner || {};
-    let chain = window.Celebration.showCard({
-      emoji: '🎉',
-      title: winner.name + ' solved it!',
-      rows: [{
-        primary: winner.name,
-        avatarUrl: winner.avatarUrl || null,
-        secondary: typeof winner.points === 'number' ? `+${winner.points} pts` : null,
-        primaryLarge: true,
-      }],
-      durationMs: showSeconds * 1000,
-    });
-    if (state.mode !== 'live') return; // no points kept outside Live mode
-    chain = chain.then(() => window.Celebration.showCard({
-      emoji: '🏆',
-      title: "This round's top scorers",
-      rows: (state.roundLeaderboard || []).map((r) => ({ primary: r.name, secondary: String(r.score) })),
-      durationMs: showSeconds * 1000,
-    }));
-    chain.then(() => window.Celebration.showCard({
-      emoji: '👑',
-      title: 'All-time leaderboard',
-      rows: (state.totalLeaderboard || []).map((r) => ({ primary: r.name, secondary: String(r.score) })),
-      durationMs: showSeconds * 1000,
-    }));
-  }
-
-  function renderModeBadge(mode) {
-    const badge = $('modeBadge');
-    if (!badge) return;
-    badge.className = 'mode-badge ' + (mode === 'live' ? 'live' : mode === 'test' ? 'test' : '');
-    badge.textContent = mode === 'live' ? 'LIVE' : mode === 'test' ? 'TEST' : 'OFFLINE';
-  }
-
-  const CONFETTI = ['🎉', '✨', '🎊', '⭐', '💫'];
-  function burstConfetti() {
-    confettiWrap.innerHTML = '';
-    for (let i = 0; i < 16; i++) {
-      const span = document.createElement('span');
-      span.textContent = CONFETTI[Math.floor(Math.random() * CONFETTI.length)];
-      span.style.left = Math.random() * 100 + '%';
-      span.style.animationDelay = (Math.random() * 0.4) + 's';
-      span.style.animationDuration = (1.2 + Math.random() * 0.8) + 's';
-      span.style.fontSize = (14 + Math.random() * 14) + 'px';
-      confettiWrap.appendChild(span);
-    }
-  }
-
-  function renderGuessBadge(state) {
-    const active = state.status === 'active';
-    guessBadge.hidden = !active;
-    if (!active) return;
-    const n = (state.rows || []).length;
-    guessBadge.querySelector('span').textContent = n === 1 ? '1 guess so far' : n + ' guesses so far';
-  }
-
-  function renderState(state) {
-    if (!state) return;
-    lastState = state;
-
-    const cfg = state.config || { mode: 'fixed', fixed: state.wordLength || 5, min: 4, max: 8 };
-    const lengthText = state.status === 'idle'
-      ? (cfg.mode === 'fixed' || cfg.min === cfg.max ? `${cfg.mode === 'fixed' ? cfg.fixed : cfg.min} letters` : `random ${cfg.min}–${cfg.max} letters`)
-      : `${state.wordLength} letters`;
-    if (state.status === 'idle') {
-      $('roundLabel').textContent = 'TWISTLE';
-      $('roundSub').textContent = 'waiting to start · ' + lengthText;
-    } else {
-      $('roundLabel').textContent = 'Round #' + state.roundNumber;
-      $('roundSub').textContent = '· ' + lengthText;
-    }
-    if (state.wordBankSize) $('wordBankNote').textContent = 'Word bank: ' + state.wordBankSize + ' secret words (4–20 letters, from BLINDLE\'s curated list). Custom words are added on top and kept on the server.';
-    syncLengthControls(state.config, state.lengthCounts);
-    syncDifficultyControl(state.difficulty);
-    renderModeBadge(state.mode);
-    renderLeaderboardIfOpen(state);
-
-    applyLayout(state.wordLength || (state.rows && state.rows[0] && state.rows[0].word.length) || (cfg.mode === 'fixed' ? cfg.fixed : 5));
-    renderGrid(state);
-    renderTried(state);
-    renderHint(state);
-    renderResult(state);
-    renderGuessBadge(state);
-  }
-  socket.on('game:state', renderState);
-
-  // ---------------------------------------------------------------------
-  // Sheets (rules + host controls) and tabs
-  // ---------------------------------------------------------------------
-  const sheetBackdrop = $('sheetBackdrop');
-  const sheets = [$('rulesSheet'), $('sheet')];
-  function closeSheets() {
-    sheets.forEach((s) => s.classList.remove('open'));
-    sheetBackdrop.classList.remove('open');
-  }
-  function openSheet(el) {
-    closeSheets();
-    el.classList.add('open');
-    sheetBackdrop.classList.add('open');
-  }
-  $('settingsBtn').addEventListener('click', () => openSheet($('sheet')));
-  $('rulesBtn').addEventListener('click', () => openSheet($('rulesSheet')));
-
-  // ---- Leaderboard overlay (round + all-time points) ----
-  let lbTab = 'round';
-  function renderLeaderboard() {
-    if (!lastState) return;
-    const list = lbTab === 'round' ? (lastState.roundLeaderboard || []) : (lastState.totalLeaderboard || []);
-    const listEl = $('lbList');
-    if (!list.length) {
-      listEl.innerHTML = `<div class="lb-empty">${lastState.mode === 'live' ? 'No scores yet — be the first!' : 'Points are only kept in Live mode.'}</div>`;
-      return;
-    }
-    listEl.innerHTML = list.map((row, i) =>
-      `<div class="lb-row"><span class="lb-rank">${i + 1}</span><span class="lb-name">${escapeHtml(row.name)}</span><span class="lb-score">${row.score}</span></div>`
-    ).join('');
-  }
-  function renderLeaderboardIfOpen(state) {
-    lastState = state;
-    if ($('lbOverlay').classList.contains('open')) renderLeaderboard();
-  }
-  $('leaderboardBtn').addEventListener('click', () => { renderLeaderboard(); $('lbOverlay').classList.add('open'); });
-  $('lbCloseBtn').addEventListener('click', () => $('lbOverlay').classList.remove('open'));
-  $('lbOverlay').addEventListener('click', (e) => { if (e.target.id === 'lbOverlay') $('lbOverlay').classList.remove('open'); });
-  document.querySelectorAll('.lb-tabs button').forEach((b) => b.addEventListener('click', () => {
-    document.querySelectorAll('.lb-tabs button').forEach((x) => x.classList.remove('active'));
-    b.classList.add('active');
-    lbTab = b.dataset.lb;
-    renderLeaderboard();
-  }));
-  sheetBackdrop.addEventListener('click', closeSheets);
-  document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', closeSheets));
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheets(); });
-
-  document.querySelectorAll('.tab-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach((c) => c.classList.remove('active'));
-      btn.classList.add('active');
-      document.querySelector('.tab-content[data-tab="' + btn.dataset.tab + '"]').classList.add('active');
-    });
-  });
-
-  // The worked example from the rules (secret SHAKE, guess THICK)
-  (function buildRules() {
-    const guess = 'THICK';
-    const secret = 'SHAKE';
-    const syms = ['cloud', 'clover', 'cloud', 'heart', 'cloud'];
-    $('rulesDemo').innerHTML =
-      `<div class="grid mode-side">` +
-      `<div class="grow"><div class="lets">${guess.split('').map((ch) => `<div class="tile filled">${ch}</div>`).join('')}</div>` +
-      `<div class="syms">${syms.map((sy) => `<div class="sym">${symbolSvg(sy)}</div>`).join('')}</div></div>` +
-      `<div class="grow"><div class="cap">the secret word, hidden in the real game</div>` +
-      `<div class="syms">${secret.split('').map((ch) => `<div class="sl">${ch}</div>`).join('')}</div></div>` +
-      `</div>`;
-    $('rulesKey').innerHTML = ['Right spot: that letter is in your guess, in the same position', 'Wrong spot: that letter is in your guess, but somewhere else', 'Not in your guess: that letter (or a spare copy of it) isn\'t in your guess']
-      .map((t) => `<div><span class="q">?</span><span>${t}</span></div>`).join('');
-  })();
-
-  // ---------------------------------------------------------------------
-  // Host actions (no auth needed)
-  // ---------------------------------------------------------------------
-  $('connectBtn').addEventListener('click', () => {
-    const username = $('tiktokUsername').value;
-    if (window.PlatformSession) window.PlatformSession.setUsername(username); // shares it with every other game on this device
-    socket.emit('host:connectTikTok', { username, signApiKey: $('signApiKey').value });
-  });
-  $('disconnectBtn').addEventListener('click', () => socket.emit('host:disconnectTikTok'));
-  $('startGameBtn').addEventListener('click', () => socket.emit('host:startGame'));
-  $('stopGameBtn').addEventListener('click', () => socket.emit('host:stopGame'));
-  $('revealAnswerBtn').addEventListener('click', () => socket.emit('host:revealAnswer'));
-  $('skipRoundBtn').addEventListener('click', () => socket.emit('host:skipRound'));
-
-  $('sendHostMsgBtn').addEventListener('click', () => {
-    const text = $('hostMsgText').value;
-    if (!text.trim()) return;
-    socket.emit('host:sendMessage', { name: $('hostMsgName').value, text });
-    $('hostMsgText').value = '';
-  });
-  $('hostMsgText').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') $('sendHostMsgBtn').click();
-  });
-
-  $('addWordBtn').addEventListener('click', () => {
-    socket.emit('host:addWord', { answer: $('newAnswer').value }, (res) => {
-      const err = $('addWordError');
-      if (res && res.ok) {
-        err.style.color = 'var(--mint)';
-        err.textContent = 'Added! It can now come up as a secret word.';
-        $('newAnswer').value = '';
-      } else {
-        err.style.color = 'var(--danger)';
-        err.textContent = (res && res.error) || 'Something went wrong.';
-      }
-    });
-  });
-
-  // ---- Word length (fixed, or a random range) ----
-  const lenSelects = { fixed: $('lenFixed'), min: $('lenMin'), max: $('lenMax') };
-  for (let n = 4; n <= 20; n++) Object.values(lenSelects).forEach((sel) => sel.add(new Option(n + ' letters', n)));
-  let lenConfig = { mode: 'fixed', fixed: 5, min: 4, max: 8 };
-  let lenCounts = {};
-
-  function paintLengthControls() {
-    document.querySelectorAll('#lenMode button').forEach((b) => b.classList.toggle('active', b.dataset.mode === lenConfig.mode));
-    $('lenFixedBox').hidden = lenConfig.mode !== 'fixed';
-    $('lenRangeBox').hidden = lenConfig.mode !== 'random';
-    lenSelects.fixed.value = lenConfig.fixed;
-    lenSelects.min.value = lenConfig.min;
-    lenSelects.max.value = lenConfig.max;
-    // Word counts are shown in the Fixed dropdown only (the range dropdowns are narrower).
-    [...lenSelects.fixed.options].forEach((o) => { o.textContent = o.value + ' letters' + (lenCounts[o.value] ? ' · ' + lenCounts[o.value] + ' words' : ''); });
-    const words = (n) => (lenCounts[n] ? ` (${lenCounts[n]} words in the bank)` : '');
-    $('lenSummary').textContent = lenConfig.mode === 'fixed'
-      ? `Every round: a ${lenConfig.fixed}-letter word${words(lenConfig.fixed)}.`
-      : lenConfig.min === lenConfig.max
-        ? `Every round: a ${lenConfig.min}-letter word${words(lenConfig.min)}.`
-        : `Each round picks a random length from ${lenConfig.min} to ${lenConfig.max} letters.`;
-  }
-  let lenSig = '';
-  function syncLengthControls(cfg, counts) {
-    // Game state arrives with every guess; only repaint when the setting really changed so an open dropdown isn't disturbed.
-    const sig = JSON.stringify([cfg, counts]);
-    if (sig === lenSig) return;
-    lenSig = sig;
-    if (counts) lenCounts = counts;
-    if (cfg) lenConfig = { mode: cfg.mode, fixed: cfg.fixed, min: cfg.min, max: cfg.max };
-    paintLengthControls();
-  }
-  function sendLength(patch) {
-    lenConfig = { ...lenConfig, ...patch };
-    if (lenConfig.min > lenConfig.max) {           // keep the range the right way round
-      if ('min' in patch) lenConfig.max = lenConfig.min; else lenConfig.min = lenConfig.max;
-    }
-    paintLengthControls();
-    socket.emit('host:setLength', lenConfig);
-  }
-  document.querySelectorAll('#lenMode button').forEach((b) => b.addEventListener('click', () => sendLength({ mode: b.dataset.mode })));
-  lenSelects.fixed.addEventListener('change', () => sendLength({ fixed: Number(lenSelects.fixed.value) }));
-  lenSelects.min.addEventListener('change', () => sendLength({ min: Number(lenSelects.min.value) }));
-  lenSelects.max.addEventListener('change', () => sendLength({ max: Number(lenSelects.max.value) }));
-  paintLengthControls();
-
-  $('testModeToggle').addEventListener('change', (e) => socket.emit('host:testMode', e.target.checked));
-
-  // ---- Difficulty (BLINDLE's Normal / Medium / Hard / Random tiers) ----
-  let difficultyValue = 'normal';
-  function syncDifficultyControl(value) {
-    if (!value || value === difficultyValue) return;
-    difficultyValue = value;
-    document.querySelectorAll('#difficultySeg button').forEach((b) => b.classList.toggle('active', b.dataset.difficulty === value));
-  }
-  document.querySelectorAll('#difficultySeg button').forEach((b) => b.addEventListener('click', () => {
-    document.querySelectorAll('#difficultySeg button').forEach((x) => x.classList.remove('active'));
-    b.classList.add('active');
-    difficultyValue = b.dataset.difficulty;
-    socket.emit('host:setDifficulty', difficultyValue);
-  }));
-
-  // ---- Scores ----
-  $('resetRoundScoresBtn').addEventListener('click', () => socket.emit('host:resetRoundLeaderboard'));
-  $('resetTotalScoresBtn').addEventListener('click', () => socket.emit('host:resetTotalLeaderboard'));
-})();
-</script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/engagement.js"></script>
+  <script src="twistle-symbols.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

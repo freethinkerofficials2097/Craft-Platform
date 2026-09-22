@@ -45,7 +45,17 @@ function fetchWithTimeout(url, timeoutMs) {
   return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-export async function loadDictionary() {
+// Load-once: BLINDLE and TWISTLE share this one dictionary (same word list,
+// same memory). Whichever game asks first starts the download; any later
+// caller just gets the same in-flight/finished promise, so the 370,000-word
+// list is only ever fetched a single time per server start.
+let loadPromise = null;
+export function loadDictionary() {
+  if (!loadPromise) loadPromise = loadDictionaryOnce();
+  return loadPromise;
+}
+
+async function loadDictionaryOnce() {
   for (let attempt = 0; attempt <= FETCH_RETRIES; attempt++) {
     try {
       console.log(`[Dictionary] Fetching word list (attempt ${attempt + 1})...`);
