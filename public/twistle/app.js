@@ -30,7 +30,9 @@ const el = {
   roundLabel: document.getElementById("roundLabel"),
   roundSub: document.getElementById("roundSub"),
   guessBadge: document.getElementById("guessBadge"),
-  tried: document.getElementById("tried"),
+  keyboardSection: document.getElementById("keyboardSection"),
+  keyboard: document.getElementById("keyboard"),
+  resetColorsBtn: document.getElementById("resetColorsBtn"),
   grid: document.getElementById("grid"),
   hintChips: document.getElementById("hintChips"),
   hintExplainer: document.getElementById("hintExplainer"),
@@ -115,6 +117,117 @@ const MODE_LABELS = {
   test: { title: "Test", desc: "Practice — scores not saved" },
   offline: { title: "Offline", desc: "Host plays solo" }
 };
+
+// ------------------------------------------------------------
+// Manual, host-only scratchpad coloring — ported from BLINDLE's
+// game.js, same mechanism exactly. TWISTLE's real per-letter truth
+// stays hidden until a round is revealed, so this is a completely
+// separate, manual deduction aid: click a letter (on the keyboard OR
+// on any of its tiles in the guess grid) to cycle it through
+// absent -> present -> correct -> none. Colors are keyed by LETTER,
+// not by tile/key element, so every occurrence of that letter
+// everywhere on screen lights up together.
+// ------------------------------------------------------------
+const CYCLE = [null, "absent", "present", "correct"];
+let manualLetterColors = {};
+
+function nextColor(current) {
+  const idx = CYCLE.indexOf(current || null);
+  return CYCLE[(idx + 1) % CYCLE.length];
+}
+
+function cycleLetterColor(letter) {
+  const next = nextColor(manualLetterColors[letter] || null);
+  if (next) manualLetterColors[letter] = next;
+  else delete manualLetterColors[letter];
+  paintKeyboard();
+  // Bypass the grid's render cache (it only tracks round/guess-count
+  // changes) so a pure color change repaints immediately.
+  lastGridSig = "";
+  if (lastState) renderGrid(lastState.game);
+}
+function cycleKeyColor(letter) { cycleLetterColor(letter); }
+function cycleTileColor(letter) { cycleLetterColor(letter); }
+
+function resetManualColors() {
+  manualLetterColors = {};
+  paintKeyboard();
+  lastGridSig = "";
+  if (lastState) renderGrid(lastState.game);
+}
+
+function paintKeyboard() {
+  const usedLetters = new Set((lastState && lastState.game && lastState.game.usedLetters) || []);
+  el.keyboard.querySelectorAll(".key").forEach((key) => {
+    const letter = key.dataset.letter;
+    const manual = manualLetterColors[letter];
+    let cls = "key";
+    if (manual) cls += " " + manual;
+    else if (usedLetters.has(letter)) cls += " used";
+    key.className = cls;
+  });
+}
+
+// Two balanced rows of 13, alphabetical - a deduction board, not a
+// typing keyboard (nobody types on this; it's a host-only
+// click-to-mark scratchpad) - identical layout to BLINDLE's keyboard.
+const KEYBOARD_ROWS = [
+  ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"],
+  ["n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
+];
+for (const row of KEYBOARD_ROWS) {
+  const rowEl = document.createElement("div");
+  rowEl.className = "keyRow";
+  for (const letter of row) {
+    const key = document.createElement("div");
+    key.className = "key";
+    key.dataset.letter = letter;
+    key.textContent = letter;
+    key.addEventListener("click", () => cycleKeyColor(letter));
+    rowEl.appendChild(key);
+  }
+  el.keyboard.appendChild(rowEl);
+}
+// The keyboard is 13 keys per row and lives in its own section - it
+// sizes itself to ITS OWN available width, not just the guess-tile
+// size (which is computed for the widest realistic guess row sharing
+// width with its avatar+symbols - applying that directly here would
+// often overflow, since 13 keys at that size can be wider than the
+// whole screen).
+function computeKeyboardMetrics(preferredTileSize) {
+  const containerWidth = el.keyboard.clientWidth || el.keyboardSection.clientWidth || 320;
+  const columns = 13;
+  const gap = 4;
+  let sizeByWidth = Math.floor((containerWidth - gap * (columns - 1)) / columns);
+  sizeByWidth = Math.max(8, sizeByWidth);
+  const size = Math.max(8, Math.min(preferredTileSize, sizeByWidth));
+  const height = Math.round(size * 1.05);
+  const fontSize = Math.max(7, Math.round(size * 0.42));
+  return { size, height, fontSize, gap };
+}
+function applyKeyMetrics(preferredTileSize) {
+  const km = computeKeyboardMetrics(preferredTileSize);
+  el.keyboard.querySelectorAll(".keyRow").forEach((row) => {
+    row.style.gap = km.gap + "px";
+  });
+  el.keyboard.querySelectorAll(".key").forEach((key) => {
+    key.style.width = km.size + "px";
+    key.style.height = km.height + "px";
+    key.style.fontSize = km.fontSize + "px";
+  });
+}
+el.resetColorsBtn.addEventListener("click", resetManualColors);
+
+function renderKeyboardVisibility(g) {
+  el.keyboardSection.style.display = g.status === "live" ? "block" : "none";
+}
+
+let wasFreshRoundStart = false;
+function detectFreshRound(g) {
+  const isFreshRoundStart = g.status === "live" && g.guessesMade === 0;
+  if (isFreshRoundStart && !wasFreshRoundStart) resetManualColors();
+  wasFreshRoundStart = isFreshRoundStart;
+}
 
 // ------------------------------------------------------------
 // Fullscreen toggle (cross-browser, with graceful no-op fallback
@@ -542,38 +655,46 @@ function detectWinTransition(g) {
 }
 
 // ------------------------------------------------------------
-// Adaptive board layout - ported from the original TWISTLE page.
-// Picks a tile size and one of two arrangements (letters-beside-symbols,
-// or symbols-stacked-under) from the word length and available width.
+// Adaptive board layout. The guess row's letters and its symbols
+// ALWAYS sit side by side on one single line - this never stacks them,
+// no matter how long the word is. As a word gets longer, or the
+// screen gets narrower, the shared tile/symbol size just shrinks to
+// fit (down to a small legible floor); if an extremely long word still
+// wouldn't fit even at that floor on a narrow screen, the row scrolls
+// horizontally within its own bounds (see .guessRow's overflow-x in
+// style.css) instead of wrapping or spilling out of the game section.
 // ------------------------------------------------------------
-const STACK_MIN = 30;
+const MIN_CELL = 12; // absolute floor - small but still legible/tappable
 const CELL_CAP = 72;
-const SIDE_GAP = 16;
+const SIDE_GAP = 16; // gap between the letters block and the symbols block (--sp)
+const AVATAR_RESERVE = 34; // the row's avatar chip (26px) + its 8px gap to the tiles
 const px = (n) => Math.floor(n * 10) / 10;
-const sideMin = (W) => Math.min(44, Math.max(26, W * 0.055));
 
 function fitLine(n, W, cap, gap) {
+  // Still used for the post-round revealed-answer tiles (letters only,
+  // no symbols row alongside them) - that element is free to wrap
+  // across a couple of lines since there's nothing it needs to stay
+  // aligned with on the same row.
   let lines = 1, cols = n, cell;
   for (;;) {
     cols = Math.ceil(n / lines);
     cell = (W - (cols - 1) * gap) / cols;
-    if (cell >= STACK_MIN || cols <= 3 || lines >= 8) break;
+    if (cell >= 30 || cols <= 3 || lines >= 8) break;
     lines++;
   }
   return { cell: px(Math.max(14, Math.min(cap, cell))), cols };
 }
 
 function computeLayout(n, W) {
+  const usable = Math.max(60, W - AVATAR_RESERVE);
   let gap = 4;
-  let side = (W - SIDE_GAP - (2 * n - 2) * gap) / (2 * n);
-  if (side >= sideMin(W)) {
-    if (side >= 44) { gap = 6; side = (W - SIDE_GAP - (2 * n - 2) * gap) / (2 * n); }
-    const cell = px(Math.min(CELL_CAP, side));
-    return { mode: "side", cell, cols: n, gap };
+  let side = (usable - SIDE_GAP - (2 * n - 2) * gap) / (2 * n);
+  if (side >= 44) {
+    gap = 6;
+    side = (usable - SIDE_GAP - (2 * n - 2) * gap) / (2 * n);
   }
-  let f = fitLine(n, W, 56, gap);
-  if (f.cell >= 44) { gap = 6; f = fitLine(n, W, 56, gap); }
-  return { mode: "stack", cell: f.cell, cols: f.cols, gap };
+  const cell = px(Math.max(MIN_CELL, Math.min(CELL_CAP, side)));
+  return { cell, cols: n, gap };
 }
 
 let layoutN = 5;
@@ -585,11 +706,10 @@ function applyLayout(n) {
   el.grid.style.setProperty("--cell", L.cell + "px");
   el.grid.style.setProperty("--cols", L.cols);
   el.grid.style.setProperty("--gap", L.gap + "px");
-  el.grid.classList.toggle("mode-side", L.mode === "side");
-  el.grid.classList.toggle("mode-stack", L.mode === "stack");
   const A = fitLine(layoutN, W, 60, 5);
   el.answerTiles.style.setProperty("--cell", A.cell + "px");
   el.answerTiles.style.setProperty("--cols", A.cols);
+  applyKeyMetrics(L.cell);
 }
 if (window.ResizeObserver) new ResizeObserver(() => applyLayout()).observe(el.grid);
 window.addEventListener("resize", () => applyLayout());
@@ -636,16 +756,25 @@ function renderGrid(g) {
     symsEl.className = "syms";
 
     for (let i = 0; i < n; i++) {
+      const letter = row.word[i];
       const tile = document.createElement("div");
       tile.className = "tile filled";
       tile.style.setProperty("--i", i);
-      tile.textContent = row.word[i];
+      tile.textContent = letter;
       if (row.states) {
         const col = stateColors(row.states[i], g.legend);
         tile.classList.add("flip");
         tile.style.setProperty("--d", i * step + "ms");
         tile.style.setProperty("--to-border", col.border);
         tile.style.setProperty("--to-bg", col.bg);
+      } else {
+        // Real colors are hidden until the round is revealed - until
+        // then, a tile's letter can be clicked as a manual deduction
+        // aid, same as BLINDLE's tiles (stays in sync with the
+        // keyboard above since both key off the same letter map).
+        const manual = manualLetterColors[letter];
+        if (manual) tile.classList.add(manual);
+        tile.addEventListener("click", () => cycleTileColor(letter));
       }
       letsEl.appendChild(tile);
 
@@ -664,13 +793,6 @@ function renderGrid(g) {
   if (rows.length > prevCount || (firstRender && rows.length)) {
     requestAnimationFrame(() => el.grid.scrollIntoView({ block: "nearest", behavior: "smooth" }));
   }
-}
-
-function renderTried(g) {
-  const used = new Set(g.usedLetters || []);
-  el.tried.innerHTML = "abcdefghijklmnopqrstuvwxyz".split("").map((ch) =>
-    `<span class="${used.has(ch) ? "on" : ""}">${ch.toUpperCase()}</span>`
-  ).join("");
 }
 
 function renderHintChips(g) {
@@ -851,11 +973,13 @@ function escapeHtml(str) {
 function render(state) {
   lastState = state;
   detectWinTransition(state.game);
+  detectFreshRound(state.game);
   renderHeader(state);
   renderModeUI(state.game);
   applyLayout(state.game.wordLength || 5);
   renderGrid(state.game);
-  renderTried(state.game);
+  paintKeyboard();
+  renderKeyboardVisibility(state.game);
   renderHintChips(state.game);
   renderHintLine(state.game);
   renderBanners(state.game);

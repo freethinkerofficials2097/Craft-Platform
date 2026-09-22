@@ -122,20 +122,18 @@ button { cursor: pointer; }
 /* ---- The guess grid: TWISTLE's own board -----------------------------
    Each guess is a row: an avatar chip (credit for whoever guessed it,
    BLINDLE-style), a block of letter tiles, and a block of mystery
-   symbols (one per letter of the SECRET word, not the guess). JS
-   (applyLayout) measures the available width and picks a tile size and
-   one of two arrangements from the word length:
-     .mode-side   letters on the left, symbols on the right (short words)
-     .mode-stack  symbols directly under the letters; long words wrap. */
+   symbols (one per letter of the SECRET word, not the guess), always
+   side by side. JS (applyLayout) measures the available width and
+   shrinks the shared tile/symbol size (down to a small legible floor)
+   so the letters and symbols ALWAYS stay on one single row - never
+   stacked - however long the word is. If an extremely long word still
+   can't fit even at the smallest size on a narrow screen, that one row
+   scrolls horizontally within its own bounds rather than wrapping or
+   spilling out of the game section. */
 .grid { --cell: 40px; --cols: 5; --gap: 4px; --sp: 16px; width: 100%; max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; row-gap: 10px; }
-.grid.mode-stack { row-gap: 18px; }
-.guessRow { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
-.grow { display: flex; align-items: center; justify-content: center; gap: var(--sp); }
-.mode-stack .grow { flex-direction: column; gap: calc(var(--gap) + 3px); }
+.guessRow { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.grow { display: flex; align-items: center; justify-content: center; gap: var(--sp); flex-shrink: 0; }
 .lets, .syms { display: grid; grid-template-columns: repeat(var(--cols), var(--cell)); gap: var(--gap); justify-content: center; }
-.mode-stack .syms { position: relative; }
-.mode-stack .syms::before { content: ''; position: absolute; inset: -4px -6px; border-radius: 14px; background: rgba(140,150,255,0.07); border: 1px solid rgba(140,150,255,0.11); }
-.mode-stack .syms > * { position: relative; }
 
 .rowAvatar {
   flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;
@@ -155,7 +153,10 @@ button { cursor: pointer; }
   background: #0e0f26; border: max(1.5px, calc(var(--cell) * 0.055)) solid #23264f;
   box-shadow: inset 0 2px 3px rgba(0,0,0,0.45); text-transform: uppercase;
 }
-.tile.filled { border-color: #6a6e9c; background: #14163a; }
+.tile.filled { border-color: #6a6e9c; background: #14163a; cursor: pointer; }
+.tile.filled.correct { background: var(--mint); border-color: var(--mint); color: #06231a; }
+.tile.filled.present { background: var(--gold); border-color: var(--gold); color: #2c1f04; }
+.tile.filled.absent { background: rgba(255, 95, 109, 0.28); border-color: var(--danger); color: var(--danger-text); }
 .tile.flip { animation: tile-flip 0.62s ease both; animation-delay: var(--d, 0ms); }
 @keyframes tile-flip {
   0%   { transform: rotateX(0); border-color: #6a6e9c; background: #14163a; }
@@ -180,10 +181,52 @@ button { cursor: pointer; }
 .legendChip { display: inline-flex; align-items: center; gap: 6px; background: rgba(140,150,255,0.08); border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px 5px 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
 .legendChip .sym { width: 24px; height: 24px; }
 
-/* ---- Tried letters ---- */
-.tried { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin: 2px 0 4px; }
-.tried span { width: 20px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 11px; font-weight: 800; color: var(--muted); background: #0e0f26; }
-.tried span.on { color: #fff; background: var(--panel-3); }
+/* ---- Keyboard: a host-only click-to-mark deduction scratchpad, same
+   mechanism/sizing as BLINDLE's keyboard - two balanced rows of 13
+   letters, sized to its own container width so it always fits without
+   overflowing. Clicking a letter (here, or on any of its tiles in the
+   grid above) cycles it through absent -> present -> correct -> none;
+   the color is keyed by LETTER, so every occurrence lights up together.
+   This is entirely a manual scratchpad, independent of the real hidden
+   per-letter truth (which only appears once a round is revealed) - it
+   just helps a host/audience track their own deductions. Colors use
+   the same translucent-warm-overlay approach BLINDLE uses, which keeps
+   solid, easy-on-the-eyes contrast against every platform theme (all
+   of which are light backgrounds), rather than TWISTLE's own fixed-dark
+   board colors which don't need to (and won't) adapt per theme. */
+.keyboardSection {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(60, 40, 20, 0.094);
+  padding: 12px 12px 14px;
+  margin-bottom: 4px;
+}
+.keyboardHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.keyboardTitle { font-family: var(--font-display); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.keyboard { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.keyRow { display: flex; gap: 5px; justify-content: center; }
+.key {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: rgba(60, 40, 20, 0.209);
+  border: none;
+  color: var(--text);
+  font-weight: 600;
+  font-family: var(--font-display);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
+}
+.key:active { transform: scale(0.92); }
+.key.correct { background: var(--mint); color: #06231a; }
+.key.present { background: var(--gold); color: #2c1f04; }
+.key.absent { background: rgba(255, 95, 109, 0.28); color: var(--danger-text); }
+.key.used { background: rgba(60, 40, 20, 0.071); color: var(--muted); }
 
 .hintExplainer { text-align: center; font-size: 12px; color: var(--muted); margin: 8px 0 0; }
 .hintChips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
