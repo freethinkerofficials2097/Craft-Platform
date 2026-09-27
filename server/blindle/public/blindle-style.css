@@ -74,7 +74,10 @@ button { cursor: pointer; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  /* Extra top padding reserves space for TikTok LIVE's own on-screen UI
+     (viewer name, live badge, gift/exit icons) so it never covers the
+     top bar — see --live-safe-top in /shared/theme.css. */
+  padding: calc(8px + var(--live-safe-top)) 10px 8px;
   background: rgba(20, 23, 42, 0.9);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -326,7 +329,7 @@ button { cursor: pointer; }
    the animation's duration - see maybeShowRejection() in game.js. */
 .rejectionToast {
   position: fixed;
-  top: 68px;
+  top: calc(68px + var(--live-safe-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;

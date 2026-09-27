@@ -225,7 +225,10 @@ button:disabled{ opacity:.45; cursor:default; transform:none; }
 /* ---- host announcement banner ---- */
 .host-banner{
   position:fixed; top:0; left:0; right:0; z-index:40;
-  display:flex; justify-content:center; padding:10px 16px 0;
+  display:flex; justify-content:center;
+  /* Extra top padding keeps this fixed-to-screen banner clear of TikTok
+     LIVE's own on-screen UI — see --live-safe-top in /shared/theme.css. */
+  padding:calc(10px + var(--live-safe-top, 0px)) 16px 0;
   transform:translateY(-120%); transition:transform .3s ease; pointer-events:none;
 }
 .host-banner.show{ transform:translateY(0); }

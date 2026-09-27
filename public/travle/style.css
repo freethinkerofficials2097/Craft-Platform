@@ -139,7 +139,10 @@ button, input, select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  /* Extra top padding reserves space for TikTok LIVE's own on-screen UI
+     (viewer name, live badge, gift/exit icons) so it never covers the
+     top bar — see --live-safe-top in /shared/theme.css. */
+  padding: calc(10px + var(--live-safe-top)) 14px 10px;
   background: linear-gradient(180deg, var(--panel) 0%, var(--ink) 100%);
   border-bottom: 3px dashed var(--line);
   box-shadow: 0 4px 10px rgba(139,90,52,.08);
@@ -291,7 +294,7 @@ button, input, select {
 .globe-wrap.expanded .globe-exit-btn {
   display: flex;
   position: fixed;
-  top: calc(env(safe-area-inset-top) + 10px);
+  top: calc(env(safe-area-inset-top) + var(--live-safe-top, 0px) + 10px);
   right: 14px;
   z-index: 57;
   width: 38px;

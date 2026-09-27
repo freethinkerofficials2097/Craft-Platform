@@ -281,6 +281,28 @@ function attemptGuess(word, caller) {
   return { ok: true };
 }
 
+// A round used to open on a totally blank board, so the very first
+// audience guess had zero information to reason from. Every round now
+// opens with one random, automatically-played guess before any audience
+// guessing happens - never the secret word itself, and never worth
+// points to anyone - so its green/yellow/red counts give viewers an
+// immediate starting clue instead of a cold guess.
+const STARTER_GUESS_LABEL = "🎲 Starter word";
+
+function pickStarterWord(wordLength) {
+  const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, wordLength, "random")
+    .filter((w) => w !== game.secretWord);
+  if (pool.length === 0) return null;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function seedStarterGuess() {
+  const starter = pickStarterWord(game.wordLength);
+  if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
+  const counts = scoreCounts(starter, game.secretWord);
+  game.guesses.push({ word: starter, counts, caller: STARTER_GUESS_LABEL, avatarUrl: null, isStarter: true });
+}
+
 function startRound(overrideWord) {
   if (!overrideWord && game.lengthMode === "random") {
     game.wordLength = randomWordLengthInRange();
@@ -294,6 +316,7 @@ function startRound(overrideWord) {
   game.roundScores.clear();
   game.status = "live";
   game.autoContinueAt = null;
+  seedStarterGuess();
   broadcastState();
 }
 

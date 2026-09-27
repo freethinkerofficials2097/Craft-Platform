@@ -153,6 +153,37 @@ export async function registerTwistle(app, rootIo, options = {}) {
   // The round
   // -------------------------------------------------------------------------
 
+  // A round used to open on a totally blank board, so the very first
+  // audience guess had zero information to reason from. Every round now
+  // opens with one random, automatically-played guess before any audience
+  // guessing happens - never the secret word itself, and never worth
+  // points to anyone - so its row of symbols gives viewers an immediate
+  // starting clue instead of a cold guess.
+  const STARTER_GUESS_LABEL = '🎲 Starter word';
+
+  function pickStarterWord(wordLength) {
+    const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, wordLength, 'random')
+      .filter((w) => w !== game.secretWord);
+    if (pool.length === 0) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function seedStarterGuess() {
+    const starter = pickStarterWord(game.wordLength);
+    if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
+    const { states, symbols } = evaluateGuess(game.secretWord, starter);
+    game.guessed.add(starter);
+    game.rows.push({
+      word: starter,
+      caller: STARTER_GUESS_LABEL,
+      avatarUrl: null,
+      isStarter: true,
+      states,
+      concepts: symbols,
+      symbols: symbols.map((concept) => game.symbolMap[concept]),
+    });
+  }
+
   function startRound(overrideWord) {
     if (!overrideWord && game.lengthMode === 'random') {
       game.wordLength = randomWordLengthInRange();
@@ -170,6 +201,7 @@ export async function registerTwistle(app, rootIo, options = {}) {
     game.roundNumber += 1;
     game.status = 'live';
     game.autoContinueAt = null;
+    seedStarterGuess();
     broadcastState();
   }
 

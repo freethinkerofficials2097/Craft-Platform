@@ -11,7 +11,10 @@
 <style>
   html,body{ height:100%; overflow:hidden; }
   body{ height: calc(var(--findle-vh) * 100); display:flex; flex-direction:column; }
-  .topbar{ flex:none; display:flex; justify-content:space-between; align-items:center; padding:14px 22px 6px; gap:10px; }
+  /* Extra top padding reserves space for TikTok LIVE's own on-screen UI
+     (viewer name, live badge, gift/exit icons) so it never covers the
+     top bar — see --live-safe-top in /shared/theme.css. */
+  .topbar{ flex:none; display:flex; justify-content:space-between; align-items:center; padding:calc(14px + var(--live-safe-top)) 22px 6px; gap:10px; }
   .brand{ font-size:19px; font-weight:600; flex:none; }
   .brand em{ font-style:normal; color:var(--findle-citrus-text); }
   .icon-btn{

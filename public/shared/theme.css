@@ -12,6 +12,19 @@
 
 :root,
 [data-theme="cream"]{
+  /* ------------------------------------------------------------------
+     TikTok LIVE safe-top reserve
+     When broadcasting via TikTok's "Mobile Gaming" LIVE mode, TikTok
+     draws its own UI (viewer avatar/name, live badge, gift/share icons,
+     exit button) over the very top of the screen. That overlay is part
+     of the TikTok app, not this page, so nothing here can detect or
+     avoid it — the only fix is to stop drawing important content that
+     high up. Every game's top bar adds this as extra top padding so
+     the header, title and controls sit safely below where TikTok's own
+     UI will cover the screen. Raise this value first if TikTok's
+     overlay looks taller on your device than this default guess. */
+  --live-safe-top: 46px;
+
   --theme-bg-top:  #FFF3DC;
   --theme-bg:      #F5E3C0;
   --theme-bg-deep: #EAD09C;

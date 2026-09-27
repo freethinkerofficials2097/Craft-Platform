@@ -165,7 +165,10 @@ body{
   height:calc(var(--vh, 1vh) * 100); /* real mobile viewport height, see app.js */
   display:flex;
   flex-direction:column;
-  padding:10px 12px 10px;
+  /* Extra top padding reserves space for TikTok LIVE's own on-screen UI
+     (viewer name, live badge, gift/exit icons) so it never covers the
+     top bar — see --live-safe-top in /shared/theme.css. */
+  padding:calc(10px + var(--live-safe-top)) 12px 10px;
   gap:7px;
   overflow-y:auto; /* safety net: if content ever exceeds the screen, scroll instead of hiding it */
 }
@@ -440,7 +443,7 @@ body{
 /* Toasts for correct / wrong / reveal */
 #toast-layer{
   position:fixed;
-  top:14px; left:50%; transform:translateX(-50%);
+  top:calc(14px + var(--live-safe-top, 0px)); left:50%; transform:translateX(-50%);
   z-index:40;
   display:flex; flex-direction:column; align-items:center; gap:8px;
   pointer-events:none;

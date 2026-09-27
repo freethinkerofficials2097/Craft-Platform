@@ -242,9 +242,36 @@ export class GameEngine {
       status: 'active', // active | solved | skipped | revealed
       revealAnswer: null, // set when round ends
     };
+    this._seedStarterGuess();
     this._nextRoundAt = null;
     this.tickTimer = setInterval(() => this._tick(), 1000);
     this.onChange('roundStart');
+  }
+
+  /**
+   * A round used to open on a totally blank board, so the very first
+   * audience guess had zero information to reason from. Every round now
+   * opens with one random, automatically-played guess before any audience
+   * guessing happens — never the actual answer (so it's never a free win),
+   * and never worth points to anyone — so its row of green/yellow/grey
+   * tiles gives viewers an immediate starting clue instead of a cold guess.
+   */
+  _seedStarterGuess() {
+    const length = this.round.wordLength;
+    const starter = pickWord(length, [this.round.answer]);
+    if (!starter || starter === this.round.answer) return; // extremely small word bank at this length — skip rather than risk a free win
+    const decoy = pickWord(length, [this.round.answer, starter]);
+    const colors = computeRowColors(starter, this.round.answer, decoy);
+    this.round.attempts.push({
+      username: '🎲 Starter word',
+      avatarUrl: null,
+      guess: starter,
+      decoy,
+      colors,
+      correct: false,
+      isStarter: true,
+      ts: Date.now(),
+    });
   }
 
   /** Ends the round early and schedules the next one (host "skip" action). */

@@ -34,7 +34,7 @@
     style.id = STYLE_ID;
     style.textContent = `
       #eng-alert-layer{
-        position:fixed; top:14px; left:50%; transform:translateX(-50%);
+        position:fixed; top:calc(14px + var(--live-safe-top, 0px)); left:50%; transform:translateX(-50%);
         z-index:9600; pointer-events:none; display:flex; justify-content:center;
         width:min(94vw, 440px); perspective:700px;
       }

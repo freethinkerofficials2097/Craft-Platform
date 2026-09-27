@@ -24,9 +24,12 @@
   footer.sticky{ position: sticky; bottom: 0; z-index: 15; }
 
   /* ---- top bar ---- */
+  /* Extra top padding reserves space for TikTok LIVE's own on-screen UI
+     (viewer name, live badge, gift/exit icons) so it never covers the
+     top bar — see --live-safe-top in /shared/theme.css. */
   .topbar{
     flex:none; display:flex; align-items:center; justify-content:space-between;
-    padding:8px 10px; gap:6px;
+    padding:calc(8px + var(--live-safe-top)) 10px 8px; gap:6px;
   }
   .brand{ font-size:15px; font-weight:700; white-space:nowrap; flex:none; }
   .brand em{ font-style:normal; color:var(--findle-citrus-text); }
