@@ -168,6 +168,18 @@ green, yellow and red. The colors are only revealed once the round ends (word
 guessed, or host gives up). The server never sends the color mapping to browsers
 mid-round. Runs on Socket.IO namespace `/oracle` at `/oracle/`.
 
+Host scratchpad in Oracle: on top of the click-to-mark letters/keyboard, the
+host can also click any number to mark its **whole column** red / yellow /
+green / none (the columns keep the same meaning all round). All manual colors
+(letters, keys, columns) are cleared automatically when a new round begins.
+Oracle never auto-colors anything - that would give away which column is which.
+
+Blindle scratchpad: a guess showing 0 green and 0 yellow means every letter in
+it is red, so those letters/keys are painted red automatically (once - the host
+can still change them by hand). All manual + automatic colors are cleared when
+a new round begins. The server sends a per-round counter (`roundNumber`) so the
+page knows exactly when that happens.
+
 ## All six original games, briefly
 
 **Flagle Live** — guess the blurred flag before time runs out; the flag

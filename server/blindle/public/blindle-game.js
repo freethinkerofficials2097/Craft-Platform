@@ -188,6 +188,11 @@ function cycleLetterColor(letter) {
 function cycleKeyColor(letter) { cycleLetterColor(letter); }
 function cycleTileColor(letter) { cycleLetterColor(letter); }
 
+// Letters already auto-painted red this round (from a guess whose green and
+// yellow counts were both 0). Tracked so a letter is only auto-painted ONCE -
+// if the host later changes or clears it by hand, it isn't forced red again.
+const autoRedApplied = new Set();
+
 function resetManualColors() {
   manualLetterColors = {};
   paintKeyboard();
@@ -631,11 +636,12 @@ const CONNECTION_LABELS = {
 };
 
 let lastTilesSignature = "";
-let wasFreshRoundStart = false;
+let lastRoundNumber = null;
 
 function render(state) {
   lastState = state;
-  detectFreshRound(state.game);
+  detectNewRound(state.game);
+  applyAutoRed(state.game);
   detectWinTransition(state.game);
   renderHeader(state);
   renderModeUI(state.game);
@@ -652,10 +658,27 @@ function render(state) {
   if (!el.leaderboardOverlay.hidden) renderLeaderboardTab();
 }
 
-function detectFreshRound(g) {
-  const isFreshRoundStart = g.status === "live" && g.guessesMade === 0;
-  if (isFreshRoundStart && !wasFreshRoundStart) resetManualColors();
-  wasFreshRoundStart = isFreshRoundStart;
+// A new round is detected by the server's round counter (NOT by "zero guesses
+// so far" - every round opens with an automatic starter guess, so that count
+// is never 0). Every color the host set by hand, and every auto-red, is wiped.
+function detectNewRound(g) {
+  if (g.roundNumber === lastRoundNumber) return;
+  lastRoundNumber = g.roundNumber;
+  autoRedApplied.clear();
+  resetManualColors();
+}
+
+// Any guess showing 0 green and 0 yellow means ALL its letters are red (not in
+// the word), so paint them red for the host automatically.
+function applyAutoRed(g) {
+  let changed = false;
+  (g.zeroLetters || []).forEach((letter) => {
+    if (autoRedApplied.has(letter)) return;
+    autoRedApplied.add(letter);
+    manualLetterColors[letter] = "absent";
+    changed = true;
+  });
+  if (changed) lastTilesSignature = "";
 }
 
 function renderHeader(state) {

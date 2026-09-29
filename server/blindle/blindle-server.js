@@ -186,6 +186,7 @@ const game = {
   secretWord: null,
   guesses: [],
   streak: 0,
+  roundNumber: 0, // bumps every time a new round starts - the page uses it to clear its manual colors
   hintsUsed: 0,
   hintSuggestions: [],
   lastRejection: null,
@@ -315,6 +316,7 @@ function startRound(overrideWord) {
   game.lastWinInfo = null;
   game.roundScores.clear();
   game.status = "live";
+  game.roundNumber += 1;
   game.autoContinueAt = null;
   seedStarterGuess();
   broadcastState();
@@ -634,6 +636,14 @@ function buildStatePayload() {
       guesses: game.guesses.slice(-12),
       guessesMade: game.guesses.length,
       usedLetters: [...new Set(game.guesses.flatMap((g) => g.word.split("")))],
+      roundNumber: game.roundNumber,
+      // Letters that are provably NOT in the word: every letter of any guess whose
+      // green AND yellow counts are both 0 (so all of its letters are red). Covers
+      // every guess this round, not just the last 12 sent in `guesses`. The page
+      // paints these red automatically.
+      zeroLetters: game.status === "idle"
+        ? []
+        : [...new Set(game.guesses.filter((g) => g.counts.green === 0 && g.counts.yellow === 0).flatMap((g) => g.word.split("")))],
       streak: game.streak,
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,

@@ -212,6 +212,7 @@ const game = {
   columnOrder: ["green", "yellow", "red"],
   guesses: [],
   streak: 0,
+  roundNumber: 0, // bumps every time a new round starts - the page uses it to clear its manual colors
   hintsUsed: 0,
   hintSuggestions: [],
   lastRejection: null,
@@ -342,6 +343,7 @@ function startRound(overrideWord) {
   game.lastWinInfo = null;
   game.roundScores.clear();
   game.status = "live";
+  game.roundNumber += 1;
   game.autoContinueAt = null;
   seedStarterGuess();
   broadcastState();
@@ -669,6 +671,7 @@ function buildStatePayload() {
       columnColors: game.status === "won" || game.status === "lost" ? game.columnOrder.slice() : null,
       guessesMade: game.guesses.length,
       usedLetters: [...new Set(game.guesses.flatMap((g) => g.word.split("")))],
+      roundNumber: game.roundNumber,
       streak: game.streak,
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,

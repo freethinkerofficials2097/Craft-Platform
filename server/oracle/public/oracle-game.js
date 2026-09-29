@@ -189,8 +189,21 @@ function cycleLetterColor(letter) {
 function cycleKeyColor(letter) { cycleLetterColor(letter); }
 function cycleTileColor(letter) { cycleLetterColor(letter); }
 
+// ORACLE: the host can also mark the three NUMBER COLUMNS by hand. The columns
+// keep the same meaning for the whole round, so marking a column (index 0, 1 or
+// 2) colors that column on every guess row. Same click cycle as the letters.
+let manualColumnColors = [null, null, null];
+
+function cycleColumnColor(index) {
+  if (revealedColors) return; // round is over - the real colors are already showing
+  manualColumnColors[index] = nextColor(manualColumnColors[index]);
+  lastTilesSignature = "";
+  if (lastState) renderTiles(lastState.game);
+}
+
 function resetManualColors() {
   manualLetterColors = {};
+  manualColumnColors = [null, null, null];
   paintKeyboard();
   lastTilesSignature = "";
   if (lastState) renderTiles(lastState.game);
@@ -614,7 +627,7 @@ const CONNECTION_LABELS = {
 };
 
 let lastTilesSignature = "";
-let wasFreshRoundStart = false;
+let lastRoundNumber = null;
 // ORACLE: null until the round ends, then e.g. ["red","green","yellow"] (one color per column).
 let revealedColors = null;
 
@@ -623,7 +636,7 @@ function render(state) {
   const newColors = state.game.columnColors || null;
   if (JSON.stringify(newColors) !== JSON.stringify(revealedColors)) lastTilesSignature = "";
   revealedColors = newColors;
-  detectFreshRound(state.game);
+  detectNewRound(state.game);
   detectWinTransition(state.game);
   renderHeader(state);
   renderModeUI(state.game);
@@ -640,10 +653,14 @@ function render(state) {
   if (!el.leaderboardOverlay.hidden) renderLeaderboardTab();
 }
 
-function detectFreshRound(g) {
-  const isFreshRoundStart = g.status === "live" && g.guessesMade === 0;
-  if (isFreshRoundStart && !wasFreshRoundStart) resetManualColors();
-  wasFreshRoundStart = isFreshRoundStart;
+// A new round is detected by the server's round counter (NOT by "zero guesses
+// so far" - every round opens with an automatic starter guess, so that count
+// is never 0). Every letter color AND number-column color the host set by hand
+// is wiped.
+function detectNewRound(g) {
+  if (g.roundNumber === lastRoundNumber) return;
+  lastRoundNumber = g.roundNumber;
+  resetManualColors();
 }
 
 function renderHeader(state) {
@@ -877,12 +894,20 @@ function buildGuessBlock(guess, wordLength, metrics) {
     // uncolored ("neutral") until the round ends and the server sends columnColors.
     const colors = revealedColors; // null while the round is still in progress
     guess.clues.forEach((value, i) => {
-      const colorClass = colors ? (colors[i] === "yellow" ? "gold" : colors[i]) : "neutral";
+      // Real colors once the round is over; otherwise the host's own marking (if any); otherwise neutral.
+      const manual = manualColumnColors[i];
+      const manualClass = manual === "correct" ? "green" : manual === "present" ? "gold" : manual === "absent" ? "red" : "neutral";
+      const colorClass = colors ? (colors[i] === "yellow" ? "gold" : colors[i]) : manualClass;
       const revealClass = colors ? " reveal" : "";
       const badge = document.createElement("span");
       badge.className = "countBadge " + colorClass + revealClass;
       badge.style.cssText = badgeStyle + (colors ? "animation-delay:" + i * 0.12 + "s;" : "");
       badge.textContent = String(value);
+      if (!colors) {
+        badge.classList.add("clickable");
+        badge.title = "Click to mark this column (red / yellow / green)";
+        badge.addEventListener("click", () => cycleColumnColor(i));
+      }
       countsCol.appendChild(badge);
     });
     block.appendChild(countsCol);
@@ -892,7 +917,7 @@ function buildGuessBlock(guess, wordLength, metrics) {
 }
 
 function renderTiles(g) {
-  const signature = g.status + "|" + g.wordLength + "|" + g.guessesMade + "|" + (g.columnColors ? g.columnColors.join(",") : "-");
+  const signature = g.status + "|" + g.wordLength + "|" + g.guessesMade + "|" + (g.columnColors ? g.columnColors.join(",") : "-") + "|" + manualColumnColors.join(",");
   if (signature === lastTilesSignature) return;
   lastTilesSignature = signature;
 

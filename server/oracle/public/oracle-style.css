@@ -310,6 +310,7 @@ button { cursor: pointer; }
   color: var(--text, inherit);
   border: 1px solid var(--border, rgba(128, 128, 128, 0.35));
 }
+.countBadge.clickable { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
 .countBadge.reveal { animation: badge-reveal 0.6s ease both; }
 @keyframes badge-reveal {
   0% { transform: rotateX(90deg); opacity: 0; }
