@@ -1,8 +1,8 @@
 # TikTok LIVE Game Platform
 
-One deployed link, a game-selector home screen, and **six** independent
+One deployed link, a game-selector home screen, and **seven** independent
 games — **Flagle Live**, **TRAVLE Live**, **Blindle**, **Findle Live**,
-**CROSSDLE Live**, and **TWISTLE Live** — each reading your TikTok LIVE
+**CROSSDLE Live**, **TWISTLE Live**, and **Oracle** — each reading your TikTok LIVE
 chat directly as guesses. You never touch code; follow `DEPLOY_GUIDE.md`.
 
 ## Layout
@@ -27,6 +27,9 @@ server/
   findle/           <- Findle's server logic + its own findle-public/
                        client folder, Socket.IO namespace /findle
   crossdle/         <- CROSSDLE's game engine, dictionary, TikTok manager
+  oracle/           <- Oracle's server logic + its own public/ client folder,
+                       mounted at /oracle, Socket.IO namespace /oracle
+                       (imports BLINDLE's word bank + dictionary)
   twistle/          <- TWISTLE's game engine (imports BLINDLE's word
                        bank + dictionary directly), TikTok manager,
                        Socket.IO namespace /twistle
@@ -154,7 +157,18 @@ moment, the second person's connect takes over from the first. Not a bug
 to fix urgently — just tell me if you'd like any of those upgraded to
 Flagle's per-host model later.
 
-## All six games, briefly
+## Oracle (new)
+
+**Oracle** — inspired by SEER-O, and identical to Blindle in every way (word
+bank, dictionary, difficulty tiers, unlimited guesses, clue-consistency check,
+points, leaderboards, celebration, Live/Test/Offline, hints, engagement alerts)
+except the clue columns: the three number columns are **shuffled at the start
+of every round** and stay **uncolored** — chat has to work out which column is
+green, yellow and red. The colors are only revealed once the round ends (word
+guessed, or host gives up). The server never sends the color mapping to browsers
+mid-round. Runs on Socket.IO namespace `/oracle` at `/oracle/`.
+
+## All six original games, briefly
 
 **Flagle Live** — guess the blurred flag before time runs out; the flag
 sharpens continuously and wrong guesses add a distance-and-direction hint.

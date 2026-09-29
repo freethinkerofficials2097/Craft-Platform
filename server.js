@@ -1,6 +1,6 @@
 // ===================================================================
 // PLATFORM ENTRY POINT
-// One always-on server hosting six independent games. Each game keeps
+// One always-on server hosting seven independent games. Each game keeps
 // its own files and its own Socket.IO namespace (or WebSocket path, for
 // BLINDLE), so they never share state or event names — this file just
 // wires up Express + Socket.IO/HTTP once and lets each game register
@@ -12,6 +12,7 @@
 //   /findle     - Findle Live      (Socket.IO namespace /findle)
 //   /crossdle/  - CROSSDLE Live    (Socket.IO namespace /crossdle)
 //   /twistle/   - TWISTLE Live     (Socket.IO namespace /twistle)
+//   /oracle/    - ORACLE           (Socket.IO namespace /oracle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -36,6 +37,7 @@ import { Server } from "socket.io";
 import { registerFlagle } from "./server/flagle.js";
 import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
+import { mountOracle } from "./server/oracle/oracle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
 import { registerTwistle } from "./server/twistle/twistle.js";
@@ -89,6 +91,12 @@ await registerTwistle(app, io);
 // Awaited so the real ~370,000-word dictionary is loaded before the
 // server starts accepting connections.
 await mountBlindle(app, server, { mountPath: "/blindle", wsPath: "/blindle-ws" });
+
+// ORACLE is BLINDLE's sibling (shuffled, uncolored clue columns). It reuses
+// BLINDLE's word bank + dictionary (already loaded above - the dictionary only
+// ever loads once) and runs on its own Socket.IO namespace /oracle, so it never
+// touches BLINDLE's WebSocket path.
+await mountOracle(app, io, { mountPath: "/oracle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
