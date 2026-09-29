@@ -157,6 +157,17 @@ moment, the second person's connect takes over from the first. Not a bug
 to fix urgently — just tell me if you'd like any of those upgraded to
 Flagle's per-host model later.
 
+## Host picture on the starter word
+
+Blindle, Oracle, Twistle and CROSSDLE open every round with an automatic
+"starter word". Its avatar circle now shows the TikTok profile picture of the
+**host of the current LIVE session** (the account the game is connected to)
+instead of a generic colored initial. Shared logic: `server/shared/host-avatar.js`.
+The picture is taken from the room info TikTok returns on connect (with a second
+lookup, and finally the host's own chat messages, as fallbacks). It appears as
+soon as the connection is up - even mid-round - and goes back to the plain
+circle in Test/Offline mode, after Disconnect, or if TikTok gives no picture.
+
 ## Oracle (new)
 
 **Oracle** — inspired by SEER-O, and identical to Blindle in every way (word

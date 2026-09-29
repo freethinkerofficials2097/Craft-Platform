@@ -725,7 +725,7 @@ let lastRowCount = 0;
 
 function renderGrid(g) {
   const rows = g.rows || [];
-  const sig = [g.roundNumber, g.status, rows.map((r) => r.word + (r.states ? "*" : "")).join(",")].join("|");
+  const sig = [g.roundNumber, g.status, rows.map((r) => r.word + (r.states ? "*" : "") + (r.avatarUrl ? "@" + r.avatarUrl : "")).join(",")].join("|");
   if (sig === lastGridSig) return;
   lastGridSig = sig;
 

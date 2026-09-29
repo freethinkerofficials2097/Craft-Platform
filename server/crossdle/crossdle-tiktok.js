@@ -27,6 +27,7 @@
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 import { extractChatFields, extractMessageId } from './crossdle-diagnostics.js';
 import { Engagement } from '../engagement/engagement-hub.js';
+import { resolveHostAvatar, isHostUser } from '../shared/host-avatar.js';
 
 const MAX_CONNECT_ATTEMPTS = 3;
 const BACKOFF_MS = [2000, 5000, 10000]; // short backoff between retries
@@ -40,17 +41,28 @@ export class TikTokManager {
    * @param {(username:string, text:string, source:string) => void} opts.onComment
    * @param {(status:object) => void} opts.onStatus
    */
-  constructor({ diagnostics, onComment, onStatus, signApiKey }) {
+  constructor({ diagnostics, onComment, onStatus, signApiKey, onHostAvatar }) {
     this.diagnostics = diagnostics;
     this.onComment = onComment;
     this.onStatus = onStatus || (() => {});
     this.signApiKey = signApiKey || null;
+    // Profile picture of the HOST of the current LIVE session (the connected
+    // account). Shown on the automatic starter-word row. Null when not connected.
+    this.hostAvatarUrl = null;
+    this.onHostAvatar = onHostAvatar || (() => {});
     this.connection = null;
     this.desiredUsername = null;
     this.manuallyDisconnected = false;
     this._reconnecting = false;
     this._generation = 0; // bumped on every connect() call; invalidates older attempts
     this._seenMsgIds = new Map(); // msgId -> firstSeenAt, for de-duplication
+  }
+
+  _setHostAvatar(url) {
+    const next = url || null;
+    if (next === this.hostAvatarUrl) return;
+    this.hostAvatarUrl = next;
+    try { this.onHostAvatar(next); } catch (err) { this.diagnostics.logError('tiktok.hostAvatar', err); }
   }
 
   get isConnected() {
@@ -68,6 +80,7 @@ export class TikTokManager {
     const myGeneration = this._generation;
     this.manuallyDisconnected = false;
     this.desiredUsername = normalizeUsername(username);
+    this._setHostAvatar(null); // a new connect may be a different host
 
     if (this.connection) {
       try { this.connection.disconnect(); } catch (_) { /* ignore */ }
@@ -86,6 +99,7 @@ export class TikTokManager {
       this.diagnostics.logError('tiktok.disconnect', err);
     }
     this.connection = null;
+    this._setHostAvatar(null);
     this._setStatus('idle', 'Disconnected.');
   }
 
@@ -175,6 +189,8 @@ export class TikTokManager {
         const msgId = extractMessageId(data);
         if (!this._isNewMessage(msgId)) return; // duplicate delivery of the same message
         const { username: user, text, avatarUrl } = extractChatFields(data);
+        // Late fallback: the host's own chat message carries their profile picture.
+        if (avatarUrl && !this.hostAvatarUrl && isHostUser(user, this.desiredUsername)) this._setHostAvatar(avatarUrl);
         this.onComment(user, text, 'tiktok', avatarUrl);
       } catch (err) {
         this.diagnostics.logError('tiktok.chatHandler', err);
@@ -207,8 +223,13 @@ export class TikTokManager {
       }
     });
 
-    await connection.connect();
+    const connectState = await connection.connect();
     Engagement.attach(connection, { game: 'crossdle', tiktokUsername: username });
+
+    // Look up the host's profile picture without holding up the connection.
+    resolveHostAvatar(connection, connectState).then((url) => {
+      if (url && !this._isStale(myGeneration) && this.connection === connection) this._setHostAvatar(url);
+    });
   }
 }
 

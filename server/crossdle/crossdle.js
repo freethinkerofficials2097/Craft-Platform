@@ -43,6 +43,15 @@ export async function registerCrossdle(app, rootIo, options = {}) {
     diagnostics,
     signApiKey: SIGN_API_KEY,
     onComment: handleIncomingComment,
+    // Host's profile picture -> shown on the automatic starter-word row.
+    onHostAvatar: (url) => {
+      try {
+        engine.hostAvatarUrl = url || null;
+        io.emit('game:update', engine.getPublicState());
+      } catch (err) {
+        diagnostics.logError('broadcast.hostAvatar', err);
+      }
+    },
     onStatus: (status) => {
       try {
         io.emit('tiktok:status', status);

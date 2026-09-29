@@ -40,6 +40,7 @@ import { WebSocketServer } from "ws";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./blindle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
+import { resolveHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "./blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "./blindle-difficulty.js";
 
@@ -107,6 +108,12 @@ function extractChatFields(raw) {
 // to carry it. Host-typed guesses and Test/Offline mode simply have no
 // entry here, and the client falls back to a colored initial circle.
 const knownAvatars = new Map();
+
+// The profile picture of the HOST of the current TikTok LIVE session (the
+// account this game is connected to). Shown on the automatic "starter word"
+// row instead of a generic initial circle. Null when not connected to a live
+// session (Test / Offline mode) or when TikTok didn't provide one.
+let hostAvatarUrl = null;
 
 function normalizeGuess(text) {
   return String(text)
@@ -452,6 +459,9 @@ function handleIncomingRawEvent(raw) {
   diagnostics.lastReceivedText = text;
   diagnostics.lastReceivedAt = Date.now();
   if (avatarUrl) knownAvatars.set(username, avatarUrl);
+  if (avatarUrl && !hostAvatarUrl && game.mode === "live" && isHostUser(username, diagnostics.tiktokUsername)) {
+    hostAvatarUrl = avatarUrl; // late fallback: the host's own chat message carries their picture
+  }
 
   game.recentComments.unshift({ username, text, avatarUrl: knownAvatars.get(username) || null, at: Date.now() });
   if (game.recentComments.length > 30) game.recentComments.length = 30;
@@ -477,6 +487,7 @@ if (process.env.EULERSTREAM_API_KEY) {
 }
 
 function stopEverything() {
+  hostAvatarUrl = null;
   if (liveConnection) {
     try {
       liveConnection.disconnect();
@@ -538,12 +549,20 @@ async function connectToTikTok(username) {
         })
       );
 
-      await connection.connect();
+      const connectState = await connection.connect();
       liveConnection = connection;
       Engagement.attach(connection, { game: "blindle", tiktokUsername: username });
       diagnostics.connectionStatus = "live";
       diagnostics.lastErrorMessage = null;
       broadcastState();
+      // Look up the host's profile picture (for the starter-word row) without
+      // holding up the connection; broadcast again once it's known.
+      resolveHostAvatar(connection, connectState).then((url) => {
+        if (url && liveConnection === connection) {
+          hostAvatarUrl = url;
+          broadcastState();
+        }
+      });
       return;
     } catch (err) {
       console.error(`[TikTok] Connect attempt ${attempt + 1} failed:`, err?.message || err);
@@ -633,7 +652,8 @@ function buildStatePayload() {
       lengthMin: game.lengthMin,
       lengthMax: game.lengthMax,
       secretWord: game.status === "lost" ? game.secretWord : null,
-      guesses: game.guesses.slice(-12),
+      // The automatic starter word shows the LIVE host's profile picture.
+      guesses: game.guesses.slice(-12).map((g) => (g.isStarter ? { ...g, avatarUrl: hostAvatarUrl } : g)),
       guessesMade: game.guesses.length,
       usedLetters: [...new Set(game.guesses.flatMap((g) => g.word.split("")))],
       roundNumber: game.roundNumber,

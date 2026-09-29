@@ -201,6 +201,9 @@ export class GameEngine {
     this.leaderboard = new Map(); // username -> { username, score, solves }
     this.round = null;
     this.roundNumber = 0;
+    // Profile picture of the LIVE host, set by crossdle.js while connected to TikTok;
+    // shown on the automatic starter-word row (see getPublicState).
+    this.hostAvatarUrl = null;
     this.tickTimer = null;
     this._nextRoundAt = null;
     this.nextRoundDelayMs = DEFAULT_NEXT_ROUND_DELAY_MS;
@@ -437,7 +440,8 @@ export class GameEngine {
       round: r && {
         number: r.number,
         wordLength: r.wordLength,
-        attempts: r.attempts,
+        // The automatic starter word shows the LIVE host's profile picture.
+        attempts: r.attempts.map((a) => (a.isStarter ? { ...a, avatarUrl: this.hostAvatarUrl || null } : a)),
         hints: r.hints,
         solved: r.solved,
         solvedBy: r.solvedBy,

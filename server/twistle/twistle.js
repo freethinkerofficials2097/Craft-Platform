@@ -75,6 +75,10 @@ export async function registerTwistle(app, rootIo, options = {}) {
   // coloured initial.
   const knownAvatars = new Map();
 
+  // Profile picture of the HOST of the current TikTok LIVE session - shown on the
+  // automatic starter-word row. Null in Test / Offline mode or when unavailable.
+  let hostAvatarUrl = null;
+
   const game = {
     mode: 'test',
     status: 'idle', // idle | live | won | lost
@@ -386,6 +390,10 @@ export async function registerTwistle(app, rootIo, options = {}) {
     signApiKey: SIGN_API_KEY,
     onComment: handleIncomingComment,
     onStatus: () => broadcastState(),
+    onHostAvatar: (url) => {
+      hostAvatarUrl = url || null;
+      broadcastState();
+    },
   });
 
   // -------------------------------------------------------------------------
@@ -437,7 +445,8 @@ export async function registerTwistle(app, rootIo, options = {}) {
     const rows = game.rows.slice(-MAX_ROWS_SENT).map((r) => ({
       word: r.word,
       caller: r.caller,
-      avatarUrl: r.avatarUrl,
+      // The automatic starter word shows the LIVE host's profile picture.
+      avatarUrl: r.isStarter ? hostAvatarUrl : r.avatarUrl,
       symbols: r.symbols,
       // The tile colours only exist once the round is over.
       ...(ended ? { states: r.states } : {}),

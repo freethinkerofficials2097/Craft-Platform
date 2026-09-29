@@ -919,7 +919,11 @@ function buildGuessBlock(guess, wordLength, metrics) {
 }
 
 function renderTiles(g) {
-  const signature = g.status + "|" + g.wordLength + "|" + g.guessesMade;
+  // The starter word's picture (the live host's TikTok avatar) can arrive after the round has
+  // started, so it is part of the cache key.
+  const starterRow = g.guesses.find((x) => x.isStarter);
+  const starterAvatar = (starterRow && starterRow.avatarUrl) || "";
+  const signature = starterAvatar + "|" + g.status + "|" + g.wordLength + "|" + g.guessesMade;
   if (signature === lastTilesSignature) return;
   lastTilesSignature = signature;
 

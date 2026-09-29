@@ -418,6 +418,9 @@
   // --------------------------------------------------------------------
   let lastRenderedRoundNumber = null;
   let lastRenderedAttemptCount = 0;
+  // The starter-word row shows the live host's TikTok picture, which can arrive after the round
+  // has started - so a change in it forces the board to redraw.
+  let lastRenderedStarterAvatar = null;
 
   function renderGame(game) {
     if (!game) return;
@@ -435,6 +438,7 @@
       resetKeyboard();
       lastRenderedRoundNumber = null;
       lastRenderedAttemptCount = 0;
+      lastRenderedStarterAvatar = null;
       return;
     }
 
@@ -442,16 +446,20 @@
 
     const isNewRound = round.number !== lastRenderedRoundNumber;
     const attemptCountChanged = round.attempts.length !== lastRenderedAttemptCount;
+    const starterAttempt = round.attempts.find((a) => a.isStarter);
+    const starterAvatar = (starterAttempt && starterAttempt.avatarUrl) || null;
+    const starterAvatarChanged = starterAvatar !== lastRenderedStarterAvatar;
 
     if (isNewRound) {
       resetKeyboard();
     }
 
-    if (isNewRound || attemptCountChanged) {
-      renderBoard(round, isNewRound);
+    if (isNewRound || attemptCountChanged || starterAvatarChanged) {
+      renderBoard(round, isNewRound || starterAvatarChanged);
       renderKeyboard(round.attempts);
       lastRenderedRoundNumber = round.number;
       lastRenderedAttemptCount = round.attempts.length;
+      lastRenderedStarterAvatar = starterAvatar;
     }
 
     renderHints(round);
