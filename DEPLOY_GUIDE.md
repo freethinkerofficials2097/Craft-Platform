@@ -50,7 +50,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
    `public/travle/`, `public/crossdle/`, `public/twistle/`,
-   `server/blindle/`, `server/oracle/`, `server/findle/`, and `server/twistle/` as real
+   `server/blindle/`, `server/oracle/`, `server/colorblindle/`, `server/findle/`, and `server/twistle/` as real
    folders — if anything landed flat with slashes
    in the filename instead, open it and rename it with the full path to
    move it into place.
@@ -64,7 +64,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
    Command:** `npm start`.
 3. Before creating it, add one environment variable: **Key**
    `EULERSTREAM_API_KEY`, **Value** = the key from Part 1. (This one key
-   works for all seven games — the server automatically shares it with
+   works for all eight games — the server automatically shares it with
    whichever internal name each game expects.)
 4. **Create Web Service.** Wait for the first build (a couple of minutes).
    Your address will look like `https://your-app.onrender.com`.
@@ -78,7 +78,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
 
 ## Part 4 — Using the platform
 
-1. Open your Render link. You'll land on a **home screen** with seven game
+1. Open your Render link. You'll land on a **home screen** with eight game
    cards.
 2. Tap one to open it — each game has its own address, so you can also
    bookmark a game directly and skip the home screen:
@@ -89,6 +89,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
    - CROSSDLE Live → `/crossdle/`
    - TWISTLE Live → `/twistle/`
    - Oracle → `/oracle/`
+   - Colorblindle → `/colorblindle/`
 3. Inside a game, everything works as documented for that game — Live /
    Test / Offline modes, TikTok connect, host controls, etc. Every game
    also has a **🎨 theme picker** in its header — pick a color once and it

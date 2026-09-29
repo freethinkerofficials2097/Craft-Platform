@@ -13,6 +13,7 @@
 //   /crossdle/  - CROSSDLE Live    (Socket.IO namespace /crossdle)
 //   /twistle/   - TWISTLE Live     (Socket.IO namespace /twistle)
 //   /oracle/    - ORACLE           (Socket.IO namespace /oracle)
+//   /colorblindle/ - COLORBLINDLE  (Socket.IO namespace /colorblindle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -38,6 +39,7 @@ import { registerFlagle } from "./server/flagle.js";
 import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
+import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
 import { registerTwistle } from "./server/twistle/twistle.js";
@@ -97,6 +99,11 @@ await mountBlindle(app, server, { mountPath: "/blindle", wsPath: "/blindle-ws" }
 // ever loads once) and runs on its own Socket.IO namespace /oracle, so it never
 // touches BLINDLE's WebSocket path.
 await mountOracle(app, io, { mountPath: "/oracle" });
+
+// COLORBLINDLE is BLINDLE's sibling too (4-color shuffled keyboard + color counts,
+// green/gray tile feedback). Same word bank + dictionary reuse, own Socket.IO
+// namespace /colorblindle.
+await mountColorblindle(app, io, { mountPath: "/colorblindle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

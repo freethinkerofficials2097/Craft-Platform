@@ -168,6 +168,27 @@ lookup, and finally the host's own chat messages, as fallbacks). It appears as
 soon as the connection is up - even mid-round - and goes back to the plain
 circle in Test/Offline mode, after Disconnect, or if TikTok gives no picture.
 
+## Colorblindle (new)
+
+**Colorblindle** — modelled on COLORBLIND-O, built on BLINDLE's platform machinery
+(word bank, 370k-word dictionary, difficulty tiers, unlimited guesses, clue-consistency
+check, points, leaderboards, celebration, Live/Test/Offline, hints, engagement alerts).
+What's different:
+
+- Every round each letter A-Z is secretly given one of **four colors** (red / blue /
+  yellow / purple), **reshuffled every round**. The on-screen keyboard is painted with them,
+  so there is no manual coloring / scratchpad here.
+- A row of four numbers shows **how many letters of each color** the hidden word contains
+  (repeated letters count every time).
+- Guess feedback is **green** (right letter, right spot) or **gray** (incorrect). No yellow tier.
+- A guess is accepted only if it has the **same color counts** as the hidden word and
+  reproduces the **green/gray pattern of every earlier guess**; otherwise a short rejection
+  note is shown. Hints follow the same rule and never reveal the answer.
+
+Files: `server/colorblindle/colorblindle-server.js` + its own `public/` client folder,
+mounted at `/colorblindle/` on Socket.IO namespace `/colorblindle` (imports BLINDLE's
+word bank, dictionary and difficulty engine - loaded only once).
+
 ## Oracle (new)
 
 **Oracle** — inspired by SEER-O, and identical to Blindle in every way (word
