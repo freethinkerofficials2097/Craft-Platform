@@ -317,10 +317,21 @@ button { cursor: pointer; }
   border: 1px solid rgba(255, 177, 0, 0.3);
 }
 
+/* Reserved slot for the floating rejection window: sits directly above the keyboard,
+   pushing the keyboard and board down so they never overlap the message. */
+.toastSlot {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  height: var(--toast-slot-height, 76px);
+  pointer-events: none;
+}
 /* ---- Rejection toast: brief, self-dismissing ----
-   Deliberately position: fixed - it floats ABOVE the page as its own
-   layer and is taken out of normal document flow entirely, so showing
-   or hiding it never resizes or shifts anything underneath it
+   Positioned absolutely INSIDE the reserved .toastSlot above the keyboard, so it
+   floats in its own layer and showing or hiding it never resizes or shifts anything
+   underneath it
    (specifically: it never pushes the guessed-words section down).
    Styled for readability at a glance: solid (non-translucent) dark
    card, generous padding, larger/bolder text, soft shadow for
@@ -328,21 +339,21 @@ button { cursor: pointer; }
    (Settings → "Guess rejection message") and applied inline via JS as
    the animation's duration - see maybeShowRejection() in game.js. */
 .rejectionToast {
-  position: fixed;
-  top: calc(68px + var(--live-safe-top, 0px));
+  position: absolute;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
   pointer-events: none;
   width: min(92vw, 480px);
-  padding: 14px 20px;
+  padding: 10px 16px;
   border-radius: var(--radius-md);
   background: rgba(28, 16, 22, 0.96);
   border: 1px solid rgba(255, 59, 78, 0.45);
   box-shadow: 0 14px 32px rgba(2, 3, 12, 0.55);
   color: #ffd7db;
-  font-size: 14.5px;
-  line-height: 1.45;
+  font-size: 13.5px;
+  line-height: 1.4;
   font-weight: 600;
   text-align: center;
   letter-spacing: 0.1px;

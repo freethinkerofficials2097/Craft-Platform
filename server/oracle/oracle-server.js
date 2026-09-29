@@ -5,6 +5,9 @@
 //   - Each guess shows THREE numbers, but the order of the three columns
 //     (green / yellow / red) is SHUFFLED at the start of every round, and the
 //     audience is never told which column is which.
+//   - Because the order is unknown, each earlier clue is checked on its own: a guess
+//     is accepted if it fits every clue under SOME column order (the order may differ
+//     from clue to clue - see checkConsistency).
 //   - The three columns stay UNCOLORED for the whole round. Colors are only
 //     revealed when the round ends (solved, or the host gives up).
 //   - The server NEVER sends the color mapping (or true green/yellow/red counts)
@@ -263,10 +266,38 @@ function awardPoints(caller, points) {
   game.totalScores.set(caller, (game.totalScores.get(caller) || 0) + points);
 }
 
+// ORACLE consistency rule.
+// The audience is never told which of the three number columns is green, yellow or
+// red (that order is shuffled every round), and different viewers assume different
+// orders. So every earlier clue is judged on its own: a guess is accepted if, for
+// EACH earlier guess, its three numbers could be arranged (in any of the 6 possible
+// orders) to give exactly the three numbers shown on the board for that guess. The
+// order is NOT required to be the same across different earlier guesses, so guesses
+// that fit one clue under one order and another clue under a different order are
+// still accepted. The real secret word always passes (its true order fits every
+// clue), and nothing about the true order is revealed by accepting or rejecting.
+function sortedTriple(a, b, c) {
+  return [a, b, c].sort((x, y) => x - y);
+}
+
+// Does `word`, scored against this earlier guess, give the same three numbers that
+// were shown for it - in ANY column order?
+function fitsClueInSomeOrder(word, past) {
+  const hypothetical = scoreCounts(past.word, word);
+  const shown = cluesFor(past.counts, game.columnOrder); // the 3 numbers the audience sees
+  const a = sortedTriple(hypothetical.green, hypothetical.yellow, hypothetical.red);
+  const b = sortedTriple(shown[0], shown[1], shown[2]);
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+}
+
+function fitsSomeArrangement(word, pastGuesses) {
+  return pastGuesses.every((past) => fitsClueInSomeOrder(word, past));
+}
+
 function checkConsistency(word) {
   for (let i = 0; i < game.guesses.length; i++) {
     const past = game.guesses[i];
-    if (!countsEqual(scoreCounts(past.word, word), past.counts)) {
+    if (!fitsClueInSomeOrder(word, past)) {
       return { ok: false, conflictIndex: i, conflictWord: past.word, conflictCounts: past.counts };
     }
   }
@@ -306,7 +337,7 @@ function attemptGuess(word, caller) {
 
   const consistency = checkConsistency(word);
   if (!consistency.ok) {
-    const reason = `Conflicts with guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClues(consistency.conflictCounts)})`;
+    const reason = `Doesn't fit the numbers of guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClues(consistency.conflictCounts)})`;
     game.lastRejection = { word, reason, at: Date.now() };
     return { ok: false, error: reason, rejected: true };
   }
@@ -434,9 +465,7 @@ function useHint() {
 
   let candidates = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty);
   candidates = candidates.filter((w) => w !== game.secretWord);
-  for (const g of game.guesses) {
-    candidates = candidates.filter((w) => countsEqual(scoreCounts(g.word, w), g.counts));
-  }
+  candidates = candidates.filter((w) => fitsSomeArrangement(w, game.guesses));
   candidates = candidates.filter((w) => !game.hintSuggestions.includes(w));
 
   if (candidates.length === 0) return;

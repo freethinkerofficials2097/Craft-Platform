@@ -240,12 +240,13 @@ button { cursor: pointer; }
 /* ---- Rejection toast: brief, self-dismissing (see .rejectionToast use
    in app.js) - fixed position so showing/hiding it never shifts the
    board underneath it. Duration is host-configurable in Settings. ---- */
+.toastSlot { position: relative; flex-shrink: 0; width: 100%; max-width: 720px; margin: 0 auto; height: var(--toast-slot-height, 76px); pointer-events: none; }
 .rejectionToast {
-  position: fixed; top: calc(68px + var(--live-safe-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 40; pointer-events: none;
-  width: min(92vw, 480px); padding: 14px 20px; border-radius: var(--radius-md);
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%); z-index: 40; pointer-events: none;
+  width: min(92vw, 480px); padding: 10px 16px; border-radius: var(--radius-md);
   background: rgba(20, 12, 26, 0.96); border: 1px solid rgba(255, 95, 109, 0.45);
   box-shadow: 0 14px 32px rgba(2, 3, 12, 0.55); color: #ffd7db;
-  font-size: 14.5px; line-height: 1.45; font-weight: 600; text-align: center; letter-spacing: 0.1px;
+  font-size: 13.5px; line-height: 1.4; font-weight: 600; text-align: center; letter-spacing: 0.1px;
 }
 .rejectionToast::before { content: ""; display: block; width: 34px; height: 3px; border-radius: 999px; background: var(--danger); margin: 0 auto 8px; }
 @keyframes toast-flash { 0% { opacity: 0; transform: translateX(-50%) translateY(-6px); } 10% { opacity: 1; transform: translateX(-50%) translateY(0); } 85% { opacity: 1; } 100% { opacity: 0; } }

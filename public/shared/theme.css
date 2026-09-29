@@ -30,6 +30,13 @@
      up or down together. */
   --live-safe-top: 100px;
 
+  /* Floating "guess rejected" window: it has its own reserved slot ABOVE the keyboard
+     (directly under the top bar). The keyboard and board sit below that slot, so the
+     three never overlap and nothing jumps when the message appears or disappears.
+     This is the slot's height - raise it if the message is ever cut off, lower it to
+     move the keyboard and board back up. */
+  --toast-slot-height: 84px;
+
   --theme-bg-top:  #FFF3DC;
   --theme-bg:      #F5E3C0;
   --theme-bg-deep: #EAD09C;

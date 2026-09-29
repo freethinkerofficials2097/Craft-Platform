@@ -104,6 +104,11 @@
         <span class="legend-note">Unlimited guesses — only real words (matching this round's length) are tested &amp; added to the board.</span>
       </div>
 
+      <!-- Reserved slot ABOVE the keyboard for the rejection message (never overlaps). -->
+      <div class="toast-slot">
+        <div id="rejectToast" class="reject-toast hidden"></div>
+      </div>
+
       <!-- On-screen keyboard: shows the best status seen so far for every
            letter this round, using the exact same colors/tiles as the
            board so it reads instantly at a glance. -->
@@ -117,7 +122,6 @@
         <div id="hintsTiles" class="hints-tiles"></div>
       </div>
 
-      <div id="rejectToast" class="reject-toast hidden"></div>
 
       <div id="board" class="board">
         <div class="board-empty" id="boardEmpty">
