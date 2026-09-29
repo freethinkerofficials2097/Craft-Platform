@@ -373,6 +373,7 @@ document.querySelectorAll(".pickerOption").forEach((btn) => {
   btn.addEventListener("click", () => {
     stagedMode = btn.dataset.mode;
     updateModePickerLabel();
+    updateConnectButtons();
     el.modePickerOverlay.hidden = true;
   });
 });
@@ -396,6 +397,14 @@ function setMiniStatus(text) { el.miniStatus.textContent = text; }
 function doConnect(usernameInput) {
   const username = usernameInput.value.trim();
   if (!username) { setMiniStatus("Type a TikTok username first."); return; }
+  // If Live was only just picked in the Mode dropdown (not saved yet), switch the
+  // game to Live right now so Connect works immediately - no "Save/Apply, reopen
+  // Settings, then connect" detour. Messages on one socket arrive in order, so the
+  // server is already in Live mode by the time it sees the connect request.
+  const serverIsLive = lastState && lastState.game && lastState.game.mode === "live";
+  if (!serverIsLive && stagedMode === "live") {
+    socket.emit("host:applySettings", { mode: "live" });
+  }
   socket.emit("host:connectTikTok", { username });
 }
 el.connectBtn.addEventListener("click", () => doConnect(el.tiktokUsername));
@@ -889,9 +898,15 @@ function renderSettingsChips(state) {
   el.connChip.textContent = "TikTok: " + (g.mode === "test" ? "Simulating (Test Mode)" : (CONNECTION_LABELS[connStatus] || connStatus));
   el.connChip.className = "statusChip " + (connStatus === "connected" ? "good" : connStatus === "error" ? "bad" : "");
 
-  const liveModeApplied = g.mode === "live";
-  el.connectBtn.disabled = !liveModeApplied;
-  el.connectBtnBottom.disabled = !liveModeApplied;
+  updateConnectButtons();
+}
+
+// The drawer's Connect button is usable as soon as "Live" is chosen in the Mode
+// dropdown (even before Apply/Save); the bottom-bar one only exists in Live mode.
+function updateConnectButtons() {
+  const serverIsLive = !!(lastState && lastState.game && lastState.game.mode === "live");
+  el.connectBtn.disabled = !(serverIsLive || stagedMode === "live");
+  el.connectBtnBottom.disabled = !serverIsLive;
 }
 
 function statusTone(status) {

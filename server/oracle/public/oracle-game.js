@@ -246,20 +246,31 @@ for (const row of KEYBOARD_ROWS) {
 // guess-tile size (which is computed for up to 17 tiles sharing width
 // with the counts row - applying that directly here would overflow,
 // since 13 keys at that size is often wider than the whole screen).
-function computeKeyboardMetrics(preferredTileSize) {
-  const containerWidth = el.keyboard.clientWidth || el.keyboardSection.clientWidth || 320;
+function computeKeyboardMetrics() {
+  // Always measure a REAL width. If the keyboard section is still hidden (display:none)
+  // its clientWidth is 0, which used to trigger a 320px fallback and produce
+  // smaller keys until the first guess re-rendered the board. Fall back to the
+  // board/page width instead, so the size is identical from the first frame.
+  const pageWidth = (document.documentElement && document.documentElement.clientWidth) || window.innerWidth || 380;
+  const sectionPad = 26; // keyboardSection side padding + border
+  const containerWidth =
+    el.keyboard.clientWidth ||
+    (el.keyboardSection.clientWidth ? el.keyboardSection.clientWidth - sectionPad : 0) ||
+    (el.tilesWrap && el.tilesWrap.clientWidth) ||
+    Math.max(200, pageWidth - 32 - sectionPad);
   const columns = 13;
   const gap = 4;
   let sizeByWidth = Math.floor((containerWidth - gap * (columns - 1)) / columns);
-  sizeByWidth = Math.max(8, sizeByWidth);
-  const size = Math.max(8, Math.min(preferredTileSize, sizeByWidth));
+  // Keys are sized purely by available width (NOT by how many guess rows exist),
+  // so they are the same "usual" size in every round, from the very start.
+  const size = Math.max(8, Math.min(44, sizeByWidth));
   const height = Math.round(size * 1.05);
   const fontSize = Math.max(7, Math.round(size * 0.42));
   return { size, height, fontSize, gap };
 }
 
-function applyKeyMetrics(preferredTileSize) {
-  const km = computeKeyboardMetrics(preferredTileSize);
+function applyKeyMetrics() {
+  const km = computeKeyboardMetrics();
   el.keyboard.querySelectorAll(".keyRow").forEach((row) => {
     row.style.gap = km.gap + "px";
   });
@@ -269,6 +280,14 @@ function applyKeyMetrics(preferredTileSize) {
     key.style.fontSize = km.fontSize + "px";
   });
 }
+
+// Re-size the keys whenever the keyboard's real width changes (window resize,
+// section shown after being hidden, etc.) - not only when tiles re-render.
+if (typeof ResizeObserver !== "undefined") {
+  new ResizeObserver(() => applyKeyMetrics()).observe(el.keyboardSection);
+}
+window.addEventListener("resize", () => applyKeyMetrics());
+applyKeyMetrics();
 
 el.resetColorsBtn.addEventListener("click", resetManualColors);
 
@@ -375,6 +394,7 @@ document.querySelectorAll(".pickerOption").forEach((btn) => {
   btn.addEventListener("click", () => {
     stagedMode = btn.dataset.mode;
     updateModePickerLabel();
+    updateConnectButtons();
     el.modePickerOverlay.hidden = true;
   });
 });
@@ -415,6 +435,14 @@ function setMiniStatus(text) { el.miniStatus.textContent = text; }
 function doConnect(usernameInput) {
   const username = usernameInput.value.trim();
   if (!username) { setMiniStatus("Type a TikTok username first."); return; }
+  // If Live was only just picked in the Mode dropdown (not saved yet), switch the
+  // game to Live right now so Connect works immediately - no "Save/Apply, reopen
+  // Settings, then connect" detour. Messages on one socket arrive in order, so the
+  // server is already in Live mode by the time it sees the connect request.
+  const serverIsLive = lastState && lastState.game && lastState.game.mode === "live";
+  if (!serverIsLive && stagedMode === "live") {
+    send("apply_settings", { mode: "live" });
+  }
   send("connect_tiktok", { username: username });
 }
 el.connectBtn.addEventListener("click", () => doConnect(el.tiktokUsername));
@@ -641,11 +669,12 @@ function render(state) {
   renderHeader(state);
   renderModeUI(state.game);
   renderLengthBadge(state.game);
+  renderKeyboardVisibility(state.game);
+  applyKeyMetrics();
   renderTiles(state.game);
   renderHintChips(state.game);
   renderModeNotes(state.game);
   renderBanners(state.game);
-  renderKeyboardVisibility(state.game);
   paintKeyboard();
   maybeShowRejection(state.game);
   renderSettingsChips(state);
@@ -930,7 +959,6 @@ function renderTiles(g) {
 
   const rowCount = g.guesses.length + (g.status === "live" ? 1 : 0);
   const metrics = computeTileMetrics(g.wordLength, rowCount);
-  applyKeyMetrics(metrics.tileSize);
 
   if (g.status === "live") {
     el.tilesWrap.appendChild(buildGuessBlock(null, g.wordLength, metrics));
@@ -1016,9 +1044,15 @@ function renderSettingsChips(state) {
   el.connChip.textContent = "TikTok: " + (CONNECTION_LABELS[connStatus] || connStatus);
   el.connChip.className = "statusChip " + (connStatus === "live" ? "good" : connStatus === "error" ? "bad" : "");
 
-  const liveModeApplied = g.mode === "live";
-  el.connectBtn.disabled = !liveModeApplied;
-  el.connectBtnBottom.disabled = !liveModeApplied;
+  updateConnectButtons();
+}
+
+// The drawer's Connect button is usable as soon as "Live" is chosen in the Mode
+// dropdown (even before Apply/Save); the bottom-bar one only exists in Live mode.
+function updateConnectButtons() {
+  const serverIsLive = !!(lastState && lastState.game && lastState.game.mode === "live");
+  el.connectBtn.disabled = !(serverIsLive || stagedMode === "live");
+  el.connectBtnBottom.disabled = !serverIsLive;
 }
 
 function renderDiagnostics(diag) {

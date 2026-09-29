@@ -1193,6 +1193,12 @@
     tiktokConnectBtn.addEventListener("click", () => {
       const uname = tiktokUsername.value.trim();
       if (!uname) { tiktokStatus.textContent = "Enter a TikTok username first."; tiktokStatus.className = "field-note tiktok-status err"; return; }
+      // If "Live" was just picked in the Mode dropdown but not applied yet, switch to
+      // Live right now (no new round, scores untouched) so chat guesses count at once.
+      if (modeSelect.value === "live" && mode !== "live") {
+        mode = "live";
+        applyModeUI();
+      }
       socket.emit("tiktok-connect", uname);
     });
     tiktokDisconnectBtn.addEventListener("click", () => socket.emit("tiktok-disconnect"));

@@ -22,8 +22,13 @@
      high up. Every game's top bar adds this as extra top padding so
      the header, title and controls sit safely below where TikTok's own
      UI will cover the screen. Raise this value first if TikTok's
-     overlay looks taller on your device than this default guess. */
-  --live-safe-top: 46px;
+     overlay looks taller on your device than this default guess.
+
+     Raised from 46px to 100px so the games sit lower and TikTok's popup
+     notifications (likes / gifts / shares appreciation banners) no longer
+     cover the keyboard and board. Change this ONE number to move ALL games
+     up or down together. */
+  --live-safe-top: 100px;
 
   --theme-bg-top:  #FFF3DC;
   --theme-bg:      #F5E3C0;

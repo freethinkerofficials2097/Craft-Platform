@@ -191,9 +191,12 @@ html, body {
   margin-bottom: 12px; padding: 10px; background: var(--panel);
   border: 1px solid var(--border); border-radius: var(--radius-md); backdrop-filter: blur(8px);
 }
-.keyboard-row { display: flex; gap: 5px; }
+.keyboard-section { flex-shrink: 0; width: 100%; }
+.keyboard-row { display: flex; gap: 5px; width: 100%; flex-shrink: 0; }
 .key-tile {
-  flex: 1 1 0;
+  /* Exactly 1/13th of the row (minus gaps) from the very first frame, so the keys
+     are the same size at round start as after any number of guesses. */
+  flex: 0 0 calc((100% - 12 * 5px) / 13);
   aspect-ratio: 1 / 1;
   min-width: 0;
   display: flex; align-items: center; justify-content: center;
