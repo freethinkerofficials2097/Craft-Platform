@@ -178,3 +178,10 @@ reverse-engineered access via EulerStream. It works reliably in practice,
 but TikTok could technically change something on their end at any time —
 if a connection ever behaves strangely after months of working fine, it's
 usually a quick library update away from being fixed.
+
+---
+
+## Update 8 changes
+- Answer word banks for BLINDLE, CROSSDLE, TWISTLE, ORACLE and COLORBLINDLE expanded to several hundred common words per length (`server/blindle/blindle-answers.js` and `server/crossdle/crossdle-answers.js`).
+- New shared stylesheet `public/shared/game-chrome.css`: themed title banner above each game, single-row top toolbar, theme-colored top/bottom bars.
+- Deploy exactly as before: upload this whole folder; start command `npm start`.
