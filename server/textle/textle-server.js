@@ -97,6 +97,14 @@ const knownAvatars = new Map();
 // session (Test / Offline mode) or when TikTok didn't provide one.
 let hostAvatarUrl = null;
 
+// Guesses may be ANY length (shorter or longer than the secret word) so viewers can probe
+// letters without the answer's length ever being revealed. Only sane bounds are enforced.
+const MIN_GUESS_LENGTH = 4;
+const MAX_GUESS_LENGTH = 25;
+function isGuessLengthOk(word) {
+  return word.length >= MIN_GUESS_LENGTH && word.length <= MAX_GUESS_LENGTH;
+}
+
 function normalizeGuess(text) {
   return String(text)
     .toLowerCase()
@@ -472,15 +480,30 @@ function endGame() {
 function useHint() {
   if (game.status !== "live") return;
 
-  let candidates = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty);
-  candidates = candidates.filter((w) => w !== game.secretWord);
-  for (const g of game.guesses) {
-    candidates = candidates.filter((w) => clueSignature(computeClue(g.word, w)) === g.sig);
+  // Suggestions come from words of ANY length that fit every clue so far, so a hint never
+  // reveals how long the secret word is. Lengths are tried in random order; stop once we
+  // have a handful of fits (keeps this fast on big word lists).
+  const lengths = [];
+  for (let L = MIN_GUESS_LENGTH; L <= MAX_WORD_LENGTH; L++) lengths.push(L);
+  for (let i = lengths.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [lengths[i], lengths[j]] = [lengths[j], lengths[i]];
   }
-  candidates = candidates.filter((w) => !game.hintSuggestions.includes(w));
-
-  if (candidates.length === 0) return;
-  const suggestion = candidates[Math.floor(Math.random() * candidates.length)];
+  const fits = [];
+  for (const L of lengths) {
+    let pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, L, game.difficulty) || [];
+    pool = pool.filter((w) => w !== game.secretWord && !game.hintSuggestions.includes(w));
+    for (const w of pool) {
+      let ok = true;
+      for (const g of game.guesses) {
+        if (clueSignature(computeClue(g.word, w)) !== g.sig) { ok = false; break; }
+      }
+      if (ok) fits.push(w);
+    }
+    if (fits.length >= 12) break;
+  }
+  if (fits.length === 0) return;
+  const suggestion = fits[Math.floor(Math.random() * fits.length)];
   game.hintSuggestions.push(suggestion);
   game.hintsUsed += 1;
   broadcastState();
@@ -539,7 +562,7 @@ function handleIncomingRawEvent(raw) {
   if (
     game.status === "live" &&
     game.mode !== "offline" &&
-    normalized.length === game.wordLength &&
+    isGuessLengthOk(normalized) &&
     (normalized === game.secretWord || isValidGuessWord(normalized))
   ) {
     attemptGuess(normalized, username);
@@ -704,7 +727,9 @@ function startTestMode() {
       if (game.status === "live" && game.secretWord && roll < 0.06) {
         text = game.secretWord;
       } else if (game.status === "live" && roll < 0.4) {
-        const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty);
+        // Simulated viewers guess words of many different lengths, like real chat would.
+        const testLen = 3 + Math.floor(Math.random() * 10);
+        const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, testLen, "random");
         text = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : FAKE_JUNK_WORDS[0];
       } else {
         text = FAKE_JUNK_WORDS[Math.floor(Math.random() * FAKE_JUNK_WORDS.length)];
@@ -852,8 +877,8 @@ function handleClientAction(ws, msg) {
     case "submit_offline_guess": {
       const word = normalizeGuess(String((payload && payload.word) || ""));
       let result;
-      if (word.length !== game.wordLength) {
-        result = { ok: false, error: `Guess must be ${game.wordLength} letters.` };
+      if (!isGuessLengthOk(word)) {
+        result = { ok: false, error: `Guess must be ${MIN_GUESS_LENGTH}-${MAX_GUESS_LENGTH} letters (A-Z).` };
       } else if (word !== game.secretWord && !isValidGuessWord(word)) {
         result = { ok: false, error: "That's not in the word list." };
       } else {

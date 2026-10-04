@@ -889,7 +889,13 @@ function renderTiles(g) {
 
   const showEmptyRow = g.status === "live" && showEmpty;
   const rowCount = g.guesses.length + (showEmptyRow ? 1 : 0);
-  const metrics = computeTileMetrics(g.wordLength, rowCount);
+  // Guesses can be ANY length, so tiles are sized from the longest guess on the board - never
+  // from the secret word's length, which would leak it (tile size would change with it).
+  // The secret's length only counts when the host enabled the empty-tile row.
+  let sizingLength = 1;
+  g.guesses.forEach((x) => { sizingLength = Math.max(sizingLength, String(x.word || "").length); });
+  if (showEmptyRow) sizingLength = Math.max(sizingLength, g.wordLength);
+  const metrics = computeTileMetrics(sizingLength, rowCount);
 
   // The empty glowing row shows exactly how many letters the answer has, so it only
   // appears when the host enabled it (Settings -> Length hints).
