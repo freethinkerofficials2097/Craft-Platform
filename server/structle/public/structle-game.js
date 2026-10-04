@@ -419,7 +419,9 @@ function maybeShowRejection(g) {
 
   const seconds = g.rejectionToastSeconds || 4;
 
-  el.rejectionToast.textContent = "✗ " + g.lastRejection.word.toUpperCase() + " — " + g.lastRejection.reason;
+  const isRepeat = Boolean(g.lastRejection.repeat);
+  el.rejectionToast.classList.toggle("repeat", isRepeat);
+  el.rejectionToast.textContent = (isRepeat ? "↺ " : "✗ ") + g.lastRejection.word.toUpperCase() + " — " + g.lastRejection.reason;
   el.rejectionToast.hidden = false;
   el.rejectionToast.style.animation = "none";
   void el.rejectionToast.offsetWidth;

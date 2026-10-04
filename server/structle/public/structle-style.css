@@ -384,6 +384,9 @@ button { cursor: pointer; }
   background: var(--coral);
   margin: 0 auto 8px;
 }
+/* "Already guessed" note: same floating window, amber instead of red. */
+.rejectionToast.repeat { border-color: rgba(255, 177, 0, 0.55); color: #ffe9b3; }
+.rejectionToast.repeat::before { background: var(--gold, #ffb100); }
 @keyframes toast-flash {
   0% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
   10% { opacity: 1; transform: translateX(-50%) translateY(0); }

@@ -228,8 +228,9 @@ celebration, Live/Test/Offline, hints, engagement alerts). What's different:
   as the hidden word. It does *not* have to be the hidden word: any real word meeting both totals is
   accepted and earns **1 point**. Other valid guesses earn nothing.
 - **No keyboard and no manual coloring.** **Any real word of the right length is accepted** - there is no
-  clue-consistency rule, so viewers can test any word (repeats included). Words not in the dictionary or
-  of the wrong length are ignored. Hints still suggest a word that fits every clue so far and never one that would already win.
+  clue-consistency rule, so viewers can test any word. A word already guessed this round is not added again:
+  a short **"Already guessed"** note appears with the two numbers that word got (duration set in Settings).
+  Words not in the dictionary or of the wrong length are ignored. Hints still suggest a word that fits every clue so far and never one that would already win.
 - Number highlighting: a lone 0 stays plain. The row (tiles and both numbers) only turns green when **both** numbers are 0.
 - When a round is given up, the answer and its totals are shown. The how-to-play window includes the letter chart.
 

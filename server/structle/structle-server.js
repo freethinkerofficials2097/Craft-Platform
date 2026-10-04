@@ -18,6 +18,8 @@
 //     "must be consistent with earlier clues" rule, so viewers can freely test any
 //     word they think might fit. (Words that are not in the dictionary, or have
 //     the wrong number of letters, are simply ignored.)
+//   - A word that was ALREADY guessed this round is not added again; a short
+//     "Already guessed" note is shown with the two numbers that word got.
 //
 // Transport: runs on its own Socket.IO namespace "/structle" (like COLORDLE), so
 // it never collides with BLINDLE's raw WebSocketServer.
@@ -295,6 +297,15 @@ function processGuess(word, caller) {
 
 function attemptGuess(word, caller) {
   if (game.status !== "live") return { ok: false, error: "No round in progress." };
+
+  // A word already played this round is not added to the board again. Instead a short
+  // "Already guessed" note is shown together with the two numbers that word got.
+  const prior = game.guesses.find((g) => g.word === word);
+  if (prior) {
+    const reason = `Already guessed \u2014 ${formatClue(prior.clue)}`;
+    game.lastRejection = { word, reason, repeat: true, clue: prior.clue, at: Date.now() };
+    return { ok: false, error: reason, rejected: true };
+  }
 
   processGuess(word, caller);
   return { ok: true };

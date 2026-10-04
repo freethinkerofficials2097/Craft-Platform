@@ -240,6 +240,15 @@
         </div>
       </div>
 
+      <div class="drawerSection">
+        <h4>"Already guessed" message</h4>
+        <p class="sectionNote">Shown briefly when someone repeats a word that was already played this round.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show message for (seconds)</label>
+          <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
+        </div>
+      </div>
+
       <button class="btn btnGold btnFull" id="applyBtn" type="button">Apply settings &amp; start new round</button>
       <p class="sectionNote">Word length, difficulty, auto-continue and this delay only take effect once you tap Apply. Win-celebration duration applies right away.</p>
 
@@ -336,7 +345,7 @@
           </ul>
         </li>
         <li><strong>You win when both numbers are 0</strong> — your word has exactly the same total straight lines and total curves as the hidden word. It does <em>not</em> have to be the hidden word itself: any real word that meets both totals is accepted and scores <strong>1 point</strong>.</li>
-        <li><strong>Any real word</strong> of the right length is accepted as a guess — try whatever you think might fit. Use the two numbers from earlier guesses to work out which words are still possible.</li>
+        <li><strong>Any real word</strong> of the right length is accepted as a guess — try whatever you think might fit. Use the two numbers from earlier guesses to work out which words are still possible. A word that was <strong>already guessed</strong> this round is not added again — a quick "Already guessed" note shows its two numbers instead.</li>
         <li>Letter chart used for counting (straight · curves):
           <div class="letterChart" id="letterChart"></div>
         </li>
