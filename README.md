@@ -209,6 +209,31 @@ platform machinery, same shuffled 4-color keyboard (red / blue / yellow / purple
 Files: `server/colordle/colordle-server.js` + its own `public/` client folder, mounted at
 `/colordle/` on Socket.IO namespace `/colordle`. Colorblindle is unchanged and still at `/colorblindle/`.
 
+## Structle (new)
+
+**Structle** — a sibling of Blindle modelled on MORPH-O. Same platform machinery (word bank,
+370k-word dictionary, difficulty tiers, unlimited guesses, clue-consistency check, leaderboards,
+celebration, Live/Test/Offline, hints, engagement alerts). What's different:
+
+- Every capital letter is made of **straight lines** and **curves** (A = 3 straight, S = 1 curve,
+  P = 1 straight + 1 curve …). The full table is `LETTER_SHAPES` at the top of the clue helpers in
+  `server/structle/structle-server.js` (mirrored for display in `structle-game.js`). It reproduces
+  every clue in the MORPH-O screenshots; edit it if you want to tweak a letter (G, J, Q are the
+  judgement calls).
+- Each guess shows **two number columns** instead of Blindle's three colored ones: the first
+  (— symbol) is the *difference in total straight lines* between the guess and the hidden word, the
+  second (curve symbol) the *difference in total curves*. Always 0 or more.
+- **You win when both numbers are 0** — the guess has exactly the same total straight lines and curves
+  as the hidden word. It does *not* have to be the hidden word: any real word meeting both totals is
+  accepted and earns **1 point**. Other valid guesses earn nothing.
+- **No keyboard and no manual coloring.** A guess is accepted only if, measured against every earlier guess,
+  it gives the same two numbers that guess got; otherwise a short rejection note is shown.
+  Hints follow the same rule and never suggest a word that would already win.
+- When a round is given up, the answer and its totals are shown. The how-to-play window includes the letter chart.
+
+Files: `server/structle/structle-server.js` + its own `public/` client folder, mounted at `/structle/`
+on Socket.IO namespace `/structle`.
+
 ## Oracle (new)
 
 **Oracle** — inspired by SEER-O, and identical to Blindle in every way (word

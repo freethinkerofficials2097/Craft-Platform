@@ -15,6 +15,7 @@
 //   /oracle/    - ORACLE           (Socket.IO namespace /oracle)
 //   /colorblindle/ - COLORBLINDLE  (Socket.IO namespace /colorblindle)
 //   /colordle/ - COLORDLE  (Socket.IO namespace /colordle)
+//   /structle/ - STRUCTLE  (Socket.IO namespace /structle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -42,6 +43,7 @@ import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
+import { mountStructle } from "./server/structle/structle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
 import { registerTwistle } from "./server/twistle/twistle.js";
@@ -112,6 +114,11 @@ await mountColorblindle(app, io, { mountPath: "/colorblindle" });
 // (one per hidden letter) that chat must match against the keyboard colors.
 // Own Socket.IO namespace /colordle.
 await mountColordle(app, io, { mountPath: "/colordle" });
+
+// STRUCTLE is a BLINDLE sibling too: the clue is two numbers per guess (difference in
+// total straight lines, difference in total curves); the round is won when both are 0.
+// No keyboard / manual coloring. Own Socket.IO namespace /structle.
+await mountStructle(app, io, { mountPath: "/structle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
