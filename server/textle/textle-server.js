@@ -266,7 +266,11 @@ const game = {
   autoContinueDelaySeconds: DEFAULT_AUTO_CONTINUE_DELAY,
   autoContinueAt: null,
   leaderboardShowSeconds: DEFAULT_LEADERBOARD_SHOW_SECONDS,
-  rejectionToastSeconds: DEFAULT_REJECTION_TOAST_SECONDS
+  rejectionToastSeconds: DEFAULT_REJECTION_TOAST_SECONDS,
+  // Length-hint visibility. Both are OFF by default so the word's length is not given away;
+  // the host can switch either on from Settings (they apply instantly).
+  showLengthBadge: false, // the "N letters" badge in the top toolbar
+  showEmptyTiles: false   // the empty glowing "next guess" tile row
 };
 
 function clampWordLength(n) {
@@ -511,6 +515,8 @@ const diagnostics = {
   retryAttempt: 0,
   maxRetries: 3,
   lastErrorMessage: null,
+  lastErrorDetail: null,
+  connectAttempt: 0, // bumps on every Connect press so the page can ignore stale statuses
   signKeyConfigured: Boolean(process.env.EULERSTREAM_API_KEY),
   tiktokUsername: null
 };
@@ -566,8 +572,17 @@ function stopEverything() {
 }
 
 async function connectToTikTok(username) {
+  diagnostics.connectAttempt += 1;
+  diagnostics.lastErrorDetail = null;
+  if (!username) {
+    diagnostics.connectionStatus = "error";
+    diagnostics.lastErrorMessage = "No TikTok username was entered.";
+    broadcastState();
+    return;
+  }
   if (game.mode !== "live") {
-    diagnostics.lastErrorMessage = "Switch to Live mode first, then connect.";
+    diagnostics.connectionStatus = "error";
+    diagnostics.lastErrorMessage = "The game isn't in Live mode yet. Switch to Live mode, then connect.";
     broadcastState();
     return;
   }
@@ -634,6 +649,7 @@ async function connectToTikTok(username) {
       if (isLastAttempt) {
         diagnostics.connectionStatus = "error";
         diagnostics.lastErrorMessage = describeConnectError(err);
+        diagnostics.lastErrorDetail = String((err && err.message) || err || "").slice(0, 240) || null;
         broadcastState();
         return;
       }
@@ -646,14 +662,23 @@ async function connectToTikTok(username) {
 
 function describeConnectError(err) {
   const message = String(err?.message || err || "").toLowerCase();
-  if (message.includes("not found") || message.includes("does not exist")) {
-    return "That TikTok username couldn't be found. Double-check the spelling.";
+  if (message.includes("not found") || message.includes("does not exist") || message.includes("user_not_found")) {
+    return "That TikTok username couldn't be found. Double-check the spelling (no @).";
   }
-  if (message.includes("offline") || message.includes("not live") || message.includes("live_not_found")) {
-    return "That account doesn't look like it's LIVE right now.";
+  if (message.includes("offline") || message.includes("not live") || message.includes("live_not_found") || message.includes("isn't live") || message.includes("not currently live")) {
+    return "That account isn't LIVE right now. Start your TikTok LIVE first, then press Connect.";
+  }
+  if (message.includes("429") || message.includes("rate limit") || message.includes("too many")) {
+    return "Too many connection attempts - TikTok or the signing service is rate-limiting. Wait a minute and try again.";
   }
   if (message.includes("sign") || message.includes("key") || message.includes("401") || message.includes("403")) {
     return "The signing key was rejected. Check that EULERSTREAM_API_KEY in Render is correct.";
+  }
+  if (message.includes("timeout") || message.includes("timed out") || message.includes("etimedout") || message.includes("econnreset") || message.includes("enotfound") || message.includes("econnrefused")) {
+    return "Network problem reaching TikTok (timeout / connection refused). Check the server's internet access and try again.";
+  }
+  if (message.includes("age") || message.includes("restricted") || message.includes("private")) {
+    return "TikTok is restricting this LIVE (age-restricted or private), so it can't be joined from here.";
   }
   return "Couldn't connect to TikTok LIVE after several tries. You can try again anytime.";
 }
@@ -737,6 +762,8 @@ function buildStatePayload() {
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
       leaderboardShowSeconds: game.leaderboardShowSeconds,
       rejectionToastSeconds: game.rejectionToastSeconds,
+      showLengthBadge: game.showLengthBadge,
+      showEmptyTiles: game.showEmptyTiles,
       autoContinueSecondsLeft: game.autoContinueAt ? Math.max(0, Math.ceil((game.autoContinueAt - Date.now()) / 1000)) : 0,
       minWordLength: MIN_WORD_LENGTH,
       maxWordLength: MAX_WORD_LENGTH
@@ -848,6 +875,13 @@ function handleClientAction(ws, msg) {
       const v = Number(payload && payload.seconds);
       game.leaderboardShowSeconds = Number.isFinite(v) ? Math.min(30, Math.max(1, Math.round(v))) : DEFAULT_LEADERBOARD_SHOW_SECONDS;
       broadcastState();
+      break;
+    }
+    case "set_hint_visibility": {
+      // Applies instantly (no new round): which length hints the host wants shown.
+      if (payload && typeof payload.showLengthBadge === "boolean") game.showLengthBadge = payload.showLengthBadge;
+      if (payload && typeof payload.showEmptyTiles === "boolean") game.showEmptyTiles = payload.showEmptyTiles;
+      broadcastState(true);
       break;
     }
     case "set_rejection_toast_seconds": {

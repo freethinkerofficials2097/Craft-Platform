@@ -100,6 +100,22 @@ const el = {
   leaderboardList: document.getElementById("leaderboardList"),
   leaderboardNote: document.getElementById("leaderboardNote"),
 
+  modeMenuBtn: document.getElementById("modeMenuBtn"),
+  themeMenuBtn: document.getElementById("themeMenuBtn"),
+  modeMenu: document.getElementById("modeMenu"),
+  themeMenu: document.getElementById("themeMenu"),
+  showLengthBadgeToggle: document.getElementById("showLengthBadgeToggle"),
+  showEmptyTilesToggle: document.getElementById("showEmptyTilesToggle"),
+  liveConnectOverlay: document.getElementById("liveConnectOverlay"),
+  liveConnectClose: document.getElementById("liveConnectClose"),
+  liveConnectUsername: document.getElementById("liveConnectUsername"),
+  liveConnectBtn: document.getElementById("liveConnectBtn"),
+  liveDisconnectBtn: document.getElementById("liveDisconnectBtn"),
+  liveConnectStatus: document.getElementById("liveConnectStatus"),
+  liveConnectIcon: document.getElementById("liveConnectIcon"),
+  liveConnectStatusTitle: document.getElementById("liveConnectStatusTitle"),
+  liveConnectStatusDetail: document.getElementById("liveConnectStatusDetail"),
+
   howToOverlay: document.getElementById("howToOverlay"),
   closeHowTo: document.getElementById("closeHowTo"),
   closeHowTo2: document.getElementById("closeHowTo2")
@@ -617,6 +633,8 @@ function render(state) {
   maybeShowRejection(state.game);
   renderSettingsChips(state);
   renderDiagnostics(state.diagnostics);
+  renderLiveConnect();
+  if (openMenu && openMenu.menu === el.modeMenu) refreshModeMenu();
   if (!el.leaderboardOverlay.hidden) renderLeaderboardTab();
 }
 
@@ -643,8 +661,14 @@ function renderModeUI(g) {
   el.offlineControls.hidden = g.mode !== "offline";
 }
 
+// The "N letters" badge gives the answer's length away, so it is hidden unless the host
+// switches it on in Settings -> Length hints (server default: off).
 function renderLengthBadge(g) {
+  el.lengthBadge.hidden = !g.showLengthBadge;
   el.lengthBadge.textContent = g.status === "idle" ? "— letters" : g.wordLength + " letters";
+  // keep the Settings switches in step with the server (it is the source of truth)
+  el.showLengthBadgeToggle.checked = !!g.showLengthBadge;
+  el.showEmptyTilesToggle.checked = !!g.showEmptyTiles;
 }
 
 // Tile sizing combines two constraints so guesses always sit on one
@@ -855,17 +879,21 @@ function renderTiles(g) {
   // started, so it is part of the cache key.
   const starterRow = g.guesses.find((x) => x.isStarter);
   const starterAvatar = (starterRow && starterRow.avatarUrl) || "";
-  const signature = starterAvatar + "|" + g.status + "|" + g.wordLength + "|" + g.guessesMade + "|" + g.roundNumber;
+  const showEmpty = !!g.showEmptyTiles;
+  const signature = starterAvatar + "|" + g.status + "|" + g.wordLength + "|" + g.guessesMade + "|" + g.roundNumber + "|" + (showEmpty ? "e" : "n");
   if (signature === lastTilesSignature) return;
   lastTilesSignature = signature;
 
   el.tilesWrap.innerHTML = "";
   if (g.status === "idle") return;
 
-  const rowCount = g.guesses.length + (g.status === "live" ? 1 : 0);
+  const showEmptyRow = g.status === "live" && showEmpty;
+  const rowCount = g.guesses.length + (showEmptyRow ? 1 : 0);
   const metrics = computeTileMetrics(g.wordLength, rowCount);
 
-  if (g.status === "live") {
+  // The empty glowing row shows exactly how many letters the answer has, so it only
+  // appears when the host enabled it (Settings -> Length hints).
+  if (showEmptyRow) {
     el.tilesWrap.appendChild(buildGuessBlock(null, g.wordLength, metrics));
   }
   const reversed = g.guesses.slice().reverse();
@@ -1003,6 +1031,239 @@ function renderLeaderboardTab() {
       '<li><span class="rank">#' + (i + 1) + '</span>' + avatarChipHtml(row.username, row.avatarUrl, 22) + '<span class="lbName">' + escapeHtml(row.username) + '</span><span class="lbScore">' + row.score + "</span></li>"
     )
     .join("");
+}
+
+
+// ------------------------------------------------------------
+// Settings: length-hint switches (apply instantly, host only)
+// ------------------------------------------------------------
+function sendHintVisibility() {
+  send("set_hint_visibility", {
+    showLengthBadge: el.showLengthBadgeToggle.checked,
+    showEmptyTiles: el.showEmptyTilesToggle.checked
+  });
+}
+el.showLengthBadgeToggle.addEventListener("change", sendHintVisibility);
+el.showEmptyTilesToggle.addEventListener("change", sendHintVisibility);
+
+// ------------------------------------------------------------
+// Toolbar dropdown menus (mode + theme)
+// ------------------------------------------------------------
+const THEME_OPTIONS = [
+  { id: "cream", name: "Cream", color: "#F5E3C0", line: "#D9BE93" },
+  { id: "blue", name: "Sky Blue", color: "#B9E0F2", line: "#6FAFCB" },
+  { id: "green", name: "Meadow Green", color: "#C4E7B4", line: "#6FA867" },
+  { id: "pink", name: "Blossom Pink", color: "#F6C0D9", line: "#D9678D" },
+  { id: "violet", name: "Lavender Violet", color: "#D9BEF2", line: "#9C6FD1" },
+  { id: "honey", name: "Honey Gold", color: "#FBD57F", line: "#D9A72E" }
+];
+
+el.themeMenu.innerHTML = THEME_OPTIONS.map((t) =>
+  '<button class="tbMenuItem" data-theme-id="' + t.id + '" type="button" role="menuitemradio">' +
+  '<span class="tbSwatch" style="background:' + t.color + ';border-color:' + t.line + '"></span>' +
+  '<span class="tbMenuText"><b>' + t.name + '</b></span><span class="tbMenuCheck">✓</span></button>'
+).join("");
+
+function currentThemeId() {
+  return document.documentElement.getAttribute("data-theme") || "cream";
+}
+
+let openMenu = null; // { menu, btn }
+function closeToolbarMenus() {
+  [[el.modeMenu, el.modeMenuBtn], [el.themeMenu, el.themeMenuBtn]].forEach(([menu, btn]) => {
+    menu.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+    btn.classList.remove("active");
+  });
+  openMenu = null;
+}
+function positionMenu(menu, btn) {
+  const r = btn.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth || window.innerWidth;
+  const w = menu.offsetWidth || 240;
+  const left = Math.max(8, Math.min(vw - w - 8, r.right - w));
+  menu.style.top = Math.round(r.bottom + 6) + "px";
+  menu.style.left = Math.round(left) + "px";
+}
+function toggleMenu(menu, btn, refresh) {
+  const wasOpen = openMenu && openMenu.menu === menu;
+  closeToolbarMenus();
+  if (wasOpen) return;
+  if (refresh) refresh();
+  menu.hidden = false;
+  btn.setAttribute("aria-expanded", "true");
+  btn.classList.add("active");
+  positionMenu(menu, btn);
+  openMenu = { menu: menu, btn: btn };
+}
+function refreshModeMenu() {
+  const mode = lastState && lastState.game ? lastState.game.mode : stagedMode;
+  el.modeMenu.querySelectorAll(".tbMenuItem").forEach((b) => b.classList.toggle("selected", b.dataset.mode === mode));
+}
+function refreshThemeMenu() {
+  const cur = currentThemeId();
+  el.themeMenu.querySelectorAll(".tbMenuItem").forEach((b) => b.classList.toggle("selected", b.dataset.themeId === cur));
+}
+el.modeMenuBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(el.modeMenu, el.modeMenuBtn, refreshModeMenu); });
+el.themeMenuBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(el.themeMenu, el.themeMenuBtn, refreshThemeMenu); });
+document.addEventListener("click", (e) => {
+  if (!openMenu) return;
+  if (openMenu.menu.contains(e.target) || openMenu.btn.contains(e.target)) return;
+  closeToolbarMenus();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  closeToolbarMenus();
+  if (!el.liveConnectOverlay.hidden) closeLiveConnect();
+});
+window.addEventListener("resize", closeToolbarMenus);
+
+el.themeMenu.querySelectorAll(".tbMenuItem").forEach((b) => {
+  b.addEventListener("click", () => {
+    if (window.PlatformTheme) window.PlatformTheme.apply(b.dataset.themeId);
+    refreshThemeMenu();
+    closeToolbarMenus();
+    // tile/keyboard sizes don't change with a theme, but repaint anyway for safety
+    lastTilesSignature = "";
+    if (lastState) renderTiles(lastState.game);
+  });
+});
+
+el.modeMenu.querySelectorAll(".tbMenuItem").forEach((b) => {
+  b.addEventListener("click", () => {
+    const mode = b.dataset.mode;
+    closeToolbarMenus();
+    chooseModeFromToolbar(mode);
+  });
+});
+
+// Picks a mode straight from the toolbar - applied immediately (no Settings -> Save detour).
+// Choosing Live also opens the connect window right away.
+function chooseModeFromToolbar(mode) {
+  const serverMode = lastState && lastState.game ? lastState.game.mode : null;
+  stagedMode = mode;
+  updateModePickerLabel();
+  if (mode !== serverMode) {
+    send("apply_settings", { mode: mode });
+  }
+  if (mode === "live") openLiveConnect();
+  else closeLiveConnect();
+  updateConnectButtons();
+}
+
+// ------------------------------------------------------------
+// Live connect floating window
+// ------------------------------------------------------------
+const LAST_USER_KEY = "textle.tiktokUsername";
+let liveAwaiting = false;      // true after the host pressed Connect in this window
+let liveAttemptBase = 0;       // diagnostics.connectAttempt when Connect was pressed
+let liveAutoCloseTimer = null;
+let liveClientError = null;    // errors raised in the browser (e.g. game server unreachable)
+
+function setConnView(state, icon, title, detail) {
+  el.liveConnectStatus.dataset.state = state;
+  el.liveConnectIcon.textContent = icon;
+  el.liveConnectStatusTitle.textContent = title;
+  el.liveConnectStatusDetail.textContent = detail || "";
+}
+
+function openLiveConnect() {
+  clearTimeout(liveAutoCloseTimer);
+  liveAwaiting = false;
+  liveClientError = null;
+  let saved = "";
+  try { saved = localStorage.getItem(LAST_USER_KEY) || ""; } catch (e) {}
+  const fromServer = lastState && lastState.diagnostics && lastState.diagnostics.tiktokUsername;
+  if (!el.liveConnectUsername.value) el.liveConnectUsername.value = fromServer || saved;
+  el.liveConnectOverlay.hidden = false;
+  renderLiveConnect();
+  setTimeout(() => { try { el.liveConnectUsername.focus(); } catch (e) {} }, 50);
+}
+function closeLiveConnect() {
+  clearTimeout(liveAutoCloseTimer);
+  el.liveConnectOverlay.hidden = true;
+  liveAwaiting = false;
+}
+el.liveConnectClose.addEventListener("click", closeLiveConnect);
+el.liveConnectOverlay.addEventListener("click", (e) => { if (e.target === el.liveConnectOverlay) closeLiveConnect(); });
+
+function submitLiveConnect() {
+  const username = el.liveConnectUsername.value.trim().replace(/^@/, "");
+  if (!username) {
+    setConnView("error", "✕", "Connection failed", "Type your TikTok username first (without the @).");
+    return;
+  }
+  if (!socket || !socket.connected) {
+    liveClientError = "Can't reach the game server right now. Check your internet connection and try again.";
+    setConnView("error", "✕", "Connection failed", liveClientError);
+    return;
+  }
+  liveClientError = null;
+  try { localStorage.setItem(LAST_USER_KEY, username); } catch (e) {}
+  el.liveConnectUsername.value = username;
+  // Make sure the server is in Live mode first (messages on one socket arrive in order).
+  const serverIsLive = lastState && lastState.game && lastState.game.mode === "live";
+  if (!serverIsLive) send("apply_settings", { mode: "live" });
+  liveAttemptBase = (lastState && lastState.diagnostics && lastState.diagnostics.connectAttempt) || 0;
+  liveAwaiting = true;
+  clearTimeout(liveAutoCloseTimer);
+  setConnView("connecting", "⏳", "Connecting…", "Reaching @" + username + "'s LIVE session.");
+  send("connect_tiktok", { username: username });
+}
+el.liveConnectBtn.addEventListener("click", submitLiveConnect);
+el.liveConnectUsername.addEventListener("keydown", (e) => { if (e.key === "Enter") submitLiveConnect(); });
+el.liveDisconnectBtn.addEventListener("click", () => {
+  liveAwaiting = false;
+  clearTimeout(liveAutoCloseTimer);
+  send("disconnect_tiktok", {});
+  setConnView("idle", "•", "Disconnected", "Enter your username and press Connect to link again.");
+});
+
+function renderLiveConnect() {
+  if (el.liveConnectOverlay.hidden) return;
+  if (liveClientError) return;
+  const diag = (lastState && lastState.diagnostics) || {};
+  const game = (lastState && lastState.game) || {};
+  const status = diag.connectionStatus || "idle";
+  const who = diag.tiktokUsername ? "@" + diag.tiktokUsername : "your account";
+
+  // Until the server has acknowledged THIS Connect press, don't show an older result.
+  if (liveAwaiting && (diag.connectAttempt || 0) <= liveAttemptBase) return;
+
+  // Not mid-attempt: just show where things stand (never an old failure from an earlier try).
+  if (!liveAwaiting) {
+    if (game.mode === "live" && status === "live") {
+      setConnView("success", "✓", "Connected", "Listening to the chat of " + who + ".");
+    } else if (game.mode === "live" && (status === "connecting" || status === "retrying")) {
+      setConnView("connecting", "⏳", "Connecting…", "Reaching " + who + "'s LIVE session.");
+    } else {
+      setConnView("idle", "•", "Not connected", "Enter your username and press Connect.");
+    }
+    return;
+  }
+
+  if (status === "connecting") {
+    setConnView("connecting", "⏳", "Connecting…", "Reaching " + who + "'s LIVE session.");
+  } else if (status === "retrying") {
+    setConnView("connecting", "🔄", "Retrying…", "Attempt " + (diag.retryAttempt || 1) + " of " + ((diag.maxRetries || 3) + 1) + " didn't work yet. Trying again.");
+  } else if (status === "live") {
+    setConnView("success", "✓", "Connected successfully", "Listening to the chat of " + who + ". Guesses from chat now count.");
+    if (liveAwaiting) {
+      liveAwaiting = false;
+      clearTimeout(liveAutoCloseTimer);
+      liveAutoCloseTimer = setTimeout(closeLiveConnect, 2500);
+    }
+  } else if (status === "error") {
+    liveAwaiting = false;
+    let detail = diag.lastErrorMessage || "Something went wrong while connecting.";
+    if (diag.lastErrorDetail) detail += "  (Technical detail: " + diag.lastErrorDetail + ")";
+    setConnView("error", "✕", "Connection failed", detail);
+  } else if (status === "disconnected") {
+    liveAwaiting = false;
+    setConnView("error", "✕", "Disconnected", diag.lastErrorMessage || "The connection to TikTok LIVE was lost. Press Connect to try again.");
+  } else {
+    setConnView("idle", "•", "Not connected", "Enter your username and press Connect.");
+  }
 }
 
 function escapeHtml(str) {

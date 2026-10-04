@@ -43,7 +43,9 @@
       <div class="toolbarRow">
         <a href="/" class="iconBtn" id="homeBtn" aria-label="Choose another game">🏠</a>
         <span class="modeBadge" id="modeBadge">TEST</span>
-        <span class="lengthBadge" id="lengthBadge">— letters</span>
+        <span class="lengthBadge" id="lengthBadge" hidden>— letters</span>
+        <button class="iconBtn" id="modeMenuBtn" type="button" aria-label="Change mode" aria-haspopup="true" aria-expanded="false">📡</button>
+        <button class="iconBtn" id="themeMenuBtn" type="button" aria-label="Change theme" aria-haspopup="true" aria-expanded="false">🎨</button>
         <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint">💡</button>
         <button class="iconBtn" id="helpBtn" type="button" aria-label="How to play">❓</button>
         <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
@@ -196,6 +198,21 @@
       </div>
 
       <div class="drawerSection">
+        <h4>Length hints</h4>
+        <p class="sectionNote">Both are <strong>off</strong> by default so viewers can't tell how long the hidden word is. Turn them on if you want to give that hint. These apply instantly, no new round needed.</p>
+        <label class="switchRow">
+          <input type="checkbox" id="showLengthBadgeToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Show the "N letters" badge in the top toolbar</span>
+        </label>
+        <label class="switchRow">
+          <input type="checkbox" id="showEmptyTilesToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Show the empty glowing tiles for the next guess</span>
+        </label>
+      </div>
+
+      <div class="drawerSection">
         <h4>Word length</h4>
         <label class="switchRow">
           <input type="checkbox" id="randomLengthToggle" />
@@ -312,6 +329,39 @@
           <span class="pickerDesc">Host plays solo</span>
         </span>
       </button>
+    </div>
+  </div>
+
+  <!-- Toolbar dropdown menus (positioned by JS; fixed so the toolbar never clips them) -->
+  <div class="tbMenu" id="modeMenu" role="menu" hidden>
+    <button class="tbMenuItem" data-mode="offline" type="button" role="menuitemradio"><span class="tbMenuIcon">🧍</span><span class="tbMenuText"><b>Offline Mode</b><small>Host plays solo</small></span><span class="tbMenuCheck">✓</span></button>
+    <button class="tbMenuItem" data-mode="test" type="button" role="menuitemradio"><span class="tbMenuIcon">🧪</span><span class="tbMenuText"><b>Test Mode</b><small>Simulated chat, scores not saved</small></span><span class="tbMenuCheck">✓</span></button>
+    <button class="tbMenuItem" data-mode="live" type="button" role="menuitemradio"><span class="tbMenuIcon">🔴</span><span class="tbMenuText"><b>Live Mode</b><small>Real TikTok chat guesses</small></span><span class="tbMenuCheck">✓</span></button>
+  </div>
+  <div class="tbMenu" id="themeMenu" role="menu" hidden></div>
+
+  <!-- Live connect floating window -->
+  <div class="modalOverlay" id="liveConnectOverlay" hidden>
+    <div class="modal liveModal" role="dialog" aria-labelledby="liveConnectTitle">
+      <div class="modalHead">
+        <h3 id="liveConnectTitle">Connect to TikTok LIVE</h3>
+        <button class="iconBtn" id="liveConnectClose" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="sectionNote">Live Mode is on. Enter your TikTok username and press Connect to link your LIVE session.</p>
+      <div class="row">
+        <input id="liveConnectUsername" class="textInput" placeholder="TikTok username (no @)" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" />
+      </div>
+      <div class="row">
+        <button id="liveConnectBtn" class="btn btnGold" type="button">Connect</button>
+        <button id="liveDisconnectBtn" class="btn btnGhost" type="button">Disconnect</button>
+      </div>
+      <div class="connStatus" id="liveConnectStatus" data-state="idle" aria-live="polite">
+        <span class="connIcon" id="liveConnectIcon">•</span>
+        <div class="connText">
+          <div class="connTitle" id="liveConnectStatusTitle">Not connected</div>
+          <div class="connDetail" id="liveConnectStatusDetail">Enter your username and press Connect.</div>
+        </div>
+      </div>
     </div>
   </div>
 
