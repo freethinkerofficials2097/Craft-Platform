@@ -203,7 +203,8 @@ platform machinery, same shuffled 4-color keyboard (red / blue / yellow / purple
 - A guess is accepted only if **every letter wears the color of the box it sits in** and it
   reproduces the green/gray pattern of every earlier guess; otherwise a short rejection note
   names the offending box. Hints follow the same rule and never reveal the answer.
-- The automatic starter word is chosen to fit the boxes when a fitting word exists.
+- **No starter word:** every round begins with just the empty colored boxes (the automatic first guess other games use is switched off for Colordle only).
+- **Color shades:** Settings → *Color shades* lets the host pick, for each of the four colors, one of five strengths (Pastel, Soft, Standard, Bold, Deep). It changes the empty boxes and the keyboard keys together, applies instantly (no new round), is shared by every screen connected to the game, and lasts until the server restarts or *Reset all to standard* is pressed.
 - When a round is given up, the boxes fill in with the answer.
 
 Files: `server/colordle/colordle-server.js` + its own `public/` client folder, mounted at
@@ -226,9 +227,10 @@ celebration, Live/Test/Offline, hints, engagement alerts). What's different:
 - **You win when both numbers are 0** — the guess has exactly the same total straight lines and curves
   as the hidden word. It does *not* have to be the hidden word: any real word meeting both totals is
   accepted and earns **1 point**. Other valid guesses earn nothing.
-- **No keyboard and no manual coloring.** A guess is accepted only if, measured against every earlier guess,
-  it gives the same two numbers that guess got; otherwise a short rejection note is shown.
-  Hints follow the same rule and never suggest a word that would already win.
+- **No keyboard and no manual coloring.** **Any real word of the right length is accepted** - there is no
+  clue-consistency rule, so viewers can test any word (repeats included). Words not in the dictionary or
+  of the wrong length are ignored. Hints still suggest a word that fits every clue so far and never one that would already win.
+- Number highlighting: a lone 0 stays plain. The row (tiles and both numbers) only turns green when **both** numbers are 0.
 - When a round is given up, the answer and its totals are shown. The how-to-play window includes the letter chart.
 
 Files: `server/structle/structle-server.js` + its own `public/` client folder, mounted at `/structle/`

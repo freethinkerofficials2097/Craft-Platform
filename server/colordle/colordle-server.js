@@ -245,8 +245,15 @@ const game = {
   autoContinueDelaySeconds: DEFAULT_AUTO_CONTINUE_DELAY,
   autoContinueAt: null,
   leaderboardShowSeconds: DEFAULT_LEADERBOARD_SHOW_SECONDS,
-  rejectionToastSeconds: DEFAULT_REJECTION_TOAST_SECONDS
+  rejectionToastSeconds: DEFAULT_REJECTION_TOAST_SECONDS,
+  // Host-chosen shade (0 = pastel ... 4 = deep, 2 = standard) for each of the 4 colors.
+  // Only the shade INDEX lives here; the page maps it to real colors. Applies to the keyboard
+  // keys and the empty colored boxes alike, takes effect immediately, and survives new rounds.
+  shades: { red: 2, blue: 2, yellow: 2, purple: 2 }
 };
+
+const SHADE_COUNT = 5;
+const DEFAULT_SHADES = { red: 2, blue: 2, yellow: 2, purple: 2 };
 
 function clampWordLength(n) {
   const v = Number(n);
@@ -386,7 +393,7 @@ function startRound(overrideWord) {
   game.status = "live";
   game.roundNumber += 1;
   game.autoContinueAt = null;
-  seedStarterGuess();
+  // COLORDLE has NO automatic starter word: every round begins with just the empty colored boxes.
   broadcastState();
 }
 
@@ -738,6 +745,7 @@ function buildStatePayload() {
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
       leaderboardShowSeconds: game.leaderboardShowSeconds,
       rejectionToastSeconds: game.rejectionToastSeconds,
+      shades: game.shades,
       autoContinueSecondsLeft: game.autoContinueAt ? Math.max(0, Math.ceil((game.autoContinueAt - Date.now()) / 1000)) : 0,
       minWordLength: MIN_WORD_LENGTH,
       maxWordLength: MAX_WORD_LENGTH
@@ -851,6 +859,19 @@ function handleClientAction(ws, msg) {
       broadcastState();
       break;
     }
+    case "set_color_shade": {
+      const color = payload && payload.color;
+      const shade = Math.round(Number(payload && payload.shade));
+      if (COLORS.includes(color) && Number.isFinite(shade) && shade >= 0 && shade < SHADE_COUNT) {
+        game.shades = { ...game.shades, [color]: shade };
+        broadcastState();
+      }
+      break;
+    }
+    case "reset_color_shades":
+      game.shades = { ...DEFAULT_SHADES };
+      broadcastState();
+      break;
     case "set_rejection_toast_seconds": {
       const v = Number(payload && payload.seconds);
       game.rejectionToastSeconds = Number.isFinite(v) ? Math.min(30, Math.max(1, Math.round(v))) : DEFAULT_REJECTION_TOAST_SECONDS;

@@ -225,7 +225,7 @@ function syncStagedSettingsFromState(g) {
   el.autoContinueToggle.checked = g.autoContinue;
   el.delayInput.value = g.autoContinueDelaySeconds;
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
-  el.rejectionToastShowInput.value = g.rejectionToastSeconds;
+  if (el.rejectionToastShowInput) el.rejectionToastShowInput.value = g.rejectionToastSeconds;
   updateModePickerLabel();
 }
 
@@ -353,7 +353,7 @@ el.leaderboardShowInput.addEventListener("change", () => {
 
 // Same immediate-apply pattern for how long a rejection message stays
 // on screen - no need to restart the round for this one either.
-el.rejectionToastShowInput.addEventListener("change", () => {
+if (el.rejectionToastShowInput) el.rejectionToastShowInput.addEventListener("change", () => {
   send("set_rejection_toast_seconds", { seconds: Number(el.rejectionToastShowInput.value) || 4 });
 });
 
@@ -793,7 +793,8 @@ function buildGuessBlock(guess, wordLength, metrics, reveal) {
     // [straight-line difference, curve difference]; 0 = that total matches exactly.
     guess.clue.forEach((value) => {
       const badge = document.createElement("span");
-      badge.className = "countBadge neutral" + (value === 0 ? " zero" : "");
+      // A lone 0 is NOT highlighted - the numbers only turn green when BOTH are 0 (the winning row).
+      badge.className = "countBadge neutral" + (solved ? " zero" : "");
       badge.style.cssText = badgeStyle;
       badge.textContent = String(value);
       countsCol.appendChild(badge);

@@ -161,6 +161,70 @@ el.fullscreenBtn.addEventListener("click", () => {
 // ------------------------------------------------------------
 const COLOR_NAMES = ["red", "blue", "yellow", "purple"];
 
+// ------------------------------------------------------------
+// Host-chosen shades. Five steps per color, pastel -> deep (index 2 = the standard look).
+// The server only stores the chosen step (0-4) for each color; these are the real colors.
+// Applied as CSS variables, so the empty boxes, keyboard keys and how-to swatches all follow.
+// ------------------------------------------------------------
+const SHADE_NAMES = ["Pastel", "Soft", "Standard", "Bold", "Deep"];
+const SHADE_TABLE = {
+  red:    ["#F8B4B4", "#F28B82", "#E11D2E", "#B3101F", "#7F0D17"],
+  blue:   ["#B5D4F8", "#7FB2F2", "#1E73E8", "#1357B5", "#0C3C80"],
+  yellow: ["#FFF1B0", "#FFE06B", "#FFC400", "#D9A300", "#A67C00"],
+  purple: ["#D3C2F5", "#AF93EE", "#7B3FE4", "#5A27B8", "#3C1A80"]
+};
+
+// Readable text color (dark or white) for a given background.
+function inkFor(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const lum = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return lum > 0.4 ? "#1f2230" : "#ffffff";
+}
+
+let appliedShadesKey = "";
+function applyShades(shades) {
+  const sh = shades || { red: 2, blue: 2, yellow: 2, purple: 2 };
+  const key = COLOR_NAMES.map((c) => sh[c]).join(",");
+  if (key === appliedShadesKey) return;
+  appliedShadesKey = key;
+  const root = document.documentElement;
+  COLOR_NAMES.forEach((c) => {
+    const hex = SHADE_TABLE[c][sh[c]] || SHADE_TABLE[c][2];
+    root.style.setProperty("--cb-" + c, hex);
+    root.style.setProperty("--cb-" + c + "-ink", inkFor(hex));
+  });
+  renderShadePicker(sh);
+}
+
+function renderShadePicker(sh) {
+  const box = document.getElementById("shadePicker");
+  if (!box) return;
+  box.innerHTML = '<div class="shadeLegend"><span>Pastel</span><span>Standard</span><span>Deep</span></div>';
+  COLOR_NAMES.forEach((c) => {
+    const row = document.createElement("div");
+    row.className = "shadeRow";
+    row.innerHTML = '<span class="shadeName">' + c + "</span>";
+    const opts = document.createElement("div");
+    opts.className = "shadeOptions";
+    SHADE_TABLE[c].forEach((hex, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "shadeBtn" + (sh[c] === i ? " selected" : "");
+      b.style.background = hex;
+      b.style.setProperty("--shade-ink", inkFor(hex));
+      b.title = c + " — " + SHADE_NAMES[i];
+      b.setAttribute("aria-label", c + " " + SHADE_NAMES[i]);
+      b.addEventListener("click", () => send("set_color_shade", { color: c, shade: i }));
+      opts.appendChild(b);
+    });
+    row.appendChild(opts);
+    box.appendChild(row);
+  });
+}
+const resetShadesBtn = document.getElementById("resetShadesBtn");
+if (resetShadesBtn) resetShadesBtn.addEventListener("click", () => send("reset_color_shades", {}));
+
 function paintKeyboard() {
   const colors = (lastState && lastState.game && lastState.game.letterColors) || {};
   el.keyboard.querySelectorAll(".key").forEach((key) => {
@@ -291,6 +355,7 @@ function syncStagedSettingsFromState(g) {
   el.delayInput.value = g.autoContinueDelaySeconds;
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
+  applyShades(g.shades);
   updateModePickerLabel();
 }
 
@@ -604,6 +669,7 @@ let lastTilesSignature = "";
 let lastRoundNumber = null;
 function render(state) {
   lastState = state;
+  applyShades(state.game.shades);
   detectNewRound(state.game);
   detectWinTransition(state.game);
   renderHeader(state);

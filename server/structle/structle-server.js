@@ -14,9 +14,10 @@
 //     be the hidden word itself: any real word with the same two totals is accepted
 //     and earns 1 point.
 //   - There is no keyboard and no coloring - the two numbers are the whole clue.
-//   - A guess is only accepted if it is consistent with every clue so far: measured
-//     against each earlier guess, it must give the very same two numbers that guess
-//     got. Otherwise it is rejected with a short note.
+//   - ANY real word of the right length is accepted as a guess - there is no
+//     "must be consistent with earlier clues" rule, so viewers can freely test any
+//     word they think might fit. (Words that are not in the dictionary, or have
+//     the wrong number of letters, are simply ignored.)
 //
 // Transport: runs on its own Socket.IO namespace "/structle" (like COLORDLE), so
 // it never collides with BLINDLE's raw WebSocketServer.
@@ -259,21 +260,11 @@ function awardPoints(caller, points) {
 }
 
 function fitsClues(word) {
-  // helper used by hints: measured against every past guess, would `word` give the same two numbers?
+  // helper used by HINTS and the Test-mode simulator only (guesses themselves are never filtered): measured against every past guess, would `word` give the same two numbers?
   for (const past of game.guesses) {
     if (!clueEquals(clueBetween(past.word, word), past.clue)) return false;
   }
   return true;
-}
-
-function checkConsistency(word) {
-  for (let i = 0; i < game.guesses.length; i++) {
-    const past = game.guesses[i];
-    if (!clueEquals(clueBetween(past.word, word), past.clue)) {
-      return { ok: false, conflictIndex: i, conflictWord: past.word, conflictClue: past.clue };
-    }
-  }
-  return { ok: true };
 }
 
 function processGuess(word, caller) {
@@ -304,13 +295,6 @@ function processGuess(word, caller) {
 
 function attemptGuess(word, caller) {
   if (game.status !== "live") return { ok: false, error: "No round in progress." };
-
-  const consistency = checkConsistency(word);
-  if (!consistency.ok) {
-    const reason = `Conflicts with guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClue(consistency.conflictClue)})`;
-    game.lastRejection = { word, reason, at: Date.now() };
-    return { ok: false, error: reason, rejected: true };
-  }
 
   processGuess(word, caller);
   return { ok: true };
