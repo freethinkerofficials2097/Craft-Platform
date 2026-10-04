@@ -356,8 +356,8 @@ function attemptGuess(word, caller) {
 // points to anyone - so its green/yellow/red counts give viewers an
 // immediate starting clue instead of a cold guess.
 const STARTER_GUESS_LABEL = "🎲 Starter word";
-// Set to false to open every round on a blank board (no automatic first guess).
-const STARTER_WORD_ENABLED = true;
+// Update 16: switched OFF - a new round starts with NO given starter word. Set to true to bring it back.
+const STARTER_WORD_ENABLED = false; // update 16: every round now opens on a blank board
 
 function pickStarterWord(wordLength) {
   const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, wordLength, "random")

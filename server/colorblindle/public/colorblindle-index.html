@@ -18,6 +18,8 @@
 <link rel="stylesheet" href="colorblindle-style.css" />
 <link rel="stylesheet" href="/shared/game-chrome.css" />
 <link rel="stylesheet" href="/shared/game-colors.css" />
+<link rel="stylesheet" href="/shared/color-shades.css" />
+<script src="/shared/color-shades.js" data-game="colorblindle"></script>
 <script src="/shared/title-font.js" defer></script>
 </head>
 <body data-game="colorblindle">
@@ -237,6 +239,12 @@
           <label class="fieldLabel delayLabel">Delay before next round (seconds)</label>
           <input type="number" id="delayInput" class="textInput selectNarrow" min="3" max="120" value="3" />
         </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Color shades</h4>
+        <p class="sectionNote">Choose how strong each color looks - the four keyboard colors plus the green and gray of the guess tiles. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
+        <div id="shadePicker"></div>
       </div>
 
       <div class="drawerSection">

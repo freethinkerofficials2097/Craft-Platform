@@ -18,6 +18,8 @@
 <link rel="stylesheet" href="colordle-style.css" />
 <link rel="stylesheet" href="/shared/game-chrome.css" />
 <link rel="stylesheet" href="/shared/game-colors.css" />
+<link rel="stylesheet" href="/shared/color-shades.css" />
+<script src="/shared/color-shades.js" data-game="colordle"></script>
 <script src="/shared/title-font.js" defer></script>
 </head>
 <body data-game="colordle">
@@ -249,9 +251,8 @@
 
       <div class="drawerSection">
         <h4>Color shades</h4>
-        <p class="sectionNote">Choose how strong each of the four colors looks, from pastel to deep. It changes the empty boxes <strong>and</strong> the keyboard keys, and applies right away (no new round needed).</p>
+        <p class="sectionNote">Choose how strong each color looks - the four keyboard colors <strong>and</strong> the green and gray of the guess tiles. It changes the empty boxes and the keyboard keys together. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
         <div id="shadePicker"></div>
-        <button class="btn btnGhost btnFull" id="resetShadesBtn" type="button">Reset all to standard</button>
       </div>
 
       <div class="drawerSection">

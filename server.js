@@ -50,6 +50,7 @@ import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
 import { registerTwistle } from "./server/twistle/twistle.js";
 import { Engagement } from "./server/engagement/engagement-hub.js";
+import { ColorShadesHub } from "./server/shared/color-shades-hub.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -80,6 +81,11 @@ app.use(express.static(path.join(__dirname, "public")));
 // (see server/engagement/engagement-hub.js). Initialized before any game
 // registers so Engagement.attach() is ready the instant a game connects.
 Engagement.init(io);
+
+// Platform-wide "Color shades" (update 16): remembers each game's 10-step color choices and keeps
+// every screen connected to a game in sync (Socket.IO namespace /shades). See
+// server/shared/color-shades-hub.js and public/shared/color-shades.js.
+ColorShadesHub.init(io);
 
 registerFlagle(io);
 registerTravle(io);

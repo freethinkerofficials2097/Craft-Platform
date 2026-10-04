@@ -91,6 +91,9 @@ window.Globe = (() => {
     "Saint Kitts and Nevis", "Antigua and Barbuda", "Dominica",
   ]);
 
+  // The five gameplay colors. The host can pick one of 10 shades for each in Settings -> Color
+  // shades (see /shared/color-shades.js); these defaults are the "Standard" shades and are used
+  // as-is if that script is not available. Re-read whenever the host changes a shade.
   const COLORS = {
     endpoint: "#A855F7",
     optimal: "#22C55E",
@@ -98,6 +101,22 @@ window.Globe = (() => {
     wrong: "#EF4444",
     neutral: "#8FC1E8",
   };
+  function refreshShadedColors() {
+    if (!window.ColorShades) return false;
+    Object.keys(COLORS).forEach((k) => {
+      const hex = window.ColorShades.get(k);
+      if (hex) COLORS[k] = hex;
+    });
+    return true;
+  }
+  refreshShadedColors();
+  document.addEventListener("colorshades:change", () => {
+    refreshShadedColors();
+    if (!ready || !lastState) return;
+    applyColors(lastState);
+    positionMarkers();
+    if (countriesLayer) countriesLayer.selectAll("path.country").filter((d) => !lastState.countryState.get(d[0]) && d[0] !== lastState.hintedOutline).attr("fill", COLORS.neutral);
+  });
 
   let mountEl = null;
   let svg, g, projection, pathGen, countriesLayer, markersLayer, sphereEl, graticuleEl;

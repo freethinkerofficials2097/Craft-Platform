@@ -929,11 +929,3 @@ body[data-game="colordle"] .key.c-red,    body[data-game="colordle"] .tile.box.c
 body[data-game="colordle"] .key.c-blue,   body[data-game="colordle"] .tile.box.c-blue,   body[data-game="colordle"] .legendSwatch.c-blue   { background: var(--cb-blue);   color: var(--cb-blue-ink, #fff); }
 body[data-game="colordle"] .key.c-yellow, body[data-game="colordle"] .tile.box.c-yellow, body[data-game="colordle"] .legendSwatch.c-yellow { background: var(--cb-yellow); color: var(--cb-yellow-ink, #241a00); }
 body[data-game="colordle"] .key.c-purple, body[data-game="colordle"] .tile.box.c-purple, body[data-game="colordle"] .legendSwatch.c-purple { background: var(--cb-purple); color: var(--cb-purple-ink, #fff); }
-
-.shadeRow { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
-.shadeName { width: 58px; font-weight: 700; font-size: 13px; text-transform: capitalize; }
-.shadeOptions { display: flex; gap: 6px; flex: 1; }
-.shadeBtn { flex: 1; height: 34px; border-radius: 8px; border: 2px solid rgba(0, 0, 0, 0.18); cursor: pointer; padding: 0; position: relative; }
-.shadeBtn.selected { border-color: var(--text, #222); box-shadow: 0 0 0 2px var(--panel, #fff), 0 0 0 4px var(--text, #222); }
-.shadeBtn.selected::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 15px; color: var(--shade-ink, #fff); }
-.shadeLegend { display: flex; justify-content: space-between; margin: 0 0 6px 68px; font-size: 10.5px; color: var(--muted); }

@@ -11,7 +11,7 @@ chat directly as guesses. You never touch code; follow `DEPLOY_GUIDE.md`.
 public/
   index.html        <- the game-selector home screen
   shared/           <- theme picker, one-time-login session, celebration
-                       popup, shared fun extras
+                       popup, shared fun extras, color shades (picker + 10-step ramps)
   flagle/           <- Flagle Live client
   travle/           <- TRAVLE Live client
   crossdle/         <- CROSSDLE Live client
@@ -204,7 +204,7 @@ platform machinery, same shuffled 4-color keyboard (red / blue / yellow / purple
   reproduces the green/gray pattern of every earlier guess; otherwise a short rejection note
   names the offending box. Hints follow the same rule and never reveal the answer.
 - **No starter word:** every round begins with just the empty colored boxes (the automatic first guess other games use is switched off for Colordle only).
-- **Color shades:** Settings → *Color shades* lets the host pick, for each of the four colors, one of five strengths (Pastel, Soft, Standard, Bold, Deep). It changes the empty boxes and the keyboard keys together, applies instantly (no new round), is shared by every screen connected to the game, and lasts until the server restarts or *Reset all to standard* is pressed.
+- **Color shades (update 16):** Settings → *Color shades* now covers **every color in the game** - red, blue, yellow and purple (keyboard keys + empty boxes) **plus the green and gray** of the guess tiles - with **10 shades each** (lightest → darkest, shade 5 = Standard). See *Color shades on every game* below.
 - When a round is given up, the boxes fill in with the answer.
 
 Files: `server/colordle/colordle-server.js` + its own `public/` client folder, mounted at
@@ -237,6 +237,33 @@ celebration, Live/Test/Offline, hints, engagement alerts). What's different:
 Files: `server/structle/structle-server.js` + its own `public/` client folder, mounted at `/structle/`
 on Socket.IO namespace `/structle`.
 
+## Color shades on every game (update 16)
+
+Every game's host settings now has a **Color shades** section. For each color the game really uses, the host
+picks one of **10 shades** (lightest → darkest; the 5th is always the original "Standard" look). It applies
+instantly (no new round), and **every screen connected to that game changes together** (e.g. the host page and
+an OBS browser source). **Reset all to standard** is at the bottom of each section.
+
+| Game | Colors you can shade |
+|---|---|
+| Flagle | green (correct/win), orange-red (wrong), gold (accent), blue (live/chat), purple (hints), pink (gifts/timer) |
+| TRAVLE | start & target, shortest path, accepted guess, wrong guess, land (not guessed) - globe, trail, chips and legend all follow |
+| Blindle | green, yellow, red (tiles + keyboard) |
+| Findle | green (found), orange (score/emphasis), red (alerts), blue (info) |
+| CROSSDLE | green, yellow, gray (tiles, keys, chips) |
+| TWISTLE | green, yellow, red |
+| Oracle | green, gold, red (count badges) |
+| Colorblindle / Colordle | red, blue, yellow, purple + green (hit) + gray (miss) |
+| Structle | green (a clue of 0 / solved row) |
+| Textle | green, yellow, gray (segments + keyboard) |
+
+How it works (files): `public/shared/color-shades.js` (the color lists per game, the 10-step ramps, the picker and the
+live sync), `public/shared/color-shades.css` (picker look), `server/shared/color-shades-hub.js` (Socket.IO namespace
+`/shades`; remembers each game's choices in `data/color-shades.json` so they survive a restart where the disk is kept).
+To give a **new game** shades: add its colors to `GAMES` in `color-shades.js`, add
+`<script src="/shared/color-shades.js" data-game="yourgame"></script>` to its page and a `<div data-color-shades></div>` to its
+settings. Text on every colored tile switches between dark and white automatically so it stays readable at every shade.
+
 ## Textle (new)
 
 **Textle** — an ARRANG-O-style sibling of Blindle (same word bank, 370k-word dictionary, difficulty tiers,
@@ -252,12 +279,14 @@ engagement alerts). What's different:
   letters that appear in the hidden word in the same left-to-right order; ties prefer matches that are side by side in
   both words, then earlier letters. Remaining letters are yellow while the hidden word still has an unused copy, else gray.
   This reproduces every row in the ARRANG-O screenshots.
-- **The keyboard colors itself** (QWERTY, display-only, no manual coloring): a letter is green once it was green in any
+- **The keyboard colors itself** (display-only, no manual coloring). **Update 16: strictly two rows of 13 keys (A-M on top, N-Z below).** To change the letter order, edit `KEYBOARD_ROWS` in `server/textle/public/textle-game.js` (keep both rows the same length): a letter is green once it was green in any
   guess, yellow once it was yellow (and never green), gray once it has only ever been gray. Clears every round.
 - **Word length:** random 4-15 letters every round by default; Settings → Word length lets the host choose any range
   (or a fixed length) from 4 up to 20 letters. Answer pools for 11-20 letters were enlarged (`server/textle/textle-answers.js`).
-- Like Blindle, a guess must still fit every earlier clue, and every round opens with one automatic starter word.
-  To switch the starter word off, set `STARTER_WORD_ENABLED = false` in `textle-server.js`.
+- Like Blindle, a guess must still fit every earlier clue. **Update 16: no starter word** - every round opens on a blank board.
+  (To bring the automatic first guess back, set `STARTER_WORD_ENABLED = true` in `textle-server.js`.)
+- **Update 16: the guessed tiles are centered** on the board; each guesser's avatar stays pinned to the left edge.
+- **Color shades:** Settings → *Color shades* (green, yellow, gray; 10 shades each).
 
 Files: `server/textle/textle-server.js` + `textle-answers.js` + its own `public/` client folder, mounted at `/textle/`
 on Socket.IO namespace `/textle`. Blindle is unchanged.

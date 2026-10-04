@@ -583,7 +583,8 @@
     });
     const centerLon = Math.atan2(sy, sx) * 180 / Math.PI;
     const centerLat = Math.max(-55, Math.min(55, latSum / points.length));
-    const colorFor = (cat) => cat === "endpoint" ? "#A855F7" : cat === "optimal" ? "#22C55E" : cat === "good" ? "#FFD43B" : "#EF4444";
+    const shaded = (id, std) => (window.ColorShades && window.ColorShades.get(id)) || std;
+    const colorFor = (cat) => cat === "endpoint" ? shaded("endpoint", "#A855F7") : cat === "optimal" ? shaded("optimal", "#22C55E") : cat === "good" ? shaded("good", "#FFD43B") : shaded("wrong", "#EF4444");
     points.forEach(([name, cat]) => {
       const [lat, lon] = COUNTRY_COORDS[name];
       const toRad = Math.PI / 180;

@@ -168,12 +168,13 @@ function paintKeyboard() {
   });
 }
 
-// Standard QWERTY layout (read-only display keyboard - chat does the typing).
+// Read-only display keyboard (chat does the typing): STRICTLY two rows with the same
+// number of keys - 13 + 13 letters, A-M on top and N-Z below.
 const KEYBOARD_ROWS = [
-  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-  ["a", "s", "d", "f", "g", "h", "j", "k", "l"],
-  ["z", "x", "c", "v", "b", "n", "m"]
+  ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"],
+  ["n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"]
 ];
+const KEYBOARD_COLUMNS = KEYBOARD_ROWS[0].length; // 13 - both rows are the same length
 for (const row of KEYBOARD_ROWS) {
   const rowEl = document.createElement("div");
   rowEl.className = "keyRow";
@@ -186,7 +187,7 @@ for (const row of KEYBOARD_ROWS) {
   }
   el.keyboard.appendChild(rowEl);
 }
-// The keyboard is up to 10 keys per row and lives in its own section - it
+// The keyboard is 13 keys per row (2 rows) and lives in its own section - it
 // must size itself to ITS OWN available width, not just inherit the
 // guess-tile size (which is computed for up to 20 letters per word).
 function computeKeyboardMetrics() {
@@ -201,7 +202,7 @@ function computeKeyboardMetrics() {
     (el.keyboardSection.clientWidth ? el.keyboardSection.clientWidth - sectionPad : 0) ||
     (el.tilesWrap && el.tilesWrap.clientWidth) ||
     Math.max(200, pageWidth - 32 - sectionPad);
-  const columns = 10;
+  const columns = KEYBOARD_COLUMNS;
   const gap = 4;
   let sizeByWidth = Math.floor((containerWidth - gap * (columns - 1)) / columns);
   // Keys are sized purely by available width (NOT by how many guess rows exist),
@@ -682,13 +683,15 @@ function computeTileMetrics(wordLength, rowCount) {
   const avatarGap = 8;
 
   // Pass 1: rough avatar-size estimate to bootstrap a tile size.
+  // Tiles are CENTERED in the board and the avatar is pinned to the left edge, so the
+  // avatar column is reserved on BOTH sides to keep the centered tiles clear of it.
   let avatarReserve = 40;
-  let tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - avatarReserve), wordLength, hGap);
+  let tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - 2 * avatarReserve), wordLength, hGap);
 
   // Pass 2: the avatar scales off the tile HEIGHT, so redo the fit once with a closer estimate.
   const tileHeightGuess = Math.round(tileSizeByWidth * 1.18);
   avatarReserve = Math.max(14, Math.round(tileHeightGuess * 0.82)) + avatarGap;
-  tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - avatarReserve), wordLength, hGap);
+  tileSizeByWidth = widthConstrainedTileSize(Math.max(100, containerWidth - 2 * avatarReserve), wordLength, hGap);
 
   const availableHeight = computeAvailableTilesHeight();
   const vGap = 8;
