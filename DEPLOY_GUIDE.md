@@ -185,3 +185,8 @@ usually a quick library update away from being fixed.
 - Answer word banks for BLINDLE, CROSSDLE, TWISTLE, ORACLE and COLORBLINDLE expanded to several hundred common words per length (`server/blindle/blindle-answers.js` and `server/crossdle/crossdle-answers.js`).
 - New shared stylesheet `public/shared/game-chrome.css`: themed title banner above each game, single-row top toolbar, theme-colored top/bottom bars.
 - Deploy exactly as before: upload this whole folder; start command `npm start`.
+
+## Update 9 changes
+- Title font picker (15 fonts) in each game's Settings / Host Controls: `public/shared/title-font.js`.
+- Stronger green / yellow / red on tiles, number columns and keyboards: `public/shared/game-colors.css` (edit the `--strong-*` variables at the top to retune all games).
+- Deploy exactly as before: upload this whole folder; start command `npm start`.
