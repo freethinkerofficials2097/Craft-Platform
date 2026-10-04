@@ -16,6 +16,7 @@
 //   /colorblindle/ - COLORBLINDLE  (Socket.IO namespace /colorblindle)
 //   /colordle/ - COLORDLE  (Socket.IO namespace /colordle)
 //   /structle/ - STRUCTLE  (Socket.IO namespace /structle)
+//   /textle/   - TEXTLE    (Socket.IO namespace /textle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -44,6 +45,7 @@ import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
 import { mountStructle } from "./server/structle/structle-server.js";
+import { mountTextle } from "./server/textle/textle-server.js";
 import { registerFindle } from "./server/findle/findle-server.cjs";
 import { registerCrossdle } from "./server/crossdle/crossdle.js";
 import { registerTwistle } from "./server/twistle/twistle.js";
@@ -119,6 +121,12 @@ await mountColordle(app, io, { mountPath: "/colordle" });
 // total straight lines, difference in total curves); the round is won when both are 0.
 // No keyboard / manual coloring. Own Socket.IO namespace /structle.
 await mountStructle(app, io, { mountPath: "/structle" });
+
+// TEXTLE is an ARRANG-O-style BLINDLE sibling: each guess is cut into green / yellow / gray
+// SEGMENTS (green segments at the edges get rounded ends) and the keyboard colors itself.
+// Hidden words are 4-15 letters by default (host can go 4-20). Reuses BLINDLE's dictionary
+// (loaded once) and has its own Socket.IO namespace /textle.
+await mountTextle(app, io, { mountPath: "/textle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

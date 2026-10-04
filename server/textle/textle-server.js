@@ -1,69 +1,33 @@
-// structle-server.js
-// STRUCTLE - a BLINDLE-style TikTok LIVE word game modelled on "MORPH-O".
+// textle-server.js
+// TEXTLE - an "ARRANG-O"-style TikTok LIVE word game (a sibling of BLINDLE).
+//
 // Same platform machinery as BLINDLE (unlimited guesses, clue-consistency check,
-// leaderboards, celebration, Live/Test/Offline modes, hints, difficulty, engagement
-// alerts) with a different clue system based on the SHAPE of the letters:
-//   - Every capital letter is built from a number of STRAIGHT lines and CURVES
-//     (see LETTER_SHAPES below - e.g. A = 3 straight, 0 curves; S = 0 straight, 1 curve).
-//   - Each guess shows two numbers to the right of the word:
-//       first  column (straight-line symbol) = how far the guess's total number of
-//                                              straight lines is from the hidden word's (>= 0),
-//       second column (curve symbol)         = the same for the total number of curves.
-//   - The round is WON the moment BOTH numbers are 0 - i.e. the guess has exactly the
-//     same total straight lines AND total curves as the hidden word. It does NOT have to
-//     be the hidden word itself: any real word with the same two totals is accepted
-//     and earns 1 point.
-//   - There is no keyboard and no coloring - the two numbers are the whole clue.
-//   - ANY real word of the right length is accepted as a guess - there is no
-//     "must be consistent with earlier clues" rule, so viewers can freely test any
-//     word they think might fit. (Words that are not in the dictionary, or have
-//     the wrong number of letters, are simply ignored.)
-//   - A word that was ALREADY guessed this round is not added again; a short
-//     "Already guessed" note is shown with the two numbers that word got.
+// leaderboards, win celebration, Live/Test/Offline modes, hints, difficulty, engagement
+// alerts) but with a different clue system - SEGMENTS instead of color counts:
+//   - After every guess the guessed word is cut into colored SEGMENTS:
+//       GREEN  - letters that match AND whose order corresponds to the hidden word
+//                (a green segment is a run of letters that sits side by side in
+//                BOTH the guess and the hidden word),
+//       YELLOW - the letter is in the hidden word but has to be REARRANGED,
+//       GRAY   - the letter is not in the hidden word (or every copy of it is already
+//                used up by other letters of the guess). Neighbouring grays are merged.
+//   - A green segment that touches the START (or END) of the guess and also sits at the
+//     START (or END) of the hidden word gets a rounded edge on that side.
+//   - The keyboard colors itself: a letter turns green once it was green in any guess,
+//     yellow once it was yellow (and never green), gray once it was only ever gray.
+//     There is NO manual coloring.
+//   - Hidden words are 4-15 letters long by default (random every round); the host can
+//     change the range anywhere from 4 up to 20 letters in Settings.
 //
-// Transport: runs on its own Socket.IO namespace "/structle" (like COLORDLE), so
-// it never collides with BLINDLE's raw WebSocketServer.
+// Transport: runs on its own Socket.IO namespace "/textle" (like STRUCTLE / COLORDLE).
 //
-// (Original BLINDLE header follows.)
-// BLINDLE - faithful to the real word500.com feedback mechanic:
-//   - Each guess only reveals COUNTS: how many letters are green
-//     (right letter, right spot), yellow (right letter, wrong spot),
-//     and red (not in the word) - never which letters those are.
-//
-// Adapted for a fully automated TikTok LIVE audience:
-//   - Guessing is UNLIMITED. Anyone can guess, any number of times.
-//     There is no attempt pool and no per-round voting window - every
-//     matching chat comment is evaluated immediately.
-//   - The catch: a guess is only accepted if it's logically CONSISTENT
-//     with every clue already revealed this round (i.e. it could still
-//     be the answer, given what's been learned so far). A guess that
-//     contradicts an earlier clue is rejected with a brief on-screen
-//     note - this is what keeps unlimited guessing meaningful instead
-//     of just spamming random words.
-//   - The on-screen keyboard AND each guessed word's letter tiles are
-//     a manual, host-only scratchpad - click to cycle red -> yellow ->
-//     green -> none. The server never colors anything automatically.
-//   - Hints are unlimited and suggest a word consistent with every
-//     clue so far - but never the literal secret word.
-//   - Difficulty (Normal / Medium / Hard) is a 4-factor score over
-//     vocabulary, word structure, candidate ambiguity, and feedback
-//     informativeness - see difficulty.js. It controls which secret
-//     words are eligible, not how much information is given.
-//
-// This build also adds three modes for a TikTok LIVE context:
-//   - Live    : real TikTok LIVE chat, guesses count toward leaderboards
-//   - Test    : simulated fake chat, same mechanics, scores NOT saved
-//   - Offline : host types guesses directly, no chat/leaderboard involved
-// In Live and Test, the host can also directly set the secret word at
-// any time from the bottom control bar.
-
+// ------------------------------------------------------------------
 import "dotenv/config";
 import express from "express";
-import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
-import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blindle-answers.js";
+import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./textle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
@@ -141,46 +105,119 @@ function normalizeGuess(text) {
     .trim();
 }
 
-// ---- STRUCTLE clue helpers -------------------------------------------
-// [straight lines, curves] for each capital letter, in a plain sans-serif face
-// (the same counting MORPH-O uses). Edit this table if you want to tweak a letter.
-//   straight = every straight stroke (verticals, horizontals, diagonals)
-//   curves   = every curved stroke (a bowl, a hook, a full O...)
-const LETTER_SHAPES = {
-  a: [3, 0], b: [1, 2], c: [0, 1], d: [1, 1], e: [4, 0], f: [3, 0], g: [1, 1],
-  h: [3, 0], i: [1, 0], j: [1, 1], k: [3, 0], l: [2, 0], m: [4, 0], n: [3, 0],
-  o: [0, 1], p: [1, 1], q: [1, 1], r: [2, 1], s: [0, 1], t: [2, 0], u: [0, 1],
-  v: [2, 0], w: [4, 0], x: [2, 0], y: [3, 0], z: [3, 0]
-};
+// ---- TEXTLE clue engine (ARRANG-O style segments) -----------------------
+// 1) GREEN letters = the longest set of guess letters that appear in the hidden word in the
+//    same left-to-right order (a longest-common-subsequence match). Ties are broken by
+//    preferring matches that sit side by side in BOTH words (so they merge into one
+//    segment), then by using earlier letters of the guess.
+// 2) Every other letter is YELLOW if the hidden word still has an unused copy of it
+//    (counted left to right), otherwise GRAY.
+// 3) Letters are cut into segments: a green run that is contiguous in both words is one
+//    segment, consecutive grays are one segment, every yellow is its own segment.
+const MATCH_W = 1000000;
+const ADJACENT_W = 1000;
 
-// Total straight lines and curves in a word.
-function shapeTotals(word) {
-  let straight = 0;
-  let curves = 0;
-  for (const ch of word) {
-    const shape = LETTER_SHAPES[ch];
-    if (shape) { straight += shape[0]; curves += shape[1]; }
+function greenMatches(guess, answer) {
+  const n = guess.length;
+  const m = answer.length;
+  // best[i][j][a] = best score for guess[i..] vs answer[j..]; a = 1 when guess[i-1] was matched to answer[j-1].
+  const best = [];
+  for (let i = 0; i <= n; i++) {
+    best.push([]);
+    for (let j = 0; j <= m; j++) best[i].push([0, 0]);
   }
-  return { straight, curves };
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      for (let a = 0; a <= 1; a++) {
+        let v = Math.max(best[i + 1][j][0], best[i][j + 1][0]);
+        if (guess[i] === answer[j]) {
+          const take = MATCH_W + (a ? ADJACENT_W : 0) - i + best[i + 1][j + 1][1];
+          if (take > v) v = take;
+        }
+        best[i][j][a] = v;
+      }
+    }
+  }
+  // Walk back through the table to read off which guess letters are green (and which answer index they matched).
+  const green = new Array(n).fill(-1);
+  let i = 0;
+  let j = 0;
+  let a = 0;
+  while (i < n && j < m) {
+    const v = best[i][j][a];
+    if (guess[i] === answer[j]) {
+      const take = MATCH_W + (a ? ADJACENT_W : 0) - i + best[i + 1][j + 1][1];
+      if (take === v) {
+        green[i] = j;
+        i++; j++; a = 1;
+        continue;
+      }
+    }
+    if (best[i + 1][j][0] === v) { i++; a = 0; continue; }
+    j++; a = 0;
+  }
+  return green;
 }
 
-// The two clue numbers shown beside a guess: |difference| in straight lines, |difference| in curves.
-function clueBetween(guess, answer) {
-  const g = shapeTotals(guess);
-  const a = shapeTotals(answer);
-  return [Math.abs(g.straight - a.straight), Math.abs(g.curves - a.curves)];
+// Returns an array of segments: { text, status: "green"|"yellow"|"gray", capL, capR }.
+function computeClue(guess, answer) {
+  const n = guess.length;
+  const m = answer.length;
+  const green = greenMatches(guess, answer);
+  const remaining = {};
+  for (const ch of answer) remaining[ch] = (remaining[ch] || 0) + 1;
+  for (let i = 0; i < n; i++) if (green[i] >= 0) remaining[guess[i]] -= 1;
+
+  const status = new Array(n);
+  for (let i = 0; i < n; i++) {
+    if (green[i] >= 0) { status[i] = "green"; continue; }
+    const ch = guess[i];
+    if (remaining[ch] > 0) { status[i] = "yellow"; remaining[ch] -= 1; } else status[i] = "gray";
+  }
+
+  const segments = [];
+  let i = 0;
+  while (i < n) {
+    let k = i;
+    if (status[i] === "green") {
+      while (k + 1 < n && status[k + 1] === "green" && green[k + 1] === green[k] + 1) k++;
+    } else if (status[i] === "gray") {
+      while (k + 1 < n && status[k + 1] === "gray") k++;
+    }
+    segments.push({
+      text: guess.slice(i, k + 1),
+      status: status[i],
+      capL: status[i] === "green" && i === 0 && green[0] === 0,
+      capR: status[i] === "green" && k === n - 1 && green[n - 1] === m - 1
+    });
+    i = k + 1;
+  }
+  return segments;
 }
 
-function clueEquals(x, y) {
-  return x[0] === y[0] && x[1] === y[1];
+// A compact string identifying exactly what a clue looks like on screen - two guesses
+// "give the same clue" when this string matches.
+const SIG_CODE = { green: "G", yellow: "Y", gray: "x" };
+function clueSignature(segments) {
+  return segments.map((s) => SIG_CODE[s.status] + s.text + (s.capL ? "(" : "") + (s.capR ? ")" : "")).join("|");
 }
 
-function isSolvedClue(clue) {
-  return clue[0] === 0 && clue[1] === 0;
+function formatClue(segments) {
+  return segments.map((s) => `${s.text.toUpperCase()}=${s.status}`).join(" ");
 }
 
-function formatClue(clue) {
-  return `${clue[0]} straight \u00b7 ${clue[1]} curves`;
+// Rank used for the keyboard: green beats yellow beats gray.
+const STATUS_RANK = { gray: 1, yellow: 2, green: 3 };
+function keyStatusFromGuesses(guesses) {
+  const best = {};
+  for (const g of guesses) {
+    for (const seg of g.clue) {
+      for (const ch of seg.text) {
+        if (!best[ch] || STATUS_RANK[seg.status] > STATUS_RANK[best[ch]]) best[ch] = seg.status;
+      }
+    }
+  }
+  return best;
 }
 
 const difficultyIndex = buildDifficultyIndex(ANSWER_WORDS);
@@ -196,10 +233,11 @@ const DEFAULT_REJECTION_TOAST_SECONDS = 4;
 // it keeps using autoContinueDelaySeconds on its own (see giveUp below).
 const CELEBRATION_STAGE_COUNT = 3;
 
-// Points: solving the round earns 1 point (any word with the right totals counts);
-// other valid guesses earn nothing.
-const WIN_POINTS = 1;
-const GUESS_POINTS = 0;
+// Points awarded per guess. Solving it is worth 10x a plain wrong-but-
+// valid guess (which still earns a small participation point), same
+// ratio as the original 100/10 split, just at a smaller scale.
+const WIN_POINTS = 10;
+const GUESS_POINTS = 1;
 
 const game = {
   mode: "test",
@@ -209,12 +247,10 @@ const game = {
   // "fixed" plays game.wordLength every round (as before); "random"
   // picks a new random length inside [lengthMin, lengthMax] (still
   // filtered by `difficulty`) at the start of every round.
-  lengthMode: "fixed",
+  lengthMode: "random",
   lengthMin: 4,
-  lengthMax: 8,
+  lengthMax: 15,
   secretWord: null,
-  // The hidden word's total straight lines / curves (private until the round is given up).
-  target: { straight: 0, curves: 0 },
   guesses: [],
   streak: 0,
   roundNumber: 0, // bumps every time a new round starts - the page uses it to redraw the board
@@ -261,21 +297,25 @@ function awardPoints(caller, points) {
   game.totalScores.set(caller, (game.totalScores.get(caller) || 0) + points);
 }
 
-function fitsClues(word) {
-  // helper used by HINTS and the Test-mode simulator only (guesses themselves are never filtered): measured against every past guess, would `word` give the same two numbers?
-  for (const past of game.guesses) {
-    if (!clueEquals(clueBetween(past.word, word), past.clue)) return false;
+function checkConsistency(word) {
+  for (let i = 0; i < game.guesses.length; i++) {
+    const past = game.guesses[i];
+    if (clueSignature(computeClue(past.word, word)) !== past.sig) {
+      return { ok: false, conflictIndex: i, conflictWord: past.word, conflictClue: past.clue };
+    }
   }
-  return true;
+  return { ok: true };
 }
 
 function processGuess(word, caller) {
-  const clue = clueBetween(word, game.secretWord);
+  const clue = computeClue(word, game.secretWord);
   const avatarUrl = knownAvatars.get(caller) || null;
-  game.guesses.push({ word, clue, caller, avatarUrl });
+  game.guesses.push({ word, clue, sig: clueSignature(clue), caller, avatarUrl });
 
-  // Solved = both numbers are 0: same total straight lines AND curves as the hidden word.
-  if (isSolvedClue(clue)) {
+  if (word === game.secretWord) {
+    // Scaled down from the original 100/10 split to 10/1, keeping the
+    // same 10x relationship between solving it and a wrong-but-valid
+    // guess (which still earns a small participation point).
     const points = game.mode === "live" ? WIN_POINTS : null;
     awardPoints(caller, WIN_POINTS);
     game.status = "won";
@@ -298,12 +338,10 @@ function processGuess(word, caller) {
 function attemptGuess(word, caller) {
   if (game.status !== "live") return { ok: false, error: "No round in progress." };
 
-  // A word already played this round is not added to the board again. Instead a short
-  // "Already guessed" note is shown together with the two numbers that word got.
-  const prior = game.guesses.find((g) => g.word === word);
-  if (prior) {
-    const reason = `Already guessed \u2014 ${formatClue(prior.clue)}`;
-    game.lastRejection = { word, reason, repeat: true, clue: prior.clue, at: Date.now() };
+  const consistency = checkConsistency(word);
+  if (!consistency.ok) {
+    const reason = `Conflicts with the clue from guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()})`;
+    game.lastRejection = { word, reason, at: Date.now() };
     return { ok: false, error: reason, rejected: true };
   }
 
@@ -318,20 +356,22 @@ function attemptGuess(word, caller) {
 // points to anyone - so its green/yellow/red counts give viewers an
 // immediate starting clue instead of a cold guess.
 const STARTER_GUESS_LABEL = "🎲 Starter word";
+// Set to false to open every round on a blank board (no automatic first guess).
+const STARTER_WORD_ENABLED = true;
 
 function pickStarterWord(wordLength) {
-  // Never a word that would already solve the round (both numbers 0).
   const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, wordLength, "random")
-    .filter((w) => w !== game.secretWord && !isSolvedClue(clueBetween(w, game.secretWord)));
+    .filter((w) => w !== game.secretWord);
   if (pool.length === 0) return null;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function seedStarterGuess() {
+  if (!STARTER_WORD_ENABLED) return;
   const starter = pickStarterWord(game.wordLength);
   if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
-  const clue = clueBetween(starter, game.secretWord);
-  game.guesses.push({ word: starter, clue, caller: STARTER_GUESS_LABEL, avatarUrl: null, isStarter: true });
+  const clue = computeClue(starter, game.secretWord);
+  game.guesses.push({ word: starter, clue, sig: clueSignature(clue), caller: STARTER_GUESS_LABEL, avatarUrl: null, isStarter: true });
 }
 
 function startRound(overrideWord) {
@@ -339,7 +379,6 @@ function startRound(overrideWord) {
     game.wordLength = randomWordLengthInRange();
   }
   game.secretWord = overrideWord || pickAnswer(game.wordLength, game.difficulty);
-  game.target = shapeTotals(game.secretWord);
   game.guesses = [];
   game.hintsUsed = 0;
   game.hintSuggestions = [];
@@ -349,8 +388,7 @@ function startRound(overrideWord) {
   game.status = "live";
   game.roundNumber += 1;
   game.autoContinueAt = null;
-  // Starter word DISABLED for STRUCTLE: rounds now open on a blank board.
-  // (seedStarterGuess() is intentionally not called; helper kept for reference.)
+  seedStarterGuess();
   broadcastState();
 }
 
@@ -422,7 +460,6 @@ function giveUp() {
 function endGame() {
   game.status = "idle";
   game.secretWord = null;
-  game.target = { straight: 0, curves: 0 };
   game.guesses = [];
   game.autoContinueAt = null;
   broadcastState();
@@ -432,9 +469,10 @@ function useHint() {
   if (game.status !== "live") return;
 
   let candidates = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty);
-  // Never suggest a word that would already solve the round (same totals as the hidden word).
-  candidates = candidates.filter((w) => !isSolvedClue(clueBetween(w, game.secretWord)));
-  candidates = candidates.filter((w) => fitsClues(w));
+  candidates = candidates.filter((w) => w !== game.secretWord);
+  for (const g of game.guesses) {
+    candidates = candidates.filter((w) => clueSignature(computeClue(g.word, w)) === g.sig);
+  }
   candidates = candidates.filter((w) => !game.hintSuggestions.includes(w));
 
   if (candidates.length === 0) return;
@@ -576,7 +614,7 @@ async function connectToTikTok(username) {
 
       const connectState = await connection.connect();
       liveConnection = connection;
-      Engagement.attach(connection, { game: "structle", tiktokUsername: username });
+      Engagement.attach(connection, { game: "textle", tiktokUsername: username });
       diagnostics.connectionStatus = "live";
       diagnostics.lastErrorMessage = null;
       broadcastState();
@@ -639,16 +677,10 @@ function startTestMode() {
       let text;
 
       if (game.status === "live" && game.secretWord && roll < 0.06) {
-        // a winning word: any word with the hidden word's totals
-        const winners = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty)
-          .filter((w) => isSolvedClue(clueBetween(w, game.secretWord)));
-        text = winners.length > 0 ? winners[Math.floor(Math.random() * winners.length)] : game.secretWord;
+        text = game.secretWord;
       } else if (game.status === "live" && roll < 0.4) {
         const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty);
-        // Most simulated viewers read the colored boxes and play a word that fits; a few guess blindly.
-        const smart = Math.random() < 0.7 ? pool.filter((w) => fitsClues(w)) : [];
-        const from = smart.length > 0 ? smart : pool;
-        text = from.length > 0 ? from[Math.floor(Math.random() * from.length)] : FAKE_JUNK_WORDS[0];
+        text = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : FAKE_JUNK_WORDS[0];
       } else {
         text = FAKE_JUNK_WORDS[Math.floor(Math.random() * FAKE_JUNK_WORDS.length)];
       }
@@ -667,7 +699,7 @@ function startTestMode() {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// `nsp` is the Socket.IO namespace "/structle", created inside mountStructle()
+// `nsp` is the Socket.IO namespace "/textle", created inside mountTextle()
 // below - broadcastState() and the "connection" handler both close over it.
 let nsp = null;
 
@@ -682,6 +714,7 @@ function buildStatePayload() {
       lengthMin: game.lengthMin,
       lengthMax: game.lengthMax,
       secretWord: game.status === "lost" ? game.secretWord : null,
+      // The automatic starter word shows the LIVE host's profile picture.
       guesses: game.guesses.slice(-12).map((g) => ({
         word: g.word,
         clue: g.clue,
@@ -690,10 +723,11 @@ function buildStatePayload() {
         avatarUrl: g.isStarter ? hostAvatarUrl : g.avatarUrl,
         isStarter: Boolean(g.isStarter)
       })),
-      // Revealed only once a round is given up: the totals the hidden word had.
-      target: game.status === "lost" ? game.target : null,
       guessesMade: game.guesses.length,
       roundNumber: game.roundNumber,
+      // Keyboard colors, computed from EVERY guess this round (not just the last 12 sent in
+      // `guesses`): letter -> "green" | "yellow" | "gray". The page just paints these.
+      keyStatus: game.status === "idle" ? {} : keyStatusFromGuesses(game.guesses),
       streak: game.streak,
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,
@@ -830,28 +864,28 @@ function handleClientAction(ws, msg) {
 // ============================================================
 // Mounting into the platform
 // ============================================================
-//   import { mountStructle } from "./server/structle/structle-server.js";
-//   await mountStructle(app, io, { mountPath: "/structle" });
+//   import { mountTextle } from "./server/textle/textle-server.js";
+//   await mountTextle(app, io, { mountPath: "/textle" });
 //
-// `app` is the shared Express app, `io` the shared Socket.IO Server. STRUCTLE
-// serves its own static folder at `mountPath` and talks to its page over the
-// Socket.IO namespace "/structle". Call once per process.
-export async function mountStructle(app, io, options = {}) {
-  const mountPath = options.mountPath || "/structle";
+// `app` is the shared Express app, `io` the shared Socket.IO Server. TEXTLE serves its own
+// static folder at `mountPath` and talks to its page over the Socket.IO namespace "/textle".
+// Call once per process. (It reuses BLINDLE's dictionary module, which only ever loads once.)
+export async function mountTextle(app, io, options = {}) {
+  const mountPath = options.mountPath || "/textle";
 
   app.use(mountPath, express.static(path.join(__dirname, "public")));
   app.get(mountPath, (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "structle-index.html"));
+    res.sendFile(path.join(__dirname, "public", "textle-index.html"));
   });
 
-  nsp = io.of("/structle");
+  nsp = io.of("/textle");
   nsp.on(
     "connection",
-    safely("structle-connection", (socket) => {
+    safely("textle-connection", (socket) => {
       socket.emit("state", buildStatePayload());
       socket.on(
         "action",
-        safely("structle-action", (msg) => {
+        safely("textle-action", (msg) => {
           if (!msg || typeof msg !== "object") return;
           handleClientAction(socket, msg);
         })
@@ -861,7 +895,7 @@ export async function mountStructle(app, io, options = {}) {
 
   await loadDictionary();
   console.log(
-    `[STRUCTLE] Mounted at ${mountPath} (Socket.IO namespace /structle). ` +
+    `[TEXTLE] Mounted at ${mountPath} (Socket.IO namespace /textle). ` +
       (diagnostics.signKeyConfigured
         ? "EulerStream signing key detected - TikTok connections are ready."
         : "No EULERSTREAM_API_KEY found - Test Mode will work, but live TikTok connections will not.")

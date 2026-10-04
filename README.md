@@ -227,7 +227,7 @@ celebration, Live/Test/Offline, hints, engagement alerts). What's different:
 - **You win when both numbers are 0** — the guess has exactly the same total straight lines and curves
   as the hidden word. It does *not* have to be the hidden word: any real word meeting both totals is
   accepted and earns **1 point**. Other valid guesses earn nothing.
-- **No keyboard and no manual coloring.** **Any real word of the right length is accepted** - there is no
+- **No keyboard and no manual coloring.** **Starter word removed (update 15):** a Structle round now opens on a blank board - the automatic random first guess is switched off for Structle. **Any real word of the right length is accepted** - there is no
   clue-consistency rule, so viewers can test any word. A word already guessed this round is not added again:
   a short **"Already guessed"** note appears with the two numbers that word got (duration set in Settings).
   Words not in the dictionary or of the wrong length are ignored. Hints still suggest a word that fits every clue so far and never one that would already win.
@@ -236,6 +236,31 @@ celebration, Live/Test/Offline, hints, engagement alerts). What's different:
 
 Files: `server/structle/structle-server.js` + its own `public/` client folder, mounted at `/structle/`
 on Socket.IO namespace `/structle`.
+
+## Textle (new)
+
+**Textle** — an ARRANG-O-style sibling of Blindle (same word bank, 370k-word dictionary, difficulty tiers,
+unlimited guesses, clue-consistency check, points, leaderboards, celebration, Live/Test/Offline, hints,
+engagement alerts). What's different:
+
+- **Segment clues instead of color counts.** Every guess is cut into colored segments:
+  **green** = the letters match *and* their order corresponds to the hidden word (letters that sit side by side
+  in both words share one box); **yellow** = the letter is in the word but must be rearranged; **gray** = the letter
+  is not in the word, or every copy of it is already used up (neighbouring grays merge into one box).
+  A green segment at the very **start/end** of the guess gets a **rounded edge** when it also starts/ends the hidden word.
+- How the green letters are chosen (`computeClue` in `server/textle/textle-server.js`): the longest set of guess
+  letters that appear in the hidden word in the same left-to-right order; ties prefer matches that are side by side in
+  both words, then earlier letters. Remaining letters are yellow while the hidden word still has an unused copy, else gray.
+  This reproduces every row in the ARRANG-O screenshots.
+- **The keyboard colors itself** (QWERTY, display-only, no manual coloring): a letter is green once it was green in any
+  guess, yellow once it was yellow (and never green), gray once it has only ever been gray. Clears every round.
+- **Word length:** random 4-15 letters every round by default; Settings → Word length lets the host choose any range
+  (or a fixed length) from 4 up to 20 letters. Answer pools for 11-20 letters were enlarged (`server/textle/textle-answers.js`).
+- Like Blindle, a guess must still fit every earlier clue, and every round opens with one automatic starter word.
+  To switch the starter word off, set `STARTER_WORD_ENABLED = false` in `textle-server.js`.
+
+Files: `server/textle/textle-server.js` + `textle-answers.js` + its own `public/` client folder, mounted at `/textle/`
+on Socket.IO namespace `/textle`. Blindle is unchanged.
 
 ## Oracle (new)
 
