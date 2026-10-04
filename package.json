@@ -1,9 +1,9 @@
 {
   "name": "tiktok-live-game-platform",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "private": true,
   "type": "module",
-  "description": "A TikTok LIVE game platform hosting eight independent games (Flagle Live, TRAVLE Live, Blindle, Findle Live, CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle) behind one game-selector screen, each reading real audience chat as guesses.",
+  "description": "A TikTok LIVE game platform hosting nine independent games (Flagle Live, TRAVLE Live, Blindle, Findle Live, CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle) behind one game-selector screen, each reading real audience chat as guesses.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

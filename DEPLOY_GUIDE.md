@@ -3,8 +3,8 @@
 This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
-covers all seven games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
-CROSSDLE Live, TWISTLE Live, Oracle).
+covers all nine games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
+CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle).
 
 ---
 
@@ -28,7 +28,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
 1. Go to **https://www.eulerstream.com** and sign up for a free account.
 2. Find the **API Keys** section of their dashboard and create a new key.
 3. Copy the key somewhere safe — you'll paste it into Render in Part 3.
-   One key powers all seven games.
+   One key powers all nine games.
 
 ---
 
@@ -50,7 +50,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
    `public/travle/`, `public/crossdle/`, `public/twistle/`,
-   `server/blindle/`, `server/oracle/`, `server/colorblindle/`, `server/findle/`, and `server/twistle/` as real
+   `server/blindle/`, `server/oracle/`, `server/colorblindle/`, `server/colordle/`, `server/findle/`, and `server/twistle/` as real
    folders — if anything landed flat with slashes
    in the filename instead, open it and rename it with the full path to
    move it into place.
@@ -64,7 +64,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
    Command:** `npm start`.
 3. Before creating it, add one environment variable: **Key**
    `EULERSTREAM_API_KEY`, **Value** = the key from Part 1. (This one key
-   works for all eight games — the server automatically shares it with
+   works for all nine games — the server automatically shares it with
    whichever internal name each game expects.)
 4. **Create Web Service.** Wait for the first build (a couple of minutes).
    Your address will look like `https://your-app.onrender.com`.
@@ -78,7 +78,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
 
 ## Part 4 — Using the platform
 
-1. Open your Render link. You'll land on a **home screen** with eight game
+1. Open your Render link. You'll land on a **home screen** with nine game
    cards.
 2. Tap one to open it — each game has its own address, so you can also
    bookmark a game directly and skip the home screen:
@@ -90,6 +90,7 @@ CROSSDLE Live, TWISTLE Live, Oracle).
    - TWISTLE Live → `/twistle/`
    - Oracle → `/oracle/`
    - Colorblindle → `/colorblindle/`
+   - Colordle → `/colordle/`
 3. Inside a game, everything works as documented for that game — Live /
    Test / Offline modes, TikTok connect, host controls, etc. Every game
    also has a **🎨 theme picker** in its header — pick a color once and it

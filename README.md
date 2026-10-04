@@ -189,6 +189,26 @@ Files: `server/colorblindle/colorblindle-server.js` + its own `public/` client f
 mounted at `/colorblindle/` on Socket.IO namespace `/colorblindle` (imports BLINDLE's
 word bank, dictionary and difficulty engine - loaded only once).
 
+## Colordle (new)
+
+**Colordle** — a sibling of Colorblindle (copied from it), modelled on COLOR-O. Same
+platform machinery, same shuffled 4-color keyboard (red / blue / yellow / purple,
+**reshuffled every round**) and same green / gray tile feedback. What's different:
+
+- **No color counts are shown.** Instead the board shows a row of **empty colored boxes**,
+  one per letter of the hidden word. Box *i* wears the color of the hidden word's *i*-th letter.
+- Viewers read the keyboard to see which letters wear each color, then guess a word whose
+  letters fit the boxes (e.g. red, purple, blue, red, yellow).
+- After each guess the letter boxes turn **green** (correct) or **gray** (incorrect).
+- A guess is accepted only if **every letter wears the color of the box it sits in** and it
+  reproduces the green/gray pattern of every earlier guess; otherwise a short rejection note
+  names the offending box. Hints follow the same rule and never reveal the answer.
+- The automatic starter word is chosen to fit the boxes when a fitting word exists.
+- When a round is given up, the boxes fill in with the answer.
+
+Files: `server/colordle/colordle-server.js` + its own `public/` client folder, mounted at
+`/colordle/` on Socket.IO namespace `/colordle`. Colorblindle is unchanged and still at `/colorblindle/`.
+
 ## Oracle (new)
 
 **Oracle** — inspired by SEER-O, and identical to Blindle in every way (word
