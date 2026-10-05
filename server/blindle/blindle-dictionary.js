@@ -102,8 +102,13 @@ async function loadDictionaryOnce() {
   );
 }
 
+// UPDATE 20: every possible SECRET word is always a legal guess too, even if the big downloaded
+// dictionary is missing it (or only the small offline fallback list loaded). That guarantees a
+// round can never be unsolvable because its answer was "not a word" to the checker.
+const ANSWER_SET = new Set(Object.values(ANSWER_WORDS).flat());
+
 export function isValidGuessWord(word) {
-  return dictionaryState.words.has(word);
+  return dictionaryState.words.has(word) || ANSWER_SET.has(word);
 }
 
 // Cache "all dictionary words of length N" so Test Mode and the

@@ -28,6 +28,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { isBlocked } from './crossdle-blocklist.js';
+import { ANSWER_WORDS as ANSWER_BANK } from './crossdle-answers.js';
+
+// UPDATE 20: every possible secret/decoy word is always a legal guess, even when only the
+// small offline fallback list loaded.
+const ANSWER_SETS = {};
+for (const [len, list] of Object.entries(ANSWER_BANK)) ANSWER_SETS[len] = new Set(list);
 import { FALLBACK_WORD_LISTS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, WORD_LENGTH_OPTIONS } from './crossdle-words_fallback.js';
 
 export { MIN_WORD_LENGTH, MAX_WORD_LENGTH, WORD_LENGTH_OPTIONS };
@@ -199,9 +205,11 @@ export function randomWord(length, exclude = []) {
 }
 
 export function isKnownWord(w, length) {
+  const lw = String(w).toLowerCase();
+  if (ANSWER_SETS[length] && ANSWER_SETS[length].has(lw)) return true;
   const set = WORD_SETS[length];
   if (!set) return false;
-  return set.has(String(w).toLowerCase());
+  return set.has(lw);
 }
 
 export function poolSize(length) {

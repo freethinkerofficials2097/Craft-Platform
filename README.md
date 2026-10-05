@@ -5,6 +5,9 @@ games — **Flagle Live**, **TRAVLE Live**, **Blindle**, **Findle Live**,
 **CROSSDLE Live**, **TWISTLE Live**, and **Oracle** — each reading your TikTok LIVE
 chat directly as guesses. You never touch code; follow `DEPLOY_GUIDE.md`.
 
+> **Update 20:** the shared answer bank (used by BLINDLE, ORACLE, COLORBLINDLE, CROSSDLE, TWISTLE,
+> COLORDLE, STRUCTLE and TEXTLE) grew from ~4,000 to ~8,600 words - see `CHANGES_UPDATE_20.md`.
+
 ## Layout
 
 ```
