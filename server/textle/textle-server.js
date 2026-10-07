@@ -1,7 +1,7 @@
 // textle-server.js
 // TEXTLE - an "ARRANG-O"-style TikTok LIVE word game (a sibling of BLINDLE).
 //
-// Same platform machinery as BLINDLE (unlimited guesses, clue-consistency check,
+// Same platform machinery as BLINDLE (unlimited guesses, optional clue-consistency check [OFF by default since Update 21],
 // leaderboards, win celebration, Live/Test/Offline modes, hints, difficulty, engagement
 // alerts) but with a different clue system - SEGMENTS instead of color counts:
 //   - After every guess the guessed word is cut into colored SEGMENTS:
@@ -309,6 +309,8 @@ function awardPoints(caller, points) {
   game.totalScores.set(caller, (game.totalScores.get(caller) || 0) + points);
 }
 
+const ENFORCE_CLUE_CONSISTENCY = process.env.TEXTLE_STRICT_CLUES === "1";
+
 function checkConsistency(word) {
   for (let i = 0; i < game.guesses.length; i++) {
     const past = game.guesses[i];
@@ -350,11 +352,17 @@ function processGuess(word, caller) {
 function attemptGuess(word, caller) {
   if (game.status !== "live") return { ok: false, error: "No round in progress." };
 
-  const consistency = checkConsistency(word);
-  if (!consistency.ok) {
-    const reason = `Conflicts with the clue from guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()})`;
-    game.lastRejection = { word, reason, at: Date.now() };
-    return { ok: false, error: reason, rejected: true };
+  // UPDATE 21: by default ANY real word is accepted onto the board, even if it could not possibly
+  // be the answer given earlier clues. Viewers don't know the answer, so they must be free to probe
+  // (e.g. test whether a letter appears twice). Set TEXTLE_STRICT_CLUES=1 to bring the old strict
+  // "must agree with every earlier clue" rule back.
+  if (ENFORCE_CLUE_CONSISTENCY) {
+    const consistency = checkConsistency(word);
+    if (!consistency.ok) {
+      const reason = `Conflicts with the clue from guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()})`;
+      game.lastRejection = { word, reason, at: Date.now() };
+      return { ok: false, error: reason, rejected: true };
+    }
   }
 
   processGuess(word, caller);
