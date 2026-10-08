@@ -51,7 +51,7 @@ import {
 } from "../shared/symbol-options-store.js";
 import {
   registerViewer, listViewers, viewerCounts, usableViewers, viewerInfo, readViewerPicture,
-  setViewersSelected, setAllViewersSelected, forgetViewer, forgetAllViewers, onRosterChange
+  setViewersSelected, setAllViewersSelected, forgetViewer, forgetAllViewers, allowRemovedViewers, onRosterChange
 } from "../shared/viewer-roster-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
@@ -179,6 +179,9 @@ function buildSymbolRow(word) {
   let sets = opts.enabledSets.filter((id) => id !== VIEWERS_SET ? true : viewerIds.length > 0);
   if (sets.length === 0) sets = [DEFAULT_SYMBOL_PACK];
   if (opts.combine === "one") sets = [sets[Math.floor(Math.random() * sets.length)]];
+  // (update 31) with "use audience pictures automatically" on, the ticked pictures are in EVERY round, even when
+  // the audience set itself is not ticked or a different set was drawn for this round
+  if (opts.viewersAuto !== false && viewerIds.length > 0 && !sets.includes(VIEWERS_SET)) sets = [...sets, VIEWERS_SET];
 
   const idsOf = (id) => (id === VIEWERS_SET ? viewerIds : setIds(id));
   const wantViewers = sets.includes(VIEWERS_SET);
@@ -993,6 +996,10 @@ function handleClientAction(ws, msg) {
       break;
     case "forget_viewer":
       forgetViewer(String((payload && payload.username) || ""));
+      broadcastState();
+      break;
+    case "allow_removed_viewers":
+      allowRemovedViewers();
       broadcastState();
       break;
     case "forget_all_viewers":

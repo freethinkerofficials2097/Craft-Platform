@@ -126,9 +126,15 @@ function room(game) {
   return "legend:" + game;
 }
 
-function broadcast(game) {
+// `by` = the id of the screen that made the change, so that screen can ignore its own echo (update 31:
+// otherwise an echo of an older edit could arrive while the host is still typing and overwrite it).
+// `kind` tells screens why they got the state: "join" (first state after connecting), "update" or "reset".
+function broadcast(game, by, kind) {
   if (!io) return;
-  io.of("/legends").to(room(game)).emit("legend:state", { game, settings: store.get(game) || null });
+  io.of("/legends").to(room(game)).emit("legend:state", { game, settings: store.get(game) || null, by: by || "", kind: kind || "update" });
+}
+function clientId(v) {
+  return typeof v === "string" ? v.replace(/[^a-z0-9]/gi, "").slice(0, 24) : "";
 }
 
 export const LegendHub = {
@@ -144,7 +150,7 @@ export const LegendHub = {
         if (joined) socket.leave(room(joined));
         joined = game;
         socket.join(room(game));
-        socket.emit("legend:state", { game, settings: store.get(game) || null });
+        socket.emit("legend:state", { game, settings: store.get(game) || null, by: "", kind: "join" });
       });
 
       socket.on("legend:set", (payload) => {
@@ -155,7 +161,7 @@ export const LegendHub = {
         if (!store.has(game) && store.size >= MAX_GAMES) return;
         store.set(game, clean);
         scheduleSave();
-        broadcast(game);
+        broadcast(game, clientId(payload.cid), "update");
       });
 
       socket.on("legend:reset", (payload) => {
@@ -163,7 +169,7 @@ export const LegendHub = {
         if (typeof game !== "string" || !ID_RE.test(game)) return;
         store.delete(game);
         scheduleSave();
-        broadcast(game);
+        broadcast(game, clientId(payload.cid), "reset");
       });
     });
   }

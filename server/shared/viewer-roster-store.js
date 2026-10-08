@@ -4,6 +4,10 @@
 // a SAVED COPY of their profile picture (so it still works after they leave the live, after TikTok's picture
 // link expires, and after a server restart). The host ticks which viewers' pictures may be used as symbols.
 //
+// Update 31: every NEW viewer is ticked automatically (their picture becomes a symbol candidate as soon as it is saved).
+// It stays that way until the HOST unticks that person (the choice is remembered) or removes them with the x button
+// (then they are kept out for good, even if they keep chatting, until the host clicks "Allow removed people again").
+//
 //   data/viewer-roster.json        the list (names, last seen, ticked or not, picture fingerprint)
 //   data/viewer-avatars/*.img      the saved pictures
 //
@@ -19,6 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, "../../data");
 const PIC_DIR = path.join(DATA_DIR, "viewer-avatars");
 const LIST_FILE = path.join(DATA_DIR, "viewer-roster.json");
+const BLOCK_FILE = path.join(DATA_DIR, "viewer-removed.json");   // people the host removed one by one
 
 const NAME_RE = /^[a-z0-9._]{1,40}$/;
 const MAX_VIEWERS = 3000;
@@ -29,6 +34,7 @@ const CONCURRENCY = 2;
 
 // u -> { u, n, first, last, sel, hash, type, fetchedAt, rawUrl, tries, lastTry, queued }
 const viewers = new Map();
+const removed = new Set();   // usernames the host removed personally: never added back automatically
 const listeners = new Set();
 const queue = [];
 let running = 0;
@@ -66,6 +72,27 @@ function load() {
   }
 }
 load();
+function loadRemoved() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(BLOCK_FILE, "utf8"));
+    for (const name of Array.isArray(raw) ? raw : []) {
+      const u = normalizeHostName(name);
+      if (validName(u)) removed.add(u);
+    }
+  } catch (e) {
+    // none yet
+  }
+}
+loadRemoved();
+
+function saveRemoved() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(BLOCK_FILE, JSON.stringify([...removed]));
+  } catch (e) {
+    // read-only disk: still respected for this run
+  }
+}
 
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -144,7 +171,8 @@ async function fetchPicture(v) {
 
 function evictIfNeeded() {
   if (viewers.size <= MAX_VIEWERS) return;
-  const victims = [...viewers.values()].filter((v) => !v.sel).sort((a, b) => a.last - b.last);
+  // oldest first, un-ticked people before ticked ones (everyone new is ticked now, so the list must still be able to trim)
+  const victims = [...viewers.values()].sort((a, b) => (Number(a.sel) - Number(b.sel)) || (a.last - b.last));
   while (viewers.size > MAX_VIEWERS && victims.length) removeViewer(victims.shift().u, true);
 }
 
@@ -152,11 +180,13 @@ function evictIfNeeded() {
 export function registerViewer(username, nickname, rawAvatarUrl) {
   const u = normalizeHostName(username);
   if (!validName(u)) return;
+  if (removed.has(u)) return;   // the host removed this person on purpose
   let v = viewers.get(u);
   const now = Date.now();
   let isNew = false;
   if (!v) {
-    v = { u, n: u, first: now, last: now, sel: false, hash: null, type: null, fetchedAt: 0, rawUrl: null, tries: 0, lastTry: 0, queued: false };
+    // new people are ticked automatically (the host can untick or remove anyone)
+    v = { u, n: u, first: now, last: now, sel: true, hash: null, type: null, fetchedAt: 0, rawUrl: null, tries: 0, lastTry: 0, queued: false };
     viewers.set(u, v);
     isNew = true;
   }
@@ -177,12 +207,27 @@ function removeViewer(u, silent) {
   if (!silent) changed();
 }
 
+/** The host removed one person: forget them AND keep them out, even if they chat again. */
 export function forgetViewer(username) {
-  removeViewer(normalizeHostName(username), false);
+  const u = normalizeHostName(username);
+  if (validName(u)) { removed.add(u); saveRemoved(); }
+  removeViewer(u, false);
+  changed();
 }
 
+/** "Forget everyone": a fresh start - the list, the saved pictures and the removed-people list are all cleared. */
 export function forgetAllViewers() {
   for (const u of [...viewers.keys()]) removeViewer(u, true);
+  removed.clear();
+  saveRemoved();
+  changed();
+}
+
+/** Let the people the host removed one by one be added again (when they next join / chat). */
+export function allowRemovedViewers() {
+  if (removed.size === 0) return;
+  removed.clear();
+  saveRemoved();
   changed();
 }
 
@@ -218,7 +263,7 @@ export function viewerCounts() {
     if (v.hash) ready++;
     if (v.sel && v.hash) readySelected++;
   }
-  return { total: viewers.size, selected, ready, readySelected };
+  return { total: viewers.size, selected, ready, readySelected, removed: removed.size };
 }
 
 /** Ticked viewers whose picture is saved - the ones that may appear as symbols. */

@@ -60,6 +60,8 @@ const el = {
   viewerTickAll: document.getElementById("viewerTickAll"),
   viewerUntickAll: document.getElementById("viewerUntickAll"),
   viewerForgetAll: document.getElementById("viewerForgetAll"),
+  viewerAllowRemoved: document.getElementById("viewerAllowRemoved"),
+  symViewersAutoToggle: document.getElementById("symViewersAutoToggle"),
   keyboard: document.getElementById("keyboard"),
 
   controls: document.getElementById("controls"),
@@ -556,7 +558,7 @@ function renderSymbolPreview() {
   if (!el.symPreview || !window.ShapedleSymbols) return;
   const enabled = ((symOpts && symOpts.enabledSets) || ["cute"]).filter((id) => id !== VIEWERS_SET_ID);
   const sets = enabled.length ? enabled : ["cute"];
-  const withPics = symOpts && symOpts.enabledSets.indexOf(VIEWERS_SET_ID) >= 0;
+  const withPics = symOpts && (symOpts.enabledSets.indexOf(VIEWERS_SET_ID) >= 0 || symOpts.viewersAuto !== false);
   const readyPics = viewerRoster.filter((v) => v.sel && v.url).slice(0, 2);
   const viewers = {};
   const ids = [];
@@ -581,12 +583,13 @@ function syncSymbolSettings(g) {
   if (el.symAnimStyle) el.symAnimStyle.value = o.animStyle;
   if (el.symAnimSpeed) el.symAnimSpeed.value = o.animSpeed;
   if (el.symViewersFirstToggle) el.symViewersFirstToggle.checked = o.viewersFirst !== false;
+  if (el.symViewersAutoToggle) el.symViewersAutoToggle.checked = o.viewersAuto !== false;
   updateSymbolSettingsLabels();
   applySymbolLook(o);
   renderSymbolPreview();
   const c = g.viewerCounts;
   if (c) {
-    const sig = [c.total, c.selected, c.ready, c.readySelected].join(",");
+    const sig = [c.total, c.selected, c.ready, c.readySelected, c.removed || 0].join(",");
     if (sig !== viewerCountsSig) { viewerCountsSig = sig; requestViewerRoster(); }
   }
 }
@@ -604,6 +607,7 @@ el.symAnimToggle.addEventListener("change", () => sendSymbolOptions({ animated: 
 el.symAnimStyle.addEventListener("change", () => sendSymbolOptions({ animStyle: el.symAnimStyle.value }));
 el.symAnimSpeed.addEventListener("change", () => sendSymbolOptions({ animSpeed: el.symAnimSpeed.value }));
 el.symViewersFirstToggle.addEventListener("change", () => sendSymbolOptions({ viewersFirst: el.symViewersFirstToggle.checked }));
+if (el.symViewersAutoToggle) el.symViewersAutoToggle.addEventListener("change", () => sendSymbolOptions({ viewersAuto: el.symViewersAutoToggle.checked }));
 el.symSetsAll.addEventListener("click", () => { const all = SYMBOL_SET_CHOICES.map((c) => c.id); sendSymbolOptions({ enabledSets: all }); syncSymbolPackPicker(all); });
 el.symSetsNone.addEventListener("click", () => {
   const keep = (symOpts && symOpts.enabledSets && symOpts.enabledSets[0]) || "cute"; // at least one stays
@@ -623,7 +627,8 @@ function timeAgo(ms) {
 function onViewerRoster(payload) {
   viewerRoster = (payload && payload.viewers) || [];
   const c = (payload && payload.counts) || { total: viewerRoster.length, selected: 0, ready: 0, readySelected: 0 };
-  el.viewerSummary.textContent = c.total + " saved · " + c.ready + " with a picture · " + c.selected + " ticked (" + c.readySelected + " ready to use as symbols)";
+  el.viewerSummary.textContent = c.total + " saved · " + c.ready + " with a picture · " + c.selected + " ticked (" + c.readySelected + " ready to use as symbols)" + (c.removed ? " · " + c.removed + " removed by you" : "");
+  if (el.viewerAllowRemoved) { el.viewerAllowRemoved.hidden = !c.removed; el.viewerAllowRemoved.textContent = "Allow removed people again (" + (c.removed || 0) + ")"; }
   renderViewerList();
   renderSymbolPreview();
 }
@@ -657,7 +662,7 @@ function renderViewerList() {
     sub.textContent = "@" + v.u + " · seen " + timeAgo(v.last) + (v.url ? "" : " · picture not saved yet");
     info.appendChild(nameEl); info.appendChild(sub);
     const del = document.createElement("button");
-    del.type = "button"; del.className = "viewerForget"; del.title = "Forget this person"; del.textContent = "✕";
+    del.type = "button"; del.className = "viewerForget"; del.title = "Remove this person (they will not be added back automatically)"; del.textContent = "✕";
     del.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); send("forget_viewer", { username: v.u }); });
     row.addEventListener("click", (e) => { if (e.target === box || e.target === del) return; box.checked = !box.checked; box.dispatchEvent(new Event("change")); });
     row.appendChild(box); row.appendChild(pic); row.appendChild(info); row.appendChild(del);
@@ -673,8 +678,9 @@ function renderViewerList() {
 el.viewerSearch.addEventListener("input", renderViewerList);
 el.viewerTickAll.addEventListener("click", () => send("set_all_viewers_selected", { on: true, onlyWithPicture: true }));
 el.viewerUntickAll.addEventListener("click", () => send("set_all_viewers_selected", { on: false }));
+if (el.viewerAllowRemoved) el.viewerAllowRemoved.addEventListener("click", () => send("allow_removed_viewers", {}));
 el.viewerForgetAll.addEventListener("click", () => {
-  if (window.confirm("Forget everyone and delete all saved profile pictures? This cannot be undone.")) send("forget_all_viewers", {});
+  if (window.confirm("Forget everyone, delete all saved profile pictures and clear your removed-people list? Anyone who joins or chats afterwards is added (and ticked) again. This cannot be undone.")) send("forget_all_viewers", {});
 });
 // a picture that cannot load falls back to a colored initial (same look as a viewer without a picture)
 document.addEventListener("error", (e) => {

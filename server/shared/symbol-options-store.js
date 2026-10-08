@@ -32,6 +32,7 @@ export const DEFAULT_OPTIONS = Object.freeze({
   enabledSets: ["cute"],
   combine: "one",        // "one" = one ticked set per round (random) / "blend" = every ticked set mixed in each round
   viewersFirst: true,    // picked profile pictures take the first symbol places of a round
+  viewersAuto: true,     // (update 31) ticked audience pictures are used automatically - no need to also tick the "Audience profile pictures" set
   colorIntensity: 100,   // 0-200 (%)
   brightness: 100,       // 60-140 (%)
   size: 100,             // 60-100 (%)
@@ -57,6 +58,7 @@ export function sanitizeOptions(input, base = DEFAULT_OPTIONS) {
   }
   if (COMBINE_MODES.includes(src.combine)) out.combine = src.combine;
   if (typeof src.viewersFirst === "boolean") out.viewersFirst = src.viewersFirst;
+  if (typeof src.viewersAuto === "boolean") out.viewersAuto = src.viewersAuto;
   if (src.colorIntensity !== undefined) out.colorIntensity = clampInt(src.colorIntensity, 0, 200, out.colorIntensity);
   if (src.brightness !== undefined) out.brightness = clampInt(src.brightness, 60, 140, out.brightness);
   if (src.size !== undefined) out.size = clampInt(src.size, 60, 100, out.size);

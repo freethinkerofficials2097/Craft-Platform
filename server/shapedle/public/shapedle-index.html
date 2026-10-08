@@ -307,8 +307,13 @@
         </div>
 
         <h5 class="symSub">5 · Audience profile pictures</h5>
-        <p class="sectionNote">Everyone who joins, chats, likes or sends a gift in your LIVE is saved here together with a copy of their profile picture, and stays in the list even after they leave (or after a server restart). Tick the people whose round profile picture may be used as a symbol, then also tick <b>Audience profile pictures</b> in the symbol sets above. If fewer pictures are ticked than a word needs, the remaining symbols come from your other ticked sets.</p>
+        <p class="sectionNote">Everyone who joins, chats, likes or sends a gift in your LIVE is saved here together with a copy of their profile picture, and stays in the list even after they leave (or after a server restart). <b>New people are ticked automatically</b>, so their round profile picture becomes a symbol from the next round, as soon as the picture is saved. <b>Untick</b> anyone to stop using their picture (they stay unticked), or press <b>✕</b> to remove them for good - a removed person is not added back, even if they keep chatting, until you press <b>Allow removed people again</b>. If fewer pictures are ticked than a word needs, the remaining symbols come from your other ticked sets.</p>
         <div class="viewerSummary" id="viewerSummary">0 people saved</div>
+        <label class="switchRow">
+          <input type="checkbox" id="symViewersAutoToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Use ticked pictures automatically (no need to also tick “Audience profile pictures” above)</span>
+        </label>
         <label class="switchRow">
           <input type="checkbox" id="symViewersFirstToggle" />
           <span class="switchTrack"><span class="switchThumb"></span></span>
@@ -318,6 +323,7 @@
         <div class="symBtnRow">
           <button class="symBtn" type="button" id="viewerTickAll">Tick everyone with a picture</button>
           <button class="symBtn" type="button" id="viewerUntickAll">Untick all</button>
+          <button class="symBtn" type="button" id="viewerAllowRemoved" hidden>Allow removed people again (0)</button>
           <button class="symBtn symBtnDanger" type="button" id="viewerForgetAll">Forget everyone</button>
         </div>
         <div class="viewerList" id="viewerList" role="list"></div>
