@@ -3,8 +3,8 @@
 This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
-covers all twelve games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
-CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle).
+covers all thirteen games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
+CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle).
 
 ---
 

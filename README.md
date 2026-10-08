@@ -1,4 +1,5 @@
 # TikTok LIVE Game Platform
+> **Update 23:** new game CODEDLE (number code + green / yellow / blue / pink / gray letter clues) at `/codedle/` - see `CHANGES_UPDATE_23.md`.
 > **Update 22:** new game RANGEDLE (letters colored by alphabet distance) at `/rangedle/` - see `CHANGES_UPDATE_22.md`.
 > **Update 21:** TEXTLE now accepts any real word as a guess, even if it conflicts with earlier clues - see `CHANGES_UPDATE_21.md`.
 
@@ -172,6 +173,30 @@ The picture is taken from the room info TikTok returns on connect (with a second
 lookup, and finally the host's own chat messages, as fallbacks). It appears as
 soon as the connection is up - even mid-round - and goes back to the plain
 circle in Test/Offline mode, after Disconnect, or if TikTok gives no picture.
+
+## Codedle (new)
+
+**Codedle** - a BLINDLE copy built on the SEQUENC-O idea (copied from RANGEDLE's board, keyboard and scoring
+structure). Same platform machinery: word bank, 370k-word dictionary, difficulty tiers, unlimited guesses,
+Live/Test/Offline, hints, leaderboards, celebration, engagement alerts, color shades.
+
+- **The code.** Each round the board shows a row of numbers, one per letter of the hidden word. A number is that
+  letter's place if the word's letters were **sorted alphabetically** (repeats numbered left to right).
+  `tell` -> e l l t -> code **4 1 2 3**. The numbers sit exactly above the tile columns.
+- **Tile colors** (per letter, Wordle-style duplicate counting: greens first, then yellows left to right):
+  **green** right letter, right spot - **yellow** in the word, wrong spot - **blue** within 3 letters of the hidden
+  letter of that spot (and not in the word) - **pink** both yellow and blue - **gray** not in the word.
+- **Legend** (what each color means) sits directly under the floating message window and above the board.
+  Screen order: floating message -> legend -> keyboard -> code row -> guess board (nothing overlaps).
+- **Self-coloring keyboard.** No manual coloring. Each key takes the best color its letter earned in any guess this
+  round: green > pink > yellow > blue > gray. No number columns clue.
+- **Scoring (Live):** 1 point for every guess placed on the board, 5 points for the guess that solves the round.
+- Any real word of the right length is accepted (a word already on the board is skipped). Settings: **Strict fit**
+  (BLINDLE's "must fit every earlier clue" rule, off by default) and **Starter word** (on by default, like BLINDLE).
+- Hints suggest a word with the same code (when one exists) that best fits the colors so far - never the answer.
+
+Files: `server/codedle/codedle-server.js` + its own `public/` client folder, mounted at `/codedle/` on Socket.IO
+namespace `/codedle`. Clue logic lives in `buildCode()` and `scoreClue()` at the top of the server file.
 
 ## Colorblindle (new)
 

@@ -95,6 +95,13 @@
       { id: "d4", label: "Blue", hint: "16-20 letters away", std: "#1E73E8", stdDark: "#1456B0", vars: ["--rg-d4"], darkVars: ["--rg-d4-dark"], inkVars: ["--rg-d4-ink"] },
       { id: "d5", label: "Purple", hint: "21-25 letters away", std: "#7B3FE4", stdDark: "#5A25B8", vars: ["--rg-d5"], darkVars: ["--rg-d5-dark"], inkVars: ["--rg-d5-ink"] }
     ],
+    codedle: [
+      { id: "hit", label: "Green", hint: "right letter, right spot (tiles, legend & keys)", std: "#0E9F45", stdDark: "#087A32", vars: ["--cd-hit"], darkVars: ["--cd-hit-dark"], inkVars: ["--cd-hit-ink"] },
+      { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (tiles, legend & keys)", std: "#E5B400", stdDark: "#B38C00", vars: ["--cd-yellow"], darkVars: ["--cd-yellow-dark"], inkVars: ["--cd-yellow-ink"] },
+      { id: "blue", label: "Blue", hint: "within 3 letters of the hidden letter (tiles, legend & keys)", std: "#5FB4FF", stdDark: "#2F86D6", vars: ["--cd-blue"], darkVars: ["--cd-blue-dark"], inkVars: ["--cd-blue-ink"] },
+      { id: "pink", label: "Pink", hint: "in the word and within 3 letters (tiles, legend & keys)", std: "#FF8FC8", stdDark: "#D9569B", vars: ["--cd-pink"], darkVars: ["--cd-pink-dark"], inkVars: ["--cd-pink-ink"] },
+      { id: "gray", label: "Gray", hint: "not in the word (tiles, legend & keys)", std: "#7B8092", stdDark: "#5A5F70", vars: ["--cd-gray"], darkVars: ["--cd-gray-dark"], inkVars: ["--cd-gray-ink"] }
+    ],
     findle: [
       { id: "leaf", label: "Green", hint: "found / correct", std: "#7DC468", stdDark: "#1F6B2E", vars: ["--findle-leaf"], darkVars: ["--findle-leaf-text"], inkVars: ["--findle-leaf-dark"] },
       { id: "citrus", label: "Orange", hint: "title, score & emphasis", std: "#FFB84D", stdDark: "#8A5A17", vars: ["--findle-citrus"], darkVars: ["--findle-citrus-text"], inkVars: ["--findle-citrus-dark"] },

@@ -18,6 +18,7 @@
 //   /structle/ - STRUCTLE  (Socket.IO namespace /structle)
 //   /textle/   - TEXTLE    (Socket.IO namespace /textle)
 //   /rangedle/ - RANGEDLE  (Socket.IO namespace /rangedle)
+//   /codedle/  - CODEDLE   (Socket.IO namespace /codedle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -43,6 +44,7 @@ import { registerFlagle } from "./server/flagle.js";
 import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { mountRangedle } from "./server/rangedle/rangedle-server.js";
+import { mountCodedle } from "./server/codedle/codedle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -142,6 +144,13 @@ await mountTextle(app, io, { mountPath: "/textle" });
 // Like ORACLE it runs on its own Socket.IO namespace /rangedle (so it can never collide with
 // BLINDLE's WebSocket path) and reuses BLINDLE's word bank + dictionary (loaded once).
 await mountRangedle(app, io, { mountPath: "/rangedle" });
+
+// CODEDLE is a BLINDLE copy built on the SEQUENC-O idea: the board opens with a row of number-code
+// digits (each letter's place if the hidden word's letters were sorted A-Z) and every guess letter is
+// colored green / yellow / blue / pink / gray. The keyboard colors itself. Scoring: 1 point per guess
+// on the board, 5 for solving the round. Own Socket.IO namespace /codedle; reuses BLINDLE's word bank
+// + dictionary (loaded once).
+await mountCodedle(app, io, { mountPath: "/codedle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
