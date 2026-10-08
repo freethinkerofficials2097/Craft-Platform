@@ -15,6 +15,8 @@
 <link rel="stylesheet" href="/shared/game-colors.css" />
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="crossdle"></script>
+<link rel="stylesheet" href="/shared/legend.css" />
+<script src="/shared/legend.js" data-game="crossdle"></script>
 <script src="/shared/title-font.js" defer></script>
 </head>
 <body data-game="crossdle">
@@ -106,13 +108,6 @@
   <main class="main-content">
 
     <section class="board-section">
-      <div class="board-legend">
-        <span class="legend-item"><i class="chip chip-green"></i> Green</span>
-        <span class="legend-item"><i class="chip chip-yellow"></i> Yellow</span>
-        <span class="legend-item"><i class="chip chip-grey"></i> Grey</span>
-        <span class="legend-item"><i class="chip chip-decoy"></i> Decoy word (blue)</span>
-        <span class="legend-note">Unlimited guesses — only real words (matching this round's length) are tested &amp; added to the board.</span>
-      </div>
 
       <!-- Reserved slot ABOVE the keyboard for the rejection message (never overlaps). -->
       <div class="toast-slot">
@@ -126,6 +121,8 @@
         <div class="keyboard-row" id="keyboardRow1"></div>
         <div class="keyboard-row" id="keyboardRow2"></div>
       </div>
+
+      <div class="board-legend"><span class="legend-note">Unlimited guesses — only real words (matching this round's length) are tested &amp; added to the board.</span></div>
 
       <div id="hintsRow" class="hints-row hidden">
         <span class="hints-label">💡 Hints revealed:</span>
