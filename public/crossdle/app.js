@@ -63,6 +63,7 @@
   const hintsTiles = el('hintsTiles');
 
   const strictFitToggle = el('strictFitToggle');
+  const keyAutoColorToggle = el('keyAutoColorToggle');
   const hostFab = el('hostFab');
   const hostPanelOverlay = el('hostPanelOverlay');
   const hostPanelClose = el('hostPanelClose');
@@ -205,7 +206,12 @@
 
   const RANK = { green: 3, yellow: 2, grey: 1, unused: 0 };
 
+  let keyAutoColorOn = true;
+  let lastKeyboardAttempts = [];
+
   function renderKeyboard(attempts) {
+    lastKeyboardAttempts = attempts || [];
+    if (!keyAutoColorOn) { resetKeyboard(); return; }
     const best = {};
     for (const attempt of attempts) {
       for (let i = 0; i < attempt.guess.length; i++) {
@@ -430,6 +436,9 @@
   function renderGame(game) {
     if (!game) return;
     if (strictFitToggle) strictFitToggle.checked = game.strictFit !== false; // Strict fit is ON unless the host switched it off
+    if (keyAutoColorToggle) keyAutoColorToggle.checked = game.keyAutoColor !== false; // ON unless the host switched it off
+    const keyAutoColorChanged = keyAutoColorOn !== (game.keyAutoColor !== false);
+    keyAutoColorOn = game.keyAutoColor !== false;
 
     roundPill.textContent = game.roundNumber ? `Round ${game.roundNumber}` : 'Round —';
     renderLeaderboardTicker(game.leaderboard || []);
@@ -467,6 +476,9 @@
       lastRenderedAttemptCount = round.attempts.length;
       lastRenderedStarterAvatar = starterAvatar;
     }
+
+    // The host flipped Auto-color keyboard keys: repaint the keys right away.
+    if (keyAutoColorChanged) renderKeyboard(round.attempts);
 
     renderHints(round);
     renderBanner(round, game.leaderboard || []);
@@ -699,6 +711,9 @@
   });
 
   // Strict fit applies immediately, without restarting the round.
+  if (keyAutoColorToggle) keyAutoColorToggle.addEventListener('change', () => {
+    socket.emit('host:setKeyAutoColor', { on: keyAutoColorToggle.checked });
+  });
   if (strictFitToggle) strictFitToggle.addEventListener('change', () => {
     socket.emit('host:setStrictFit', { on: strictFitToggle.checked });
   });

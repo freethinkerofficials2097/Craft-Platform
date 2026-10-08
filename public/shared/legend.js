@@ -118,7 +118,7 @@
       items: [
         { id: "hit", glyph: "A", label: "Green — right spot", c: V("--cd-hit", "#0E9F45", "#fff", "#087A32") },
         { id: "yellow", glyph: "A", label: "Yellow — wrong spot", c: V("--cd-yellow", "#E5B400", "#241a00", "#B38C00") },
-        { id: "blue", glyph: "A", label: "Blue — within 3 letters of target", c: V("--cd-blue", "#5FB4FF", "#06223d", "#2F86D6") },
+        { id: "blue", glyph: "A", label: "Blue — within 3 letters", c: V("--cd-blue", "#5FB4FF", "#06223d", "#2F86D6") },
         { id: "pink", glyph: "A", label: "Pink — yellow + blue", c: V("--cd-pink", "#FF8FC8", "#3d0a25", "#D9569B") },
         { id: "gray", glyph: "A", label: "Gray — not in word", c: V("--cd-gray", "#7B8092", "#fff", "#5A5F70") }
       ]
