@@ -211,6 +211,8 @@
   var selfResize = false;
   var applyingRemote = false;
   var sendTimer = null;
+  var pending = false;     // my edits that have not been sent to the server yet
+  var cid = Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);   // this screen's id
 
   function defMap() {
     var m = {};
@@ -523,8 +525,10 @@
     if (structural) buildItemsList();
     if (applyingRemote) return;
     clearTimeout(sendTimer);
+    pending = true;
     sendTimer = setTimeout(function () {
-      if (socket && socket.connected) socket.emit("legend:set", { game: game, settings: S });
+      pending = false;
+      if (socket && socket.connected) socket.emit("legend:set", { game: game, settings: S, cid: cid });
     }, 250);
   }
   function resetAll() {
@@ -533,7 +537,9 @@
     render();
     syncControls();
     buildItemsList();
-    if (socket && socket.connected) socket.emit("legend:reset", { game: game });
+    clearTimeout(sendTimer);
+    pending = false;
+    if (socket && socket.connected) socket.emit("legend:reset", { game: game, cid: cid });
   }
 
   function connect() {
@@ -544,6 +550,16 @@
       socket.on("connect", function () { socket.emit("legend:join", { game: game }); });
       socket.on("legend:state", function (msg) {
         if (!msg || msg.game !== game) return;
+        if (msg.by && msg.by === cid) return;      // my own change coming back: S is already newer than it
+        if (pending) return;                       // I still have edits waiting to be sent; they win
+        if (msg.settings == null && msg.kind === "join") {
+          // The server has nothing saved (e.g. its disk was wiped on a redeploy) but this browser remembers the
+          // host's legend: give it back to the server instead of resetting the host's design.
+          var cached = null;
+          try { cached = localStorage.getItem(storageKey); } catch (e) { /* ignore */ }
+          if (cached) socket.emit("legend:set", { game: game, settings: S, cid: cid });
+          return;
+        }
         var busy = panelRoot && panelRoot.contains(document.activeElement) &&
           /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName);
         applyingRemote = true;
@@ -686,22 +702,33 @@
           : '<button type="button" class="lgMini lgDel" title="Delete this entry">✕</button>');
       ul.appendChild(li);
 
+      // Always edit the CURRENT entry (looked up by id), never a captured object: if the settings object is
+      // replaced meanwhile (another screen changed the legend) an edit must still land and show.
+      function live() {
+        for (var k = 0; k < S.items.length; k++) if (S.items[k].id === it.id) return S.items[k];
+        return null;
+      }
       function reorder(delta) {
-        var j = idx + delta;
-        if (j < 0 || j >= S.items.length) return;
-        var t = S.items[idx]; S.items[idx] = S.items[j]; S.items[j] = t;
+        var at = -1;
+        for (var k = 0; k < S.items.length; k++) if (S.items[k].id === it.id) { at = k; break; }
+        var j = at + delta;
+        if (at < 0 || j < 0 || j >= S.items.length) return;
+        var t = S.items[at]; S.items[at] = S.items[j]; S.items[j] = t;
         commit(true);
       }
       li.querySelector(".lgUp").addEventListener("click", function () { reorder(-1); });
       li.querySelector(".lgDn").addEventListener("click", function () { reorder(1); });
-      li.querySelector(".lgOn").addEventListener("change", function (e) { it.enabled = e.target.checked; li.classList.toggle("off", !it.enabled); commit(false); });
-      li.querySelector(".lgGlyph").addEventListener("input", function (e) { it.glyph = e.target.value; commit(false); });
-      li.querySelector(".lgLabel").addEventListener("input", function (e) { it.label = e.target.value; commit(false); });
-      li.querySelector(".lgColor").addEventListener("input", function (e) { it.color = e.target.value; commit(false); var r = li.querySelector(".lgRst"); if (r) r.disabled = false; });
+      li.querySelector(".lgOn").addEventListener("change", function (e) { var c = live(); if (!c) return; c.enabled = e.target.checked; li.classList.toggle("off", !c.enabled); commit(false); });
+      li.querySelector(".lgGlyph").addEventListener("input", function (e) { var c = live(); if (!c) return; c.glyph = e.target.value; commit(false); });
+      li.querySelector(".lgLabel").addEventListener("input", function (e) { var c = live(); if (!c) return; c.label = e.target.value; commit(false); });
+      li.querySelector(".lgColor").addEventListener("input", function (e) { var c = live(); if (!c) return; c.color = e.target.value; commit(false); var r = li.querySelector(".lgRst"); if (r) r.disabled = false; });
       var rst = li.querySelector(".lgRst");
-      if (rst) rst.addEventListener("click", function () { delete it.color; commit(true); });
+      if (rst) rst.addEventListener("click", function () { var c = live(); if (!c) return; delete c.color; commit(true); });
       var del = li.querySelector(".lgDel");
-      if (del) del.addEventListener("click", function () { S.items.splice(idx, 1); commit(true); });
+      if (del) del.addEventListener("click", function () {
+        for (var k = 0; k < S.items.length; k++) if (S.items[k].id === it.id) { S.items.splice(k, 1); break; }
+        commit(true);
+      });
     });
     var add = panelRoot.querySelector("#lgAdd");
     if (add) add.disabled = S.items.length >= MAX_ITEMS;

@@ -1,4 +1,5 @@
 # TikTok LIVE Game Platform
+> **Update 32:** SHAPEDLE audience profile pictures are ticked automatically (untick or remove anyone), and the legend entries (order, text, colors) always apply - see `CHANGES_UPDATE_32.md`.
 > **Update 31:** the legend settings are now called **LEGENDS SETTINGS**, with new positions (directly above / below the keyboard) and an exact rows x columns layout - see `CHANGES_UPDATE_31.md`.
 > **Update 28:** new game SHAPEDLE (a row of cute symbols, one per letter, + green / yellow / gray clues, host-selectable symbol packs) at `/shapedle/` - see `CHANGES_UPDATE_28.md`.
 > **Update 25:** **Strict fit** is now in every letter word game and ON by default (the host can switch it off per game in Settings; the choice is remembered) - see `CHANGES_UPDATE_25.md`.
