@@ -8,9 +8,15 @@
 //   plush    - TWISTLE's 12 plush toys (+ cute shapes for the rest)
 //   classic  - flat colored shapes like the original SHAPE-O game
 //   animals / sweets / nature - emoji packs
+//   flags (42 drawn country flags - drawn, not emoji, because Windows cannot show flag emoji),
+//   professions / sports / transport - emoji packs
+//   viewers  - the audience's TikTok profile pictures (not a pack of its own: the server picks which ones)
 //
-// Usage: ShapedleSymbols.html(packId, slot)  -> markup for one symbol (fills its box)
-//        ShapedleSymbols.PACKS               -> [{ id, name, hint }] for the host's picker
+// Usage: ShapedleSymbols.html(packId, slot)        -> markup for one symbol of a pack (fills its box)
+//        ShapedleSymbols.htmlById(id, viewers)     -> markup for a symbol id sent by the server:
+//                                                     "flags:12" or "viewers:<tiktok name>" (viewers = state.symbolViewers)
+//        ShapedleSymbols.PACKS                     -> [{ id, name, hint, size }] for the host's picker
+// (update 29) The number of symbols per pack must match SET_SIZES in server/shared/symbol-options-store.js.
 (function (global) {
   'use strict';
 
@@ -141,9 +147,132 @@
   const EMOJI = {
     animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐤', '🦄', '🐝', '🦋', '🐌', '🐞', '🐢', '🐙', '🐳'],
     sweets: ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥝', '🍍', '🥕', '🌽', '🍄', '🍞', '🧀', '🍔', '🍕', '🍩', '🍪', '🍰', '🍫', '🍬', '🍭', '🍦', '🧁'],
+    professions: ['👩‍⚕️', '👨‍🍳', '👨‍🌾', '👨‍✈️', '👩‍🚀', '👨‍🚒', '👮', '👷', '👩‍🏫', '👨‍🎓', '👩‍🔬', '👨‍💻', '👩‍🎨', '👨‍🎤', '👩‍🔧', '👨‍⚖️', '💂', '🕵️', '👨‍🏭', '👩‍💼', '🤵', '🎅', '🧙', '🦸', '🤹', '🏇'],
+    sports: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🏒', '🥊', '🥋', '⛳', '🏹', '🎣', '🏊', '🚴', '🏋️', '⛷️', '🏂', '🤿', '🛹', '🏏', '🥅', '🎯'],
+    transport: ['🚗', '🚕', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚚', '🚜', '🛵', '🏍️', '🚲', '🛴', '🚂', '🚆', '✈️', '🚁', '🚀', '🛸', '⛵', '🚤', '🛳️', '🚢', '🛶', '🎈'],
     nature: ['⭐', '🌙', '☀️', '🌈', '☁️', '❄️', '🔥', '💧', '🌸', '🌻', '🌷', '🍀', '🌵', '🌴', '🍁', '🌍', '🪐', '🚀', '🛸', '☄️', '🌊', '⚡', '🎈', '🎁', '🔔', '🎵']
   };
   const emojiSlot = (pack) => (i) => `<span class="symEmoji">${EMOJI[pack][i % 26]}</span>`;
+
+
+  // ---- flags (42 drawn flags, 60 x 40 each) --------------------------------------------
+  const stripesH = (cols, w) => {
+    const tot = (w || cols.map(() => 1)).reduce((a, b) => a + b, 0);
+    let y = 0;
+    return cols.map((c, i) => {
+      const h = (40 * (w ? w[i] : 1)) / tot;
+      const r = `<rect x="0" y="${fx(y)}" width="60" height="${fx(h + 0.3)}" fill="${c}"/>`;
+      y += h;
+      return r;
+    }).join('');
+  };
+  const stripesV = (cols) => cols.map((c, i) => `<rect x="${fx((60 / cols.length) * i)}" y="0" width="${fx(60 / cols.length + 0.3)}" height="40" fill="${c}"/>`).join('');
+  const rect = (x, y, w, h, c) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`;
+  const circ = (x, y, r, c) => `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}"/>`;
+  const star = (cx, cy, ro, ri, c) => `<polygon points="${poly(starPts(cx, cy, ro, ri))}" fill="${c}"/>`;
+  const trigram = (cx, cy, rot) =>
+    `<g transform="rotate(${rot} ${cx} ${cy})">` +
+    [0, 1, 2].map((i) => rect(fx(cx - 4), fx(cy - 2.6 + i * 2.6), 8, 1.4, '#111')).join('') + '</g>';
+  const nordic = (bg, outer, inner, x) => {
+    const w = inner ? 9 : 6;
+    let o = rect(0, 0, 60, 40, bg);
+    o += rect(x, 0, w, 40, outer) + rect(0, fx(20 - w / 2), 60, w, outer);
+    if (inner) o += rect(fx(x + 2.5), 0, 4, 40, inner) + rect(0, 18, 60, 4, inner);
+    return o;
+  };
+
+  const FLAGS = [
+    () => stripesV(['#0055A4', '#FFFFFF', '#EF4135']),                                  // France
+    () => stripesV(['#009246', '#FFFFFF', '#CE2B37']),                                  // Italy
+    () => stripesV(['#169B62', '#FFFFFF', '#FF883E']),                                  // Ireland
+    () => stripesV(['#000000', '#FDDA24', '#EF3340']),                                  // Belgium
+    () => stripesH(['#000000', '#DD0000', '#FFCE00']),                                  // Germany
+    () => stripesH(['#AE1C28', '#FFFFFF', '#21468B']),                                  // Netherlands
+    () => stripesH(['#FFFFFF', '#0039A6', '#D52B1E']),                                  // Russia
+    () => stripesH(['#0057B7', '#FFD700']),                                             // Ukraine
+    () => stripesH(['#FFFFFF', '#DC143C']),                                             // Poland
+    () => stripesH(['#E70011', '#FFFFFF']),                                             // Indonesia
+    () => stripesH(['#CE2939', '#FFFFFF', '#477050']),                                  // Hungary
+    () => stripesH(['#ED2939', '#FFFFFF', '#ED2939']),                                  // Austria
+    () => stripesH(['#AA151B', '#F1BF00', '#AA151B'], [1, 2, 1]),                       // Spain
+    () => stripesH(['#FCD116', '#003893', '#CE1126'], [2, 1, 1]),                       // Colombia
+    () => stripesV(['#008751', '#FFFFFF', '#008751']),                                  // Nigeria
+    () => stripesV(['#D91023', '#FFFFFF', '#D91023']),                                  // Peru
+    () => stripesV(['#002B7F', '#FCD116', '#CE1126']),                                  // Romania
+    () => stripesH(['#FDB913', '#006A44', '#C1272D']),                                  // Lithuania
+    () => stripesH(['#0072CE', '#000000', '#FFFFFF']),                                  // Estonia
+    () => stripesH(['#A51931', '#F4F5F8', '#2D2A4A', '#F4F5F8', '#A51931'], [1, 1, 2, 1, 1]), // Thailand
+    () => rect(0, 0, 60, 40, '#FFFFFF') + circ(30, 20, 12, '#BC002D'),                  // Japan
+    () => rect(0, 0, 60, 40, '#DA291C') + rect(26, 8, 8, 24, '#FFFFFF') + rect(14, 16, 32, 8, '#FFFFFF'), // Switzerland
+    () => nordic('#006AA7', '#FECC00', null, 16),                                       // Sweden
+    () => nordic('#BA0C2F', '#FFFFFF', '#00205B', 14),                                  // Norway
+    () => nordic('#C8102E', '#FFFFFF', null, 16),                                       // Denmark
+    () => nordic('#FFFFFF', '#003580', null, 16),                                       // Finland
+    () => nordic('#02529C', '#FFFFFF', '#DC1E35', 14),                                  // Iceland
+    () => {                                                                             // Greece
+      const cols = [];
+      for (let i = 0; i < 9; i++) cols.push(i % 2 === 0 ? '#0D5EAF' : '#FFFFFF');
+      return stripesH(cols) + rect(0, 0, 22.3, 22.3, '#0D5EAF') + rect(9.2, 0, 4, 22.3, '#FFFFFF') + rect(0, 9.2, 22.3, 4, '#FFFFFF');
+    },
+    () => {                                                                             // USA
+      const cols = [];
+      for (let i = 0; i < 13; i++) cols.push(i % 2 === 0 ? '#B22234' : '#FFFFFF');
+      let o = stripesH(cols) + rect(0, 0, 25, 21.5, '#3C3B6E');
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) o += circ(fx(3.2 + c * 4.6), fx(3.2 + r * 4.9), 1.15, '#FFFFFF');
+      return o;
+    },
+    () =>                                                                               // United Kingdom
+      rect(0, 0, 60, 40, '#012169') +
+      '<path d="M0 0L60 40M60 0L0 40" stroke="#FFFFFF" stroke-width="8"/>' +
+      '<path d="M0 0L60 40M60 0L0 40" stroke="#C8102E" stroke-width="3"/>' +
+      rect(24, 0, 12, 40, '#FFFFFF') + rect(0, 14, 60, 12, '#FFFFFF') +
+      rect(26, 0, 8, 40, '#C8102E') + rect(0, 16, 60, 8, '#C8102E'),
+    () =>                                                                               // Canada
+      rect(0, 0, 60, 40, '#FFFFFF') + rect(0, 0, 15, 40, '#D52B1E') + rect(45, 0, 15, 40, '#D52B1E') +
+      '<polygon points="30,6 33,13 38,11 36,19 42,17 39,23 43,26 31,27 31,34 29,34 29,27 17,26 21,23 18,17 24,19 22,11 27,13" fill="#D52B1E"/>',
+    () =>                                                                               // Brazil
+      rect(0, 0, 60, 40, '#009C3B') + '<polygon points="30,4 55,20 30,36 5,20" fill="#FFDF00"/>' + circ(30, 20, 9, '#002776') +
+      '<path d="M21.5 18.2Q30 15 38.5 21.8" stroke="#FFFFFF" stroke-width="1.6" fill="none"/>',
+    () => rect(0, 0, 60, 40, '#DE2910') + star(10, 10, 6.4, 2.6, '#FFDE00') +           // China
+      [[20, 4], [24, 8.5], [24, 14], [20, 18.5]].map(([x, y]) => star(x, y, 2, 0.8, '#FFDE00')).join(''),
+    () => stripesH(['#FF9933', '#FFFFFF', '#138808']) +                                 // India
+      '<circle cx="30" cy="20" r="5" fill="none" stroke="#000080" stroke-width="1.2"/>' + circ(30, 20, 1, '#000080'),
+    () => rect(0, 0, 60, 40, '#E30A17') + circ(21, 20, 10, '#FFFFFF') + circ(24, 20, 8, '#E30A17') + star(33.5, 20, 4.6, 1.9, '#FFFFFF'), // Turkey
+    () => {                                                                             // Malaysia
+      const cols = [];
+      for (let i = 0; i < 14; i++) cols.push(i % 2 === 0 ? '#CC0001' : '#FFFFFF');
+      return stripesH(cols) + rect(0, 0, 30, 22.9, '#010066') + circ(10.5, 11.4, 7, '#FFCC00') + circ(12.6, 11.4, 5.7, '#010066') + star(19.8, 11.4, 4.4, 1.9, '#FFCC00');
+    },
+    () => stripesH(['#EF3340', '#FFFFFF']) + circ(11, 10, 7, '#FFFFFF') + circ(13.6, 10, 6, '#EF3340') + // Singapore
+      [[19.5, 6], [24, 9.5], [22.5, 15], [16.5, 15], [15, 9.5]].map(([x, y]) => circ(x, y, 1.3, '#FFFFFF')).join(''),
+    () =>                                                                               // South Korea
+      rect(0, 0, 60, 40, '#FFFFFF') +
+      '<path d="M20 20A10 10 0 0 1 40 20Z" fill="#CD2E3A"/><path d="M20 20A10 10 0 0 0 40 20Z" fill="#0047A0"/>' +
+      circ(25, 20, 5, '#0047A0') + circ(35, 20, 5, '#CD2E3A') +
+      trigram(8, 8, -36) + trigram(52, 8, 36) + trigram(8, 32, 36) + trigram(52, 32, -36),
+    () => rect(0, 0, 60, 40, '#FFFFFF') + rect(0, 4, 60, 5, '#0038B8') + rect(0, 31, 60, 5, '#0038B8') + // Israel
+      '<polygon points="30,11 38.7,26 21.3,26" fill="none" stroke="#0038B8" stroke-width="1.6"/>' +
+      '<polygon points="30,29 21.3,14 38.7,14" fill="none" stroke="#0038B8" stroke-width="1.6"/>',
+    () => rect(0, 0, 60, 40, '#FFFFFF') + rect(0, 0, 60, 13.4, '#00732F') + rect(0, 26.6, 60, 13.4, '#000000') + rect(0, 0, 15, 40, '#FF0000'), // UAE
+    () => stripesV(['#006847', '#FFFFFF', '#CE1126']) + circ(30, 20, 4.2, '#8B5A2B'),   // Mexico
+    () => stripesH(['#74ACDF', '#FFFFFF', '#74ACDF']) + circ(30, 20, 4, '#F6B40E')      // Argentina
+  ];
+
+  const FLAG_NAMES = ['France', 'Italy', 'Ireland', 'Belgium', 'Germany', 'Netherlands', 'Russia', 'Ukraine', 'Poland', 'Indonesia',
+    'Hungary', 'Austria', 'Spain', 'Colombia', 'Nigeria', 'Peru', 'Romania', 'Lithuania', 'Estonia', 'Thailand', 'Japan',
+    'Switzerland', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Iceland', 'Greece', 'USA', 'UK', 'Canada', 'Brazil', 'China',
+    'India', 'Turkey', 'Malaysia', 'Singapore', 'South Korea', 'Israel', 'UAE', 'Mexico', 'Argentina'];
+
+  function flagSlot(i) {
+    const draw = FLAGS[i % FLAGS.length];
+    return (
+      '<svg viewBox="0 0 64 64" aria-hidden="true">' +
+      '<svg x="3" y="13" width="58" height="38.7" viewBox="0 0 60 40" style="overflow:hidden">' + draw() + '</svg>' +
+      '<rect x="3" y="13" width="58" height="38.7" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>' +
+      '<path d="M3 13H61" stroke="rgba(255,255,255,.35)" stroke-width="1"/>' +
+      '</svg>'
+    );
+  }
 
   const PACKS = [
     { id: 'cute', name: 'Cute Faces', hint: 'Kawaii shapes with little faces', slot: cuteSlot },
@@ -151,19 +280,49 @@
     { id: 'classic', name: 'Classic Shapes', hint: 'Flat shapes, like the original SHAPE-O', slot: classicSlot },
     { id: 'animals', name: 'Animals', hint: 'Cute animal friends', slot: emojiSlot('animals') },
     { id: 'sweets', name: 'Sweets & Fruit', hint: 'Yummy treats', slot: emojiSlot('sweets') },
-    { id: 'nature', name: 'Sky & Garden', hint: 'Stars, flowers and rainbows', slot: emojiSlot('nature') }
+    { id: 'nature', name: 'Sky & Garden', hint: 'Stars, flowers and rainbows', slot: emojiSlot('nature') },
+    { id: 'flags', name: 'Flags of Countries', hint: '42 flags from around the world', slot: flagSlot, size: FLAGS.length },
+    { id: 'professions', name: 'Professions', hint: 'Doctors, chefs, pilots, astronauts...', slot: emojiSlot('professions') },
+    { id: 'sports', name: 'Sports', hint: 'Balls, medals and games', slot: emojiSlot('sports') },
+    { id: 'transport', name: 'Transport', hint: 'Cars, trains, planes and boats', slot: emojiSlot('transport') }
   ];
   const BY_ID = {};
   PACKS.forEach((p) => { BY_ID[p.id] = p; });
 
   function html(packId, slot) {
     const pack = BY_ID[packId] || BY_ID.cute;
-    const i = ((Number(slot) % 26) + 26) % 26;
+    const size = pack.size || 26;
+    const i = ((Number(slot) % size) + size) % size;
     return pack.slot(i);
   }
 
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  /**
+   * Markup for a symbol id from the server: "flags:12" / "cute:3" / "viewers:<tiktok name>".
+   * `viewers` is the server's id -> { n, url } map for the audience pictures of this round.
+   * An audience picture is a round <img>; if its picture is missing a colored initial circle stands in.
+   */
+  function htmlById(id, viewers) {
+    const text = String(id || '');
+    const cut = text.indexOf(':');
+    const set = cut > 0 ? text.slice(0, cut) : text;
+    const rest = cut > 0 ? text.slice(cut + 1) : '0';
+    if (set === 'viewers') {
+      const v = viewers && viewers[text];
+      const name = (v && v.n) || rest;
+      if (v && v.url) {
+        return '<img class="symAvatar" src="' + esc(v.url) + '" alt="" draggable="false" data-n="' + esc(name) + '">';
+      }
+      return '<span class="symAvatar symAvatarFallback">' + esc(String(name).charAt(0).toUpperCase() || '?') + '</span>';
+    }
+    return html(set, Number(rest));
+  }
+
   global.ShapedleSymbols = {
-    PACKS: PACKS.map((p) => ({ id: p.id, name: p.name, hint: p.hint })),
-    html
+    PACKS: PACKS.map((p) => ({ id: p.id, name: p.name, hint: p.hint, size: p.size || 26 })),
+    FLAG_NAMES,
+    html,
+    htmlById
   };
 })(window);

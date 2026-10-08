@@ -254,10 +254,73 @@
         <p class="sectionNote">On (default): one random word is placed on the board for free at the start of each round (worth no points) so chat has colors to read. Off: every round starts on a blank board with just the symbol row. Takes effect from the next round; your choice is remembered.</p>
       </div>
 
-      <div class="drawerSection">
+      <div class="drawerSection" id="symbolsSection">
         <h4>Symbols</h4>
-        <p class="sectionNote">Pick how the row of symbols above the board looks. Every distinct letter gets its own symbol, and a repeated letter repeats its symbol. It changes right away on every connected screen and your choice is remembered. "Surprise me" uses a different pack every round.</p>
+        <p class="sectionNote">Every distinct letter gets its own symbol, and a repeated letter repeats its symbol. Tick every symbol set you want in the game. Which sets are in play takes effect from the next round; the look and motion below change right away on every connected screen. Everything is remembered.</p>
+
+        <h5 class="symSub">1 · Symbol sets</h5>
+        <div class="symBtnRow">
+          <button class="symBtn" type="button" id="symSetsAll">Tick all sets</button>
+          <button class="symBtn" type="button" id="symSetsNone">Untick all</button>
+        </div>
         <div class="packList" id="symbolPackList"></div>
+
+        <h5 class="symSub">2 · How the ticked sets are used</h5>
+        <label class="symRadio"><input type="radio" name="symCombine" value="one" /> <span><b>One set per round</b><small>Each round randomly uses one of the ticked sets.</small></span></label>
+        <label class="symRadio"><input type="radio" name="symCombine" value="blend" /> <span><b>Blend all ticked sets</b><small>Every round mixes symbols from all ticked sets.</small></span></label>
+
+        <h5 class="symSub">3 · Look</h5>
+        <div class="symSlider"><label for="symIntensity">Color intensity</label><input type="range" id="symIntensity" min="0" max="200" step="5" /><output id="symIntensityOut"></output></div>
+        <div class="symSlider"><label for="symBrightness">Brightness</label><input type="range" id="symBrightness" min="60" max="140" step="5" /><output id="symBrightnessOut"></output></div>
+        <div class="symSlider"><label for="symSize">Symbol size</label><input type="range" id="symSize" min="60" max="100" step="5" /><output id="symSizeOut"></output></div>
+        <label class="switchRow">
+          <input type="checkbox" id="symRingToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">White ring around profile pictures</span>
+        </label>
+        <p class="sectionNote">Color intensity and brightness change the drawn symbols and emoji. Audience profile pictures always keep their true colors.</p>
+
+        <h5 class="symSub">4 · Motion</h5>
+        <label class="switchRow">
+          <input type="checkbox" id="symAnimToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Animate the symbols</span>
+        </label>
+        <div class="row" id="symAnimRow">
+          <select id="symAnimStyle" class="textInput selectNarrow" aria-label="Animation style">
+            <option value="float">Float</option>
+            <option value="bounce">Bounce</option>
+            <option value="wiggle">Wiggle</option>
+            <option value="pulse">Pulse</option>
+            <option value="wave">Wave</option>
+          </select>
+          <select id="symAnimSpeed" class="textInput selectNarrow" aria-label="Animation speed">
+            <option value="slow">Slow</option>
+            <option value="normal">Normal</option>
+            <option value="fast">Fast</option>
+          </select>
+        </div>
+
+        <div class="symPreviewWrap">
+          <div class="symPreviewLabel">Preview</div>
+          <div class="symbolSection symPreview" id="symPreview"></div>
+        </div>
+
+        <h5 class="symSub">5 · Audience profile pictures</h5>
+        <p class="sectionNote">Everyone who joins, chats, likes or sends a gift in your LIVE is saved here together with a copy of their profile picture, and stays in the list even after they leave (or after a server restart). Tick the people whose round profile picture may be used as a symbol, then also tick <b>Audience profile pictures</b> in the symbol sets above. If fewer pictures are ticked than a word needs, the remaining symbols come from your other ticked sets.</p>
+        <div class="viewerSummary" id="viewerSummary">0 people saved</div>
+        <label class="switchRow">
+          <input type="checkbox" id="symViewersFirstToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Use ticked pictures first in every round</span>
+        </label>
+        <input type="search" id="viewerSearch" class="textInput" placeholder="Search by name…" autocomplete="off" />
+        <div class="symBtnRow">
+          <button class="symBtn" type="button" id="viewerTickAll">Tick everyone with a picture</button>
+          <button class="symBtn" type="button" id="viewerUntickAll">Untick all</button>
+          <button class="symBtn symBtnDanger" type="button" id="viewerForgetAll">Forget everyone</button>
+        </div>
+        <div class="viewerList" id="viewerList" role="list"></div>
       </div>
 
       <div class="drawerSection">
@@ -393,7 +456,7 @@
       </div>
       <ul class="howToList">
         <li>Guess the hidden word — any length you like, chosen in Settings. <strong>Unlimited guesses</strong>, anyone can play, anytime.</li>
-        <li>At the start of every round a row of <strong>cute symbols</strong> appears above the board. <strong>Each symbol stands for one letter</strong> of the hidden word, and the <strong>same letter always shows the same symbol</strong> (so two identical symbols mean a repeated letter).</li>
+        <li>At the start of every round a row of <strong>symbols</strong> (cute shapes, flags, professions, your viewers' profile pictures...) appears above the board. <strong>Each symbol stands for one letter</strong> of the hidden word, and the <strong>same letter always shows the same symbol</strong> (so two identical symbols mean a repeated letter).</li>
         <li>Every guess is colored letter by letter: <span class="legendTile sp0">green</span> the letter is correct and in the right spot &nbsp; <span class="legendTile sp1">yellow</span> the letter is in the word but in another spot &nbsp; <span class="legendTile sp2">gray</span> the letter is not in the word.</li>
         <li>Repeated letters are counted like Wordle: a letter is only yellow as many times as the hidden word really contains it.</li>
         <li>The keyboard colors itself: every key shows the best color its letter has earned in any guess this round (green, then yellow, then gray) so it is easy to see which letters are left to try. The host can switch this off in Settings (Auto-color keyboard keys). Everything resets each new round.</li>

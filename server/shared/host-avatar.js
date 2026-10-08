@@ -395,3 +395,23 @@ export function hostAvatarStatus(req, res) {
       : { cached: false, lookupRunning: inflight.has(name) }
   );
 }
+
+/**
+ * (update 29) Downloads ANY viewer's profile picture as a real image (used by the SHAPEDLE audience-picture
+ * symbols). Tries the picture links TikTok sent with the viewer's event first, then the viewer's public
+ * profile page. Returns { buf, type } or null. Never throws. Only TikTok's own picture hosts are contacted.
+ */
+export async function downloadViewerPicture(username, rawUrls) {
+  try {
+    const name = normalizeHostName(username);
+    const urls = (Array.isArray(rawUrls) ? rawUrls : [rawUrls]).filter(isHttpUrl);
+    let hit = urls.length ? await firstWorkingPicture(urls) : null;
+    if (!hit && NAME_RE.test(name)) {
+      const pageUrls = await profilePagePictureUrls(name);
+      if (pageUrls.length) hit = await firstWorkingPicture(pageUrls);
+    }
+    return hit ? hit.picture : null;
+  } catch (_) {
+    return null;
+  }
+}

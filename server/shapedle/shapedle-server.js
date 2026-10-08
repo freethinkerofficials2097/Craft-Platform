@@ -45,7 +45,14 @@ import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-a
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
 import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.js";
-import { getSymbolPack, setSymbolPack } from "../shared/symbol-pack-store.js";
+import { getSymbolPack } from "../shared/symbol-pack-store.js";
+import {
+  SET_SIZES, BUILTIN_SET_IDS, VIEWERS_SET, getSymbolOptions, setSymbolOptions
+} from "../shared/symbol-options-store.js";
+import {
+  registerViewer, listViewers, viewerCounts, usableViewers, viewerInfo, readViewerPicture,
+  setViewersSelected, setAllViewersSelected, forgetViewer, forgetAllViewers, onRosterChange
+} from "../shared/viewer-roster-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -89,8 +96,28 @@ const USERNAME_PATHS = [
 const MESSAGE_PATHS = ["comment", "message", "content", "text", "msg", "data.comment", "data.message"];
 const AVATAR_PATHS = [
   "user.profilePictureUrl", "user.avatarThumb.urlList.0", "user.avatarMedium.urlList.0",
-  "user.avatarLarger.urlList.0", "user.avatarUrl", "profilePictureUrl", "avatarUrl", "avatarThumb.urlList.0"
+  "user.avatarLarger.urlList.0", "user.avatarUrl", "profilePictureUrl", "avatarUrl", "avatarThumb.urlList.0",
+  "user.profilePicture.url", "user.profilePicture.urls.0", "user.profilePicture.urlList.0",
+  "profilePicture.url", "profilePicture.urls.0", "profilePicture.urlList.0"
 ];
+const NICKNAME_PATHS = ["user.nickname", "nickname", "data.nickname"];
+
+// (update 29) Every TikTok event that carries a viewer (join, chat, like, gift, follow, share) saves that
+// viewer in the audience roster, with a saved copy of their profile picture. Only real LIVE sessions count.
+function noteViewer(raw) {
+  try {
+    if (game.mode !== "live") return;
+    const username = extractField(raw, USERNAME_PATHS, null);
+    if (!username || username === "viewer") return;
+    registerViewer(
+      String(username),
+      extractField(raw, NICKNAME_PATHS, null),
+      extractField(raw, AVATAR_PATHS, null)
+    );
+  } catch (err) {
+    // never let roster bookkeeping disturb the game
+  }
+}
 
 function extractChatFields(raw) {
   const username = String(extractField(raw, USERNAME_PATHS, "viewer"));
@@ -124,12 +151,11 @@ function normalizeGuess(text) {
 // ------------------------------------------------------------------
 // THE SYMBOL ROW (shown above the board)
 // ------------------------------------------------------------------
-// Every distinct letter of the hidden word gets its own random "slot" (0-25); a slot is a symbol in
-// whatever pack is on screen. The row is the slot of each position, so repeated letters repeat a symbol.
-const SYMBOL_SLOT_COUNT = 26;
-const SYMBOL_PACK_IDS = ["cute", "plush", "classic", "animals", "sweets", "nature"]; // the 6 real packs
-const SYMBOL_PACK_SETTINGS = [...SYMBOL_PACK_IDS, "random"]; // "random" = a different pack every round
-const DEFAULT_SYMBOL_PACK = "cute";
+// Every distinct letter of the hidden word gets its own symbol, written as an id: "<set>:<number>" for a built-in
+// set (e.g. "flags:12") or "viewers:<tiktok name>" for an audience profile picture. The browser draws the id.
+// The host ticks which sets are in play (Settings -> Symbols); each round either uses ONE of the ticked sets
+// (random) or BLENDS all of them. Picked audience pictures can take the first places of the round.
+const DEFAULT_SYMBOL_PACK = "cute"; // only used to carry over the single pack picked before update 29
 
 function shuffled(list) {
   const a = list.slice();
@@ -140,14 +166,55 @@ function shuffled(list) {
   return a;
 }
 
+const setIds = (setId) => Array.from({ length: SET_SIZES[setId] }, (_, i) => setId + ":" + i);
+
+/** Builds the symbol row of a round: one id per letter position, the same letter -> the same id. */
 function buildSymbolRow(word) {
-  const slots = shuffled(Array.from({ length: SYMBOL_SLOT_COUNT }, (_, i) => i));
-  const slotOf = {};
+  const opts = game.symbolOptions;
+  const distinct = new Set(word.split("")).size;
+  const usable = usableViewers();
+  const viewerIds = usable.map((v) => VIEWERS_SET + ":" + v.u);
+
+  // sets that can actually supply symbols right now (the audience set needs at least one picked picture)
+  let sets = opts.enabledSets.filter((id) => id !== VIEWERS_SET ? true : viewerIds.length > 0);
+  if (sets.length === 0) sets = [DEFAULT_SYMBOL_PACK];
+  if (opts.combine === "one") sets = [sets[Math.floor(Math.random() * sets.length)]];
+
+  const idsOf = (id) => (id === VIEWERS_SET ? viewerIds : setIds(id));
+  const wantViewers = sets.includes(VIEWERS_SET);
+  const mainSets = sets.filter((id) => id !== VIEWERS_SET);
+  let ordered;
+  const rest = shuffled(mainSets.flatMap(idsOf));
+  if (wantViewers && opts.viewersFirst) ordered = shuffled(viewerIds).concat(rest);
+  else ordered = shuffled((wantViewers ? viewerIds : []).concat(rest));
+
+  // not enough symbols for this many different letters (e.g. only 5 pictures picked): top up from the
+  // other ticked sets, then Cute Faces, then everything - so a round always works
+  if (ordered.length < distinct) {
+    const have = new Set(ordered);
+    const topUp = [...opts.enabledSets.filter((id) => id !== VIEWERS_SET), DEFAULT_SYMBOL_PACK, ...BUILTIN_SET_IDS];
+    for (const id of topUp) {
+      for (const sym of shuffled(setIds(id))) if (!have.has(sym)) { have.add(sym); ordered.push(sym); }
+      if (ordered.length >= distinct) break;
+    }
+  }
+
+  const symOf = {};
   let next = 0;
-  return word.split("").map((ch) => {
-    if (slotOf[ch] === undefined) slotOf[ch] = slots[next++];
-    return slotOf[ch];
+  const row = word.split("").map((ch) => {
+    if (symOf[ch] === undefined) symOf[ch] = ordered[next++];
+    return symOf[ch];
   });
+  return { row, sets };
+}
+
+/** Saved options; on the very first run the single pack picked in update 28 is carried over. */
+function loadSymbolOptions() {
+  const old = getSymbolPack("shapedle", [...BUILTIN_SET_IDS, "random"], DEFAULT_SYMBOL_PACK);
+  const legacy = old === "random"
+    ? { enabledSets: BUILTIN_SET_IDS.slice(0, 6), combine: "one" }
+    : { enabledSets: [old], combine: "one" };
+  return getSymbolOptions("shapedle", legacy);
 }
 
 // "Which positions hold the same letter" - e.g. cascade -> 0,1,2,0,1,3,4. Public information (it is
@@ -252,10 +319,10 @@ const game = {
   // true (default): every round opens with one automatic, never-winning starter word so chat has
   // a first set of colors to read. Host can switch it off in Settings (remembered in data/starter-word.json).
   starterWord: getStarterWord("shapedle"),
-  // The look of the symbols (host setting, remembered). "random" = a different pack every round.
-  symbolPack: getSymbolPack("shapedle", SYMBOL_PACK_SETTINGS, DEFAULT_SYMBOL_PACK),
-  roundSymbolPack: DEFAULT_SYMBOL_PACK, // the pack actually used this round (differs from symbolPack only for "random")
-  symbolRow: null, // slot (0-25) of every position of the hidden word; repeated letters share a slot
+  // Everything the host customizes about the symbols (sets, look, motion) - remembered on disk.
+  symbolOptions: loadSymbolOptions(),
+  roundSymbolSets: [DEFAULT_SYMBOL_PACK], // the sets actually used this round
+  symbolRow: null, // symbol id of every position of the hidden word; repeated letters share an id
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -390,10 +457,9 @@ function startRound(overrideWord) {
     game.wordLength = randomWordLengthInRange();
   }
   game.secretWord = overrideWord || pickAnswer(game.wordLength, game.difficulty);
-  game.symbolRow = buildSymbolRow(game.secretWord);
-  game.roundSymbolPack = game.symbolPack === "random"
-    ? SYMBOL_PACK_IDS[Math.floor(Math.random() * SYMBOL_PACK_IDS.length)]
-    : game.symbolPack;
+  const built = buildSymbolRow(game.secretWord);
+  game.symbolRow = built.row;
+  game.roundSymbolSets = built.sets;
   game.guesses = [];
   game.hintsUsed = 0;
   game.hintSuggestions = [];
@@ -553,6 +619,7 @@ function handleIncomingRawEvent(raw) {
   diagnostics.lastReceivedText = text;
   diagnostics.lastReceivedAt = Date.now();
   if (avatarUrl) knownAvatars.set(username, avatarUrl);
+  noteViewer(raw);
   if (avatarUrl && !hostAvatarUrl && game.mode === "live" && isHostUser(username, diagnostics.tiktokUsername)) {
     // late fallback: the host's own chat message carries their picture. The server downloads it and
     // serves its own copy (the raw TikTok link is often .heic / expired / blocked in the browser).
@@ -630,6 +697,11 @@ async function connectToTikTok(username) {
       });
 
       connection.on(WebcastEvent.CHAT, safely("chat-event", (data) => handleIncomingRawEvent(data)));
+      // (update 29) anyone who joins, likes, gifts, follows or shares joins the audience roster too, so
+      // their picture can be picked as a symbol even if they never type a guess.
+      for (const ev of [WebcastEvent.MEMBER, WebcastEvent.LIKE, WebcastEvent.GIFT, WebcastEvent.FOLLOW, WebcastEvent.SHARE]) {
+        if (ev) connection.on(ev, safely("viewer-event", (data) => noteViewer(data)));
+      }
       connection.on(
         WebcastEvent.DISCONNECTED,
         safely("disconnected-event", () => {
@@ -759,8 +831,10 @@ function buildStatePayload() {
       // THE SYMBOL ROW shown above the board (null while idle): the slot of every position. It only
       // reveals which positions hold the same letter, never the letters.
       symbolRow: game.status === "idle" || !game.secretWord ? null : game.symbolRow,
-      symbolPack: game.symbolPack, // the host's setting (may be "random")
-      activeSymbolPack: game.roundSymbolPack, // the pack used on screen this round
+      symbolOptions: game.symbolOptions, // the host's choices (sets, look, motion)
+      activeSymbolSets: game.roundSymbolSets, // the sets used on screen this round
+      symbolViewers: buildSymbolViewers(), // picture links of the audience symbols in this round's row
+      viewerCounts: viewerCounts(),
       // Best color of every letter used in ANY guess this round (covers every guess, not just the
       // last 12 sent in `guesses`). The page paints the keyboard from this.
       letterStates: game.status === "idle" ? {} : buildLetterStates(game.guesses),
@@ -789,6 +863,28 @@ function buildStatePayload() {
       dictionaryWordCount: dictionaryState.wordCount,
       dictionaryLoading: dictionaryState.loading
     }
+  };
+}
+
+// Picture links for the audience symbols that are in this round's row (id -> { n, url }).
+let viewerBasePath = "/shapedle";
+function buildSymbolViewers() {
+  const out = {};
+  if (game.status === "idle" || !game.symbolRow) return out;
+  for (const id of game.symbolRow) {
+    if (typeof id !== "string" || !id.startsWith(VIEWERS_SET + ":") || out[id]) continue;
+    const info = viewerInfo(id.slice(VIEWERS_SET.length + 1));
+    out[id] = info
+      ? { n: info.n, url: viewerBasePath + "/viewer-avatar/" + encodeURIComponent(info.u) + "?v=" + info.v }
+      : { n: id.slice(VIEWERS_SET.length + 1), url: null };
+  }
+  return out;
+}
+
+function buildRosterPayload() {
+  return {
+    viewers: listViewers().map((r) => ({ ...r, url: r.ready ? viewerBasePath + "/viewer-avatar/" + encodeURIComponent(r.u) + "?v=" + r.v : null })),
+    counts: viewerCounts()
   };
 }
 
@@ -879,9 +975,28 @@ function handleClientAction(ws, msg) {
       game.keyAutoColor = setKeyAutoColor("shapedle", Boolean(payload && payload.on));
       broadcastState();
       break;
-    case "set_symbol_pack":
-      game.symbolPack = setSymbolPack("shapedle", String(payload && payload.pack), SYMBOL_PACK_SETTINGS, DEFAULT_SYMBOL_PACK);
-      if (game.symbolPack !== "random") game.roundSymbolPack = game.symbolPack;
+    case "set_symbol_options":
+      // sets apply from the next round; look + motion apply right away on every screen
+      game.symbolOptions = setSymbolOptions("shapedle", payload);
+      broadcastState();
+      break;
+    case "get_viewer_roster":
+      ws.emit("viewer_roster", buildRosterPayload());
+      break;
+    case "set_viewers_selected":
+      setViewersSelected(payload && payload.usernames, Boolean(payload && payload.on));
+      broadcastState();
+      break;
+    case "set_all_viewers_selected":
+      setAllViewersSelected(Boolean(payload && payload.on), Boolean(payload && payload.onlyWithPicture));
+      broadcastState();
+      break;
+    case "forget_viewer":
+      forgetViewer(String((payload && payload.username) || ""));
+      broadcastState();
+      break;
+    case "forget_all_viewers":
+      forgetAllViewers();
       broadcastState();
       break;
     case "set_starter_word":
@@ -935,7 +1050,30 @@ export async function mountShapedle(app, io, options = {}) {
     res.sendFile(path.join(__dirname, "public", "shapedle-index.html"));
   });
 
+  viewerBasePath = mountPath === "/" ? "" : mountPath.replace(/\/+$/, "");
+
+  // Saved profile pictures of the audience (the browser draws them in a circle).
+  app.get(viewerBasePath + "/viewer-avatar/:name", async (req, res) => {
+    const pic = await readViewerPicture(req.params && req.params.name);
+    if (!pic) {
+      res.status(404).type("text/plain").send("No saved picture for that viewer.");
+      return;
+    }
+    res.set({
+      "Content-Type": pic.type,
+      "Content-Length": String(pic.buf.length),
+      "Cache-Control": "public, max-age=86400",
+      "X-Content-Type-Options": "nosniff"
+    });
+    res.end(pic.buf);
+  });
+
   nsp = io.of("/shapedle");
+  onRosterChange(() => {
+    if (!nsp) return;
+    nsp.emit("viewer_roster_dirty", viewerCounts()); // an open Settings panel asks for the fresh list
+    broadcastState();
+  });
   nsp.on(
     "connection",
     safely("shapedle-connection", (socket) => {

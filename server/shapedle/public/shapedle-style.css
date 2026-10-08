@@ -460,7 +460,27 @@ button { cursor: pointer; }
   flex-shrink: 0; display: flex; align-items: center; justify-content: center; line-height: 1; user-select: none;
   filter: drop-shadow(0 2px 2px rgba(0,0,0,.25));
 }
+/* update 29 - host look settings (set on #symbolSection / #symPreview by applySymbolLook()) */
+.symScale { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transform: scale(var(--sym-scale, 1)); }
+.symMove { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
 .symbolCell svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.symbolCell svg, .symbolCell .symEmoji, .packSym svg, .packSym .symEmoji {
+  filter: saturate(var(--sym-sat, 1)) brightness(var(--sym-bright, 1));
+}
+/* audience profile pictures: always an exact circle, true colors */
+.symAvatar { width: 92%; aspect-ratio: 1 / 1; height: auto; max-height: 100%; border-radius: 50%; object-fit: cover; display: block; background: #e8e8f0; }
+.symRing .symAvatar { border: 3px solid #fff; box-shadow: 0 0 0 2px rgba(0,0,0,.22); }
+.symAvatarFallback { display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-family: var(--font-display, inherit); font-size: .55em; }
+.symAnim .symMove { animation-duration: var(--sym-dur, 2s); animation-iteration-count: infinite; animation-timing-function: ease-in-out; animation-delay: calc(var(--i, 0) * var(--sym-stagger, .12s)); }
+.symAnim-float .symMove { animation-name: symFloat; }
+.symAnim-bounce .symMove { animation-name: symBounce; animation-timing-function: cubic-bezier(.3,.1,.4,1); }
+.symAnim-wiggle .symMove { animation-name: symWiggle; }
+.symAnim-pulse .symMove { animation-name: symPulse; }
+.symAnim-wave .symMove { animation-name: symFloat; --sym-stagger: .22s; }
+@keyframes symFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14%); } }
+@keyframes symBounce { 0%,100% { transform: translateY(0) scale(1,1); } 40% { transform: translateY(-24%) scale(.95,1.05); } 60% { transform: translateY(-24%) scale(.95,1.05); } 90% { transform: translateY(0) scale(1.08,.92); } }
+@keyframes symWiggle { 0%,100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes symPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.14); } }
 .symbolCell .symEmoji { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; line-height: 1; }
 
 /* Symbol pack picker (Settings -> Symbols) */
@@ -910,3 +930,43 @@ button { cursor: pointer; }
 
 /* how-to modal: the legend pills hold a word, so they are wider than BLINDLE's single-letter ones */
 .howToList .legendTile { width: auto; min-width: 22px; padding: 0 7px; margin-right: 2px; }
+
+
+/* ============================================================
+   Symbols settings (update 29)
+   ============================================================ */
+.symSub { margin: 16px 0 6px; font-size: 13px; font-weight: 800; letter-spacing: .02em; }
+.symBtnRow { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.symBtn {
+  cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 10px;
+  border: 2px solid var(--border, rgba(127,127,160,.35)); background: var(--card, rgba(127,127,160,.08)); color: var(--text, inherit);
+}
+.symBtn:hover { border-color: var(--hero-accent, #5b8def); }
+.symBtnDanger { color: #d33; }
+.packBtn input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--hero-accent, #5b8def); }
+.packBtn.on { border-color: var(--hero-accent, #5b8def); box-shadow: 0 0 0 2px var(--hero-accent, #5b8def) inset; }
+.symRadio { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; cursor: pointer; }
+.symRadio span { display: flex; flex-direction: column; line-height: 1.25; }
+.symRadio small { opacity: .7; font-size: 12px; }
+.symSlider { display: grid; grid-template-columns: 110px 1fr 48px; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; }
+.symSlider input[type="range"] { width: 100%; accent-color: var(--hero-accent, #5b8def); }
+.symSlider output { text-align: right; font-variant-numeric: tabular-nums; opacity: .8; }
+#symAnimRow { gap: 8px; margin-top: 6px; }
+.symPreviewWrap { margin: 12px 0 4px; padding: 8px 10px; border-radius: 12px; background: rgba(127,127,160,.1); }
+.symPreviewLabel { font-size: 11px; font-weight: 800; opacity: .6; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+.symPreview { display: flex; gap: 6px; justify-content: center; margin: 0; padding-top: 8px; }
+.symPreview .symbolCell { width: 44px; height: 46px; font-size: 34px; }
+.viewerSummary { font-size: 13px; font-weight: 700; margin: 6px 0; }
+#viewerSearch { width: 100%; margin: 6px 0; box-sizing: border-box; }
+.viewerList { max-height: 320px; overflow-y: auto; border-radius: 12px; border: 2px solid var(--border, rgba(127,127,160,.3)); }
+.viewerRow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; cursor: pointer; border-bottom: 1px solid rgba(127,127,160,.18); }
+.viewerRow:last-child { border-bottom: 0; }
+.viewerRow:hover { background: rgba(127,127,160,.1); }
+.viewerRow input { width: 20px; height: 20px; flex: 0 0 auto; accent-color: var(--hero-accent, #5b8def); }
+.viewerPic { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: #ddd; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; }
+.viewerInfo { display: flex; flex-direction: column; min-width: 0; flex: 1; line-height: 1.2; }
+.viewerInfo b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+.viewerInfo small { opacity: .65; font-size: 11.5px; }
+.viewerForget { flex: 0 0 auto; border: 0; background: transparent; cursor: pointer; font-size: 16px; opacity: .55; }
+.viewerForget:hover { opacity: 1; }
+.viewerEmpty { padding: 14px; text-align: center; font-size: 13px; opacity: .7; }

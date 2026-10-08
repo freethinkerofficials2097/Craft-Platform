@@ -43,6 +43,23 @@ const el = {
   symbolRow: document.getElementById("symbolRow"),
   starterWordToggle: document.getElementById("starterWordToggle"),
   symbolPackList: document.getElementById("symbolPackList"),
+  symSetsAll: document.getElementById("symSetsAll"),
+  symSetsNone: document.getElementById("symSetsNone"),
+  symIntensity: document.getElementById("symIntensity"),
+  symBrightness: document.getElementById("symBrightness"),
+  symSize: document.getElementById("symSize"),
+  symRingToggle: document.getElementById("symRingToggle"),
+  symAnimToggle: document.getElementById("symAnimToggle"),
+  symAnimStyle: document.getElementById("symAnimStyle"),
+  symAnimSpeed: document.getElementById("symAnimSpeed"),
+  symPreview: document.getElementById("symPreview"),
+  symViewersFirstToggle: document.getElementById("symViewersFirstToggle"),
+  viewerSummary: document.getElementById("viewerSummary"),
+  viewerSearch: document.getElementById("viewerSearch"),
+  viewerList: document.getElementById("viewerList"),
+  viewerTickAll: document.getElementById("viewerTickAll"),
+  viewerUntickAll: document.getElementById("viewerUntickAll"),
+  viewerForgetAll: document.getElementById("viewerForgetAll"),
   keyboard: document.getElementById("keyboard"),
 
   controls: document.getElementById("controls"),
@@ -290,7 +307,7 @@ function syncStagedSettingsFromState(g) {
   el.strictFitToggle.checked = g.strictFit !== false; // Strict fit is ON unless the host switched it off
   if (el.keyAutoColorToggle) el.keyAutoColorToggle.checked = g.keyAutoColor !== false; // ON unless the host switched it off
   el.starterWordToggle.checked = g.starterWord !== false;
-  syncSymbolPackPicker(g.symbolPack || "cute");
+  syncSymbolSettings(g);
   updateModePickerLabel();
 }
 
@@ -377,6 +394,9 @@ function connectSocket() {
   socket.on("state", (payload) => {
     try { render(payload); } catch (err) { console.error("Couldn't render server state:", err); }
   });
+  socket.on("viewer_roster", (payload) => { try { onViewerRoster(payload); } catch (err) { console.error("Couldn't show the audience list:", err); } });
+  socket.on("viewer_roster_dirty", () => requestViewerRoster());
+  socket.on("connect", () => requestViewerRoster());
   socket.on("offline_guess_result", (payload) => handleOfflineGuessResult(payload));
   socket.on("set_secret_word_result", (payload) => handleSetAnswerResult(payload));
 }
@@ -445,43 +465,246 @@ if (el.keyAutoColorToggle) el.keyAutoColorToggle.addEventListener("change", () =
   send("set_key_autocolor", { on: el.keyAutoColorToggle.checked });
 });
 
-// ---- Symbols picker (Settings -> Symbols): pick the look of the symbol row. Applies right away on
-// every screen and is remembered by the server.
-const SYMBOL_PACK_CHOICES = (window.ShapedleSymbols ? window.ShapedleSymbols.PACKS : []).concat([
-  { id: "random", name: "Surprise me", hint: "A different pack every round" }
+// ---- Symbols settings (Settings -> Symbols), update 29 -----------------------------------------------
+// Sets to use (several can be ticked), how they combine, look, motion, and the audience's profile pictures.
+// Every change is sent to the server (which remembers it) and comes back to every screen in the next state.
+const VIEWERS_SET_ID = "viewers";
+const SYMBOL_SET_CHOICES = (window.ShapedleSymbols ? window.ShapedleSymbols.PACKS : []).concat([
+  { id: VIEWERS_SET_ID, name: "Audience profile pictures", hint: "Round TikTok pictures of the viewers you pick below" }
 ]);
+let symOpts = null;          // the options last received from the server
+let viewerRoster = [];       // the saved audience list (loaded when asked for)
+let viewerCountsSig = "";
+
+function sendSymbolOptions(partial) {
+  send("set_symbol_options", partial);
+  if (symOpts) { symOpts = Object.assign({}, symOpts, partial); applySymbolLook(symOpts); updateSymbolSettingsLabels(); }
+}
+
 function buildSymbolPackPicker() {
   if (!el.symbolPackList) return;
   el.symbolPackList.innerHTML = "";
-  SYMBOL_PACK_CHOICES.forEach((pack) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "packBtn";
-    btn.dataset.pack = pack.id;
+  SYMBOL_SET_CHOICES.forEach((pack) => {
+    const row = document.createElement("label");
+    row.className = "packBtn";
+    row.dataset.pack = pack.id;
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.addEventListener("change", () => {
+      const now = new Set((symOpts && symOpts.enabledSets) || ["cute"]);
+      if (box.checked) now.add(pack.id); else now.delete(pack.id);
+      if (now.size === 0) { box.checked = true; setMiniStatus("Keep at least one symbol set ticked."); return; }
+      const ordered = SYMBOL_SET_CHOICES.map((c) => c.id).filter((id) => now.has(id));
+      sendSymbolOptions({ enabledSets: ordered });
+      syncSymbolPackPicker(ordered);
+    });
     const preview = document.createElement("span");
     preview.className = "packPreview";
     if (window.ShapedleSymbols) {
-      const showId = pack.id === "random" ? "cute" : pack.id;
-      const slots = pack.id === "random" ? [3, 17, 9] : [0, 4, 8];
-      preview.innerHTML = slots.map((sl) => '<span class="packSym">' + window.ShapedleSymbols.html(pack.id === "random" ? ["cute", "animals", "sweets"][slots.indexOf(sl)] : showId, sl) + "</span>").join("");
+      preview.innerHTML = pack.id === VIEWERS_SET_ID
+        ? [0, 1, 2].map((i) => '<span class="packSym"><span class="symAvatar symAvatarFallback" style="background:' + ["#e0679c", "#4a9bd8", "#e0a912"][i] + '">' + "ABC"[i] + "</span></span>").join("")
+        : [0, 4, 8].map((sl) => '<span class="packSym">' + window.ShapedleSymbols.html(pack.id, sl) + "</span>").join("");
     }
     const label = document.createElement("span");
     label.className = "packLabel";
     label.innerHTML = "<b>" + pack.name + "</b><small>" + pack.hint + "</small>";
-    btn.appendChild(preview);
-    btn.appendChild(label);
-    btn.addEventListener("click", () => send("set_symbol_pack", { pack: pack.id }));
-    el.symbolPackList.appendChild(btn);
+    row.appendChild(box);
+    row.appendChild(preview);
+    row.appendChild(label);
+    el.symbolPackList.appendChild(row);
   });
 }
-function syncSymbolPackPicker(active) {
+function syncSymbolPackPicker(enabled) {
   if (!el.symbolPackList) return;
-  el.symbolPackList.querySelectorAll(".packBtn").forEach((b) => {
-    b.classList.toggle("active", b.dataset.pack === active);
-    b.setAttribute("aria-pressed", b.dataset.pack === active ? "true" : "false");
+  const on = new Set(enabled || []);
+  el.symbolPackList.querySelectorAll(".packBtn").forEach((row) => {
+    const checked = on.has(row.dataset.pack);
+    row.classList.toggle("on", checked);
+    const box = row.querySelector("input");
+    if (box) box.checked = checked;
   });
 }
 buildSymbolPackPicker();
+
+function updateSymbolSettingsLabels() {
+  if (!symOpts) return;
+  const out = (id, v) => { const o = document.getElementById(id); if (o) o.textContent = v; };
+  out("symIntensityOut", symOpts.colorIntensity + "%");
+  out("symBrightnessOut", symOpts.brightness + "%");
+  out("symSizeOut", symOpts.size + "%");
+  if (el.symAnimStyle) el.symAnimStyle.disabled = !symOpts.animated;
+  if (el.symAnimSpeed) el.symAnimSpeed.disabled = !symOpts.animated;
+}
+
+// Look + motion on a container (the board's symbol section and the settings preview).
+function applySymbolLook(o, target) {
+  const targets = target ? [target] : [el.symbolSection, el.symPreview];
+  const dur = { slow: "3.2s", normal: "2s", fast: "1.1s" }[o.animSpeed] || "2s";
+  targets.forEach((t) => {
+    if (!t) return;
+    t.style.setProperty("--sym-sat", String(o.colorIntensity / 100));
+    t.style.setProperty("--sym-bright", String(o.brightness / 100));
+    t.style.setProperty("--sym-scale", String(o.size / 100));
+    t.style.setProperty("--sym-dur", dur);
+    t.classList.toggle("symRing", Boolean(o.ring));
+    t.classList.toggle("symAnim", Boolean(o.animated));
+    ["float", "bounce", "wiggle", "pulse", "wave"].forEach((st) => t.classList.toggle("symAnim-" + st, o.animated && o.animStyle === st));
+  });
+}
+
+function renderSymbolPreview() {
+  if (!el.symPreview || !window.ShapedleSymbols) return;
+  const enabled = ((symOpts && symOpts.enabledSets) || ["cute"]).filter((id) => id !== VIEWERS_SET_ID);
+  const sets = enabled.length ? enabled : ["cute"];
+  const withPics = symOpts && symOpts.enabledSets.indexOf(VIEWERS_SET_ID) >= 0;
+  const readyPics = viewerRoster.filter((v) => v.sel && v.url).slice(0, 2);
+  const viewers = {};
+  const ids = [];
+  readyPics.forEach((v) => { if (withPics) { ids.push("viewers:" + v.u); viewers["viewers:" + v.u] = { n: v.n, url: v.url }; } });
+  let n = 0;
+  while (ids.length < 6) { ids.push(sets[n % sets.length] + ":" + (3 + n * 5)); n++; }
+  el.symPreview.innerHTML = "";
+  ids.forEach((id, i) => el.symPreview.appendChild(makeSymbolCell(id, viewers, i, 44, 46, 34)));
+}
+
+function syncSymbolSettings(g) {
+  const o = g.symbolOptions;
+  if (!o) return;
+  symOpts = o;
+  syncSymbolPackPicker(o.enabledSets);
+  document.querySelectorAll('input[name="symCombine"]').forEach((r) => { r.checked = r.value === o.combine; });
+  if (el.symIntensity) el.symIntensity.value = o.colorIntensity;
+  if (el.symBrightness) el.symBrightness.value = o.brightness;
+  if (el.symSize) el.symSize.value = o.size;
+  if (el.symRingToggle) el.symRingToggle.checked = Boolean(o.ring);
+  if (el.symAnimToggle) el.symAnimToggle.checked = Boolean(o.animated);
+  if (el.symAnimStyle) el.symAnimStyle.value = o.animStyle;
+  if (el.symAnimSpeed) el.symAnimSpeed.value = o.animSpeed;
+  if (el.symViewersFirstToggle) el.symViewersFirstToggle.checked = o.viewersFirst !== false;
+  updateSymbolSettingsLabels();
+  applySymbolLook(o);
+  renderSymbolPreview();
+  const c = g.viewerCounts;
+  if (c) {
+    const sig = [c.total, c.selected, c.ready, c.readySelected].join(",");
+    if (sig !== viewerCountsSig) { viewerCountsSig = sig; requestViewerRoster(); }
+  }
+}
+
+document.querySelectorAll('input[name="symCombine"]').forEach((r) => r.addEventListener("change", () => { if (r.checked) sendSymbolOptions({ combine: r.value }); }));
+// sliders: update the preview while dragging, save when released
+[["symIntensity", "colorIntensity"], ["symBrightness", "brightness"], ["symSize", "size"]].forEach(([id, key]) => {
+  const input = el[id];
+  if (!input) return;
+  input.addEventListener("input", () => { if (symOpts) { symOpts[key] = Number(input.value); applySymbolLook(symOpts); updateSymbolSettingsLabels(); } });
+  input.addEventListener("change", () => sendSymbolOptions({ [key]: Number(input.value) }));
+});
+el.symRingToggle.addEventListener("change", () => sendSymbolOptions({ ring: el.symRingToggle.checked }));
+el.symAnimToggle.addEventListener("change", () => sendSymbolOptions({ animated: el.symAnimToggle.checked }));
+el.symAnimStyle.addEventListener("change", () => sendSymbolOptions({ animStyle: el.symAnimStyle.value }));
+el.symAnimSpeed.addEventListener("change", () => sendSymbolOptions({ animSpeed: el.symAnimSpeed.value }));
+el.symViewersFirstToggle.addEventListener("change", () => sendSymbolOptions({ viewersFirst: el.symViewersFirstToggle.checked }));
+el.symSetsAll.addEventListener("click", () => { const all = SYMBOL_SET_CHOICES.map((c) => c.id); sendSymbolOptions({ enabledSets: all }); syncSymbolPackPicker(all); });
+el.symSetsNone.addEventListener("click", () => {
+  const keep = (symOpts && symOpts.enabledSets && symOpts.enabledSets[0]) || "cute"; // at least one stays
+  sendSymbolOptions({ enabledSets: [keep] }); syncSymbolPackPicker([keep]);
+});
+
+// ---- Audience profile pictures list ----
+function requestViewerRoster() { if (socket && socket.connected) send("get_viewer_roster", {}); }
+function timeAgo(ms) {
+  const m = Math.max(0, Math.round((Date.now() - ms) / 60000));
+  if (m < 1) return "just now";
+  if (m < 60) return m + " min ago";
+  const h = Math.round(m / 60);
+  if (h < 48) return h + " h ago";
+  return Math.round(h / 24) + " days ago";
+}
+function onViewerRoster(payload) {
+  viewerRoster = (payload && payload.viewers) || [];
+  const c = (payload && payload.counts) || { total: viewerRoster.length, selected: 0, ready: 0, readySelected: 0 };
+  el.viewerSummary.textContent = c.total + " saved · " + c.ready + " with a picture · " + c.selected + " ticked (" + c.readySelected + " ready to use as symbols)";
+  renderViewerList();
+  renderSymbolPreview();
+}
+function renderViewerList() {
+  const q = (el.viewerSearch.value || "").trim().toLowerCase();
+  const rows = viewerRoster.filter((v) => !q || v.u.indexOf(q) >= 0 || String(v.n).toLowerCase().indexOf(q) >= 0);
+  el.viewerList.innerHTML = "";
+  if (rows.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "viewerEmpty";
+    empty.textContent = viewerRoster.length ? "Nobody matches that search." : "No one saved yet. Connect to your TikTok LIVE - viewers appear here as they join, chat, like or send gifts.";
+    el.viewerList.appendChild(empty);
+    return;
+  }
+  rows.slice(0, 400).forEach((v) => {
+    const row = document.createElement("div");
+    row.className = "viewerRow";
+    row.setAttribute("role", "listitem");
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    box.checked = Boolean(v.sel);
+    box.addEventListener("change", () => { v.sel = box.checked; send("set_viewers_selected", { usernames: [v.u], on: box.checked }); });
+    const pic = document.createElement(v.url ? "img" : "span");
+    pic.className = "viewerPic";
+    if (v.url) { pic.src = v.url; pic.alt = ""; pic.loading = "lazy"; } else { pic.textContent = (v.n || v.u).charAt(0).toUpperCase(); pic.style.background = avatarColorFor(v.u); }
+    const info = document.createElement("span");
+    info.className = "viewerInfo";
+    const nameEl = document.createElement("b");
+    nameEl.textContent = v.n || v.u;
+    const sub = document.createElement("small");
+    sub.textContent = "@" + v.u + " · seen " + timeAgo(v.last) + (v.url ? "" : " · picture not saved yet");
+    info.appendChild(nameEl); info.appendChild(sub);
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "viewerForget"; del.title = "Forget this person"; del.textContent = "✕";
+    del.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); send("forget_viewer", { username: v.u }); });
+    row.addEventListener("click", (e) => { if (e.target === box || e.target === del) return; box.checked = !box.checked; box.dispatchEvent(new Event("change")); });
+    row.appendChild(box); row.appendChild(pic); row.appendChild(info); row.appendChild(del);
+    el.viewerList.appendChild(row);
+  });
+  if (rows.length > 400) {
+    const more = document.createElement("div");
+    more.className = "viewerEmpty";
+    more.textContent = "Showing the 400 most recent of " + rows.length + " - use the search to find anyone else.";
+    el.viewerList.appendChild(more);
+  }
+}
+el.viewerSearch.addEventListener("input", renderViewerList);
+el.viewerTickAll.addEventListener("click", () => send("set_all_viewers_selected", { on: true, onlyWithPicture: true }));
+el.viewerUntickAll.addEventListener("click", () => send("set_all_viewers_selected", { on: false }));
+el.viewerForgetAll.addEventListener("click", () => {
+  if (window.confirm("Forget everyone and delete all saved profile pictures? This cannot be undone.")) send("forget_all_viewers", {});
+});
+// a picture that cannot load falls back to a colored initial (same look as a viewer without a picture)
+document.addEventListener("error", (e) => {
+  const t = e.target;
+  if (!t || !t.classList || !t.classList.contains("symAvatar") || t.tagName !== "IMG") return;
+  const fb = document.createElement("span");
+  fb.className = "symAvatar symAvatarFallback";
+  const name = t.getAttribute("data-n") || "?";
+  fb.textContent = name.charAt(0).toUpperCase();
+  fb.style.background = avatarColorFor(name);
+  t.replaceWith(fb);
+}, true);
+
+// One symbol cell (shared by the board and the settings preview): sized, scaled and animated by the look settings.
+function makeSymbolCell(id, viewers, index, width, height, fontPx) {
+  const cell = document.createElement("div");
+  cell.className = "symbolCell";
+  cell.style.width = width + "px";
+  cell.style.height = height + "px";
+  cell.style.fontSize = fontPx + "px";
+  cell.style.setProperty("--i", String(index));
+  const scale = document.createElement("div");
+  scale.className = "symScale";
+  const move = document.createElement("div");
+  move.className = "symMove";
+  move.innerHTML = window.ShapedleSymbols ? window.ShapedleSymbols.htmlById(id, viewers) : "";
+  scale.appendChild(move);
+  cell.appendChild(scale);
+  return cell;
+}
 
 // Starter word: ON by default, remembered by the server, used from the next round.
 el.starterWordToggle.addEventListener("change", () => {
@@ -923,18 +1146,12 @@ function renderSymbols(g, metrics) {
   const cells = document.createElement("div");
   cells.className = "symbolCells";
   cells.style.gap = metrics.gap + "px";
-  const pack = g.activeSymbolPack || "cute";
   const emojiFont = Math.max(12, Math.round(metrics.tileSize * 0.78));
-  g.symbolRow.forEach((slot) => {
-    const cell = document.createElement("div");
-    cell.className = "symbolCell";
-    cell.style.width = metrics.tileSize + "px";
-    cell.style.height = Math.round(metrics.tileSize * 1.05) + "px";
-    cell.style.fontSize = emojiFont + "px";
-    cell.innerHTML = window.ShapedleSymbols ? window.ShapedleSymbols.html(pack, slot) : "";
-    cells.appendChild(cell);
+  g.symbolRow.forEach((id, i) => {
+    cells.appendChild(makeSymbolCell(id, g.symbolViewers || {}, i, metrics.tileSize, Math.round(metrics.tileSize * 1.05), emojiFont));
   });
   el.symbolRow.appendChild(cells);
+  if (g.symbolOptions) applySymbolLook(g.symbolOptions, el.symbolSection);
 }
 
 function renderTiles(g) {
@@ -942,7 +1159,7 @@ function renderTiles(g) {
   // started, so it is part of the cache key.
   const starterRow = g.guesses.find((x) => x.isStarter);
   const starterAvatar = (starterRow && starterRow.avatarUrl) || "";
-  const symbolKey = (g.symbolRow || []).join(",") + "@" + (g.activeSymbolPack || "");
+  const symbolKey = (g.symbolRow || []).join(",") + "@" + JSON.stringify(g.symbolViewers || {});
   const signature = starterAvatar + "|" + g.status + "|" + g.wordLength + "|" + g.guessesMade + "|" + symbolKey;
   if (signature === lastTilesSignature) return;
   lastTilesSignature = signature;
