@@ -59,6 +59,8 @@ import { Engagement } from "./server/engagement/engagement-hub.js";
 import { ColorShadesHub } from "./server/shared/color-shades-hub.js";
 import { LegendHub } from "./server/shared/legend-hub.js";
 import { serveHostAvatar, hostAvatarStatus } from "./server/shared/host-avatar.js";
+import { HostPresence } from "./server/shared/host-presence.js";
+import { mountHomeCards } from "./server/shared/home-cards-store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,6 +84,12 @@ process.on("unhandledRejection", (err) => {
 // expire or be an unsupported format. Registered before the static files and every game.
 app.get("/host-avatar/:name", serveHostAvatar);
 app.get("/host-avatar-status/:name", hostAvatarStatus);
+
+// HOME page (update 30): which TikTok host is connected right now (top-left banner "<HOST> LIVE GAMES" +
+// round profile picture) and the host's saved design of the game cards. See server/shared/host-presence.js
+// and server/shared/home-cards-store.js. Both use the Socket.IO namespace /home-hub.
+HostPresence.init(io, app);
+mountHomeCards(app, io, express);
 
 // Serves /public/index.html at "/", and transparently serves
 // /public/flagle/*, /public/travle/*, /public/crossdle/*, and

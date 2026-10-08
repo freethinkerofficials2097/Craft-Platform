@@ -445,3 +445,6 @@ game — tap **?** / **How to Play** on its own screen.
 
 ## Update 29
 SHAPEDLE Settings -> Symbols: tick several symbol sets (new: Flags, Professions, Sports, Transport), color intensity / brightness / size, animation, and use selected viewers' round TikTok profile pictures as symbols (saved even after they leave). See `CHANGES_UPDATE_29.md`.
+
+## Update 30
+HOME page: the top-left banner now reads **"<HOST NAME> LIVE GAMES"** with the host's round TikTok picture while a TikTok host is connected (any game), and every game card can be restyled from the 🎛️ button (colors, border, corners, 3D edge, font, words, hide, reorder). See `CHANGES_UPDATE_30.md`.
