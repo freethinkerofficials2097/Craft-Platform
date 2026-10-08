@@ -10,6 +10,7 @@
 import { WORD_LENGTH_OPTIONS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, randomWord, isKnownWord } from './crossdle-dictionary.js';
 import { ANSWER_WORDS } from './crossdle-answers.js';
 import { getStrictFit, setStrictFit } from '../shared/strict-fit-store.js';
+import { getKeyAutoColor, setKeyAutoColor } from '../shared/key-autocolor-store.js';
 
 export { WORD_LENGTH_OPTIONS };
 
@@ -274,6 +275,14 @@ export class GameEngine {
     this.nextRoundDelayMs = DEFAULT_NEXT_ROUND_DELAY_MS;
     // Strict fit is ON by default; the host's choice is remembered in data/strict-fit.json.
     this.strictFit = getStrictFit('crossdle');
+    // Keyboard auto-color is ON by default; the host's choice is remembered in data/key-autocolor.json.
+    this.keyAutoColor = getKeyAutoColor('crossdle');
+  }
+
+  /** Host switch: ON = keyboard keys take their letter's tile color; OFF = plain keys. */
+  setKeyAutoColor(on) {
+    this.keyAutoColor = setKeyAutoColor('crossdle', Boolean(on));
+    this.onChange('settings');
   }
 
   /** Host switch: ON = a guess must still fit every row on the board; OFF = any real word is tested. */
@@ -519,6 +528,7 @@ export class GameEngine {
       wordLength: this.wordLength,
       nextRoundDelayMs: this.nextRoundDelayMs,
       strictFit: this.strictFit,
+      keyAutoColor: this.keyAutoColor,
       leaderboard: this.getLeaderboardTop(10),
       round: r && {
         number: r.number,

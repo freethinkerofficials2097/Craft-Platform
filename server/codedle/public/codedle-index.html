@@ -280,6 +280,16 @@
       </div>
 
       <div class="drawerSection">
+        <h4>Auto-color keyboard keys</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="keyAutoColorToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Color each key like its letter's tiles</span>
+        </label>
+        <p class="sectionNote">On (default): every key on the keyboard takes the color its letter has earned on the board. Off: the keys stay plain (neutral) - viewers only read the colors on the tiles. Applies right away on every connected screen and is remembered.</p>
+      </div>
+
+      <div class="drawerSection">
         <h4>Guess rejection message</h4>
         <p class="sectionNote">Shown briefly whenever Strict fit skips a guess.</p>
         <div class="row">
@@ -381,7 +391,7 @@
         <li>Example: for <strong>TELL</strong> the letters sort to E-L-L-T, so the code is <strong>4 1 2 3</strong> (T is 4th, E is 1st, and the two Ls are 2nd and 3rd, left to right).</li>
         <li>Every guess is colored letter by letter: <span class="legendTile cd0">green</span> right letter in the right spot &nbsp; <span class="legendTile cd1">yellow</span> the letter is in the word but in another spot &nbsp; <span class="legendTile cd2">blue</span> the letter is within 3 letters of the hidden letter of that spot (e.g. B is close to A–E) &nbsp; <span class="legendTile cd3">pink</span> meets both the yellow and the blue condition &nbsp; <span class="legendTile cd4">gray</span> the letter is not in the word.</li>
         <li>Repeated letters are counted like Wordle: a letter is only yellow or pink as many times as the hidden word really contains it.</li>
-        <li>The keyboard colors itself: every key shows the best color its letter has earned in any guess this round (green, then pink, yellow, blue, gray). Everything resets each new round.</li>
+        <li>The keyboard colors itself: every key shows the best color its letter has earned in any guess this round (green, then pink, yellow, blue) - except that a letter confirmed gray (not in the word) always turns gray, even if it was blue before. The host can switch this off in Settings (Auto-color keyboard keys). Everything resets each new round.</li>
         <li>A word already on the board is skipped. <em>Strict fit</em> is on by default, so only guesses that still fit every earlier color are accepted; the host can switch it off in Settings to accept any real word.</li>
         <li><strong>Scoring (Live):</strong> 1 point for every guess placed on the board, 5 points for the guess that solves the round.</li>
         <li>💡 unlimited hints suggest a word that best fits the code and the colors so far (never the answer). Difficulty (Normal/Medium/Hard/Random) sets how tricky the word itself is.</li>

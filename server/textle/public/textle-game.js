@@ -82,6 +82,7 @@ const el = {
   leaderboardShowInput: document.getElementById("leaderboardShowInput"),
   rejectionToastShowInput: document.getElementById("rejectionToastShowInput"),
   strictFitToggle: document.getElementById("strictFitToggle"),
+  keyAutoColorToggle: document.getElementById("keyAutoColorToggle"),
   applyBtn: document.getElementById("applyBtn"),
   diagToggle: document.getElementById("diagToggle"),
   diagGrid: document.getElementById("diagGrid"),
@@ -178,6 +179,11 @@ el.fullscreenBtn.addEventListener("click", () => {
 // if it was green in any guess, otherwise yellow if it was ever yellow, otherwise gray.
 // There is no manual coloring - nothing on the keyboard or tiles is clickable.
 function paintKeyboard() {
+  // Host switched "Auto-color keyboard keys" off: keep every key plain.
+  if (lastState && lastState.game && lastState.game.keyAutoColor === false) {
+    el.keyboard.querySelectorAll(".key").forEach((key) => { key.className = "key"; });
+    return;
+  }
   const keyStatus = (lastState && lastState.game && lastState.game.keyStatus) || {};
   el.keyboard.querySelectorAll(".key").forEach((key) => {
     const status = keyStatus[key.dataset.letter];
@@ -306,6 +312,7 @@ function syncStagedSettingsFromState(g) {
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
   if (el.strictFitToggle) el.strictFitToggle.checked = g.strictFit !== false; // Strict fit is ON unless the host switched it off
+  if (el.keyAutoColorToggle) el.keyAutoColorToggle.checked = g.keyAutoColor !== false; // ON unless the host switched it off
   updateModePickerLabel();
 }
 
@@ -441,6 +448,11 @@ el.rejectionToastShowInput.addEventListener("change", () => {
 // choice is remembered by the server.
 if (el.strictFitToggle) el.strictFitToggle.addEventListener("change", () => {
   send("set_strict_fit", { on: el.strictFitToggle.checked });
+});
+
+// Keyboard auto-color applies immediately; ON by default, the host's choice is remembered by the server.
+if (el.keyAutoColorToggle) el.keyAutoColorToggle.addEventListener("change", () => {
+  send("set_key_autocolor", { on: el.keyAutoColorToggle.checked });
 });
 
 el.playAgainBtn.addEventListener("click", () => send("play_again", {}));

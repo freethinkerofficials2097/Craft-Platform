@@ -244,6 +244,14 @@ export async function registerCrossdle(app, rootIo, options = {}) {
       }
     });
 
+    socket.on('host:setKeyAutoColor', (payload) => {
+      try {
+        engine.setKeyAutoColor(Boolean(payload && payload.on));
+      } catch (err) {
+        diagnostics.logError('socket.host:setKeyAutoColor', err);
+      }
+    });
+
     socket.on('host:setStrictFit', (payload) => {
       try {
         engine.setStrictFit(Boolean(payload && payload.on));

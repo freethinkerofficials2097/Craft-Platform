@@ -62,6 +62,7 @@ import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blind
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -241,6 +242,8 @@ const game = {
   // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
   // word of the right length is accepted and colored, so chat can probe freely.
   strictFit: getStrictFit("colordle"),
+  // true (default): the on-screen keyboard colors itself from the tiles. Host can switch it off.
+  keyAutoColor: getKeyAutoColor("colordle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -756,6 +759,7 @@ function buildStatePayload() {
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
       strictFit: game.strictFit,
+      keyAutoColor: game.keyAutoColor,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -874,6 +878,10 @@ function handleClientAction(ws, msg) {
       broadcastState();
       break;
     }
+    case "set_key_autocolor":
+      game.keyAutoColor = setKeyAutoColor("colordle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
     case "set_strict_fit":
       game.strictFit = setStrictFit("colordle", Boolean(payload && payload.on));
       broadcastState();

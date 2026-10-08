@@ -31,7 +31,8 @@
 // Differences from BLINDLE:
 //   - the clue is one of five colors per LETTER, plus the numeric code row on top of the board
 //   - the keyboard is NOT a manual scratchpad: every key colors itself with the best color
-//     that letter has earned in any guess this round (green > pink > yellow > blue > gray)
+//     that letter has earned in any guess this round (green > pink > yellow > blue), except that a
+//     letter CONFIRMED gray (not in the word) always shows gray, even if it was blue before
 //   - scoring: 1 point for every guess that fits the board, 5 points for solving the round
 //
 // Transport: like ORACLE / COLORBLINDLE / TEXTLE / RANGEDLE it runs on its own Socket.IO
@@ -48,6 +49,7 @@ import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blind
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -177,19 +179,31 @@ function formatClue(c) {
   return c.map((v) => COLOR_NAMES[v][0]).join(" ");
 }
 
-// Keyboard: the best color each letter has earned in ANY guess this round.
-// Priority green > pink > yellow > blue > gray. Pink beats yellow (it says the same plus
-// "close"); blue beats gray (both mean "not in the word", blue also says "close to a spot").
+// Keyboard: the color each letter shows, worked out over EVERY guess this round.
+//   1. A letter that is CONFIRMED ABSENT always shows GRAY, whatever color it wore before.
+//      Confirmed absent = in some guess it got a gray tile and no tile of that same letter in
+//      that same guess was green / yellow / pink (so the gray is not just a used-up duplicate
+//      copy of a letter that IS in the word). Gray wins over blue - a letter that was blue once
+//      and is later confirmed gray turns gray.
+//   2. Otherwise the best color earned: green > pink > yellow > blue.
 const KEY_PRIORITY = [GREEN, PINK, YELLOW, BLUE, GRAY];
 function buildLetterStates(guesses) {
   const best = {};
+  const absent = new Set();
   for (const g of guesses) {
+    const inWordHere = new Set(); // letters with a green / yellow / pink tile in this guess
+    for (let i = 0; i < g.word.length; i++) {
+      const c = g.clue[i];
+      if (c === GREEN || c === YELLOW || c === PINK) inWordHere.add(g.word[i]);
+    }
     for (let i = 0; i < g.word.length; i++) {
       const letter = g.word[i];
+      if (g.clue[i] === GRAY && !inWordHere.has(letter)) absent.add(letter);
       const rank = KEY_PRIORITY.indexOf(g.clue[i]);
       if (best[letter] === undefined || rank < KEY_PRIORITY.indexOf(best[letter])) best[letter] = g.clue[i];
     }
   }
+  for (const letter of absent) best[letter] = GRAY; // confirmed gray beats any earlier color
   return best;
 }
 
@@ -231,6 +245,8 @@ const game = {
   // false (default): any real, not-yet-guessed word is accepted. true: BLINDLE's rule - the guess
   // must also fit the colors of every guess already on the board.
   strictFit: getStrictFit("codedle"),
+  // true (default): the on-screen keyboard colors itself from the tiles. Host can switch it off.
+  keyAutoColor: getKeyAutoColor("codedle"),
   // true (default, like BLINDLE): every round opens with one automatic, never-winning starter word
   // so chat has a first set of colors to read. Host can switch it off in Settings.
   starterWord: true,
@@ -730,6 +746,7 @@ function buildStatePayload() {
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
       strictFit: game.strictFit,
+      keyAutoColor: game.keyAutoColor,
       starterWord: game.starterWord,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
@@ -835,6 +852,10 @@ function handleClientAction(ws, msg) {
       ws.emit("offline_guess_result", result);
       break;
     }
+    case "set_key_autocolor":
+      game.keyAutoColor = setKeyAutoColor("codedle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
     case "set_strict_fit":
       game.strictFit = setStrictFit("codedle", Boolean(payload && payload.on));
       broadcastState();

@@ -86,6 +86,7 @@ const el = {
   leaderboardShowInput: document.getElementById("leaderboardShowInput"),
   rejectionToastShowInput: document.getElementById("rejectionToastShowInput"),
   strictFitToggle: document.getElementById("strictFitToggle"),
+  keyAutoColorToggle: document.getElementById("keyAutoColorToggle"),
   applyBtn: document.getElementById("applyBtn"),
   diagToggle: document.getElementById("diagToggle"),
   diagGrid: document.getElementById("diagGrid"),
@@ -162,9 +163,15 @@ el.fullscreenBtn.addEventListener("click", () => {
 // Keyboard: A-Z in two rows of 13. It is NOT a manual scratchpad - nothing is clickable. Every key
 // colors itself with the best color its letter has earned in ANY guess this round (the server
 // works it out over every guess and sends it as `letterStates`):
-//   0 green, 1 yellow, 2 blue, 3 pink, 4 gray   (priority green > pink > yellow > blue > gray)
+//   0 green, 1 yellow, 2 blue, 3 pink, 4 gray   (priority green > pink > yellow > blue; a letter
+//   confirmed gray - absent from the word - always shows gray, decided by the server)
 // ------------------------------------------------------------
 function paintKeyboard() {
+  // Host switched "Auto-color keyboard keys" off: keep every key plain.
+  if (lastState && lastState.game && lastState.game.keyAutoColor === false) {
+    el.keyboard.querySelectorAll(".key").forEach((key) => { key.className = "key"; });
+    return;
+  }
   const states = (lastState && lastState.game && lastState.game.letterStates) || {};
   el.keyboard.querySelectorAll(".key").forEach((key) => {
     const st = states[key.dataset.letter];
@@ -281,6 +288,7 @@ function syncStagedSettingsFromState(g) {
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
   el.strictFitToggle.checked = g.strictFit !== false; // Strict fit is ON unless the host switched it off
+  if (el.keyAutoColorToggle) el.keyAutoColorToggle.checked = g.keyAutoColor !== false; // ON unless the host switched it off
   el.starterWordToggle.checked = g.starterWord !== false;
   updateModePickerLabel();
 }
@@ -430,6 +438,11 @@ el.rejectionToastShowInput.addEventListener("change", () => {
 // Strict fit applies immediately, without restarting the round.
 el.strictFitToggle.addEventListener("change", () => {
   send("set_strict_fit", { on: el.strictFitToggle.checked });
+});
+
+// Keyboard auto-color applies immediately; ON by default, the host's choice is remembered by the server.
+if (el.keyAutoColorToggle) el.keyAutoColorToggle.addEventListener("change", () => {
+  send("set_key_autocolor", { on: el.keyAutoColorToggle.checked });
 });
 
 el.playAgainBtn.addEventListener("click", () => send("play_again", {}));
@@ -809,7 +822,7 @@ function avatarChipHtml(username, avatarUrl, sizePx) {
 const CLUE_TITLES = [
   "Green: right letter, right spot",
   "Yellow: in the word, wrong spot",
-  "Blue: within 3 letters of the hidden letter",
+  "Blue: within 3 letters",
   "Pink: in the word and within 3 letters",
   "Gray: not in the word"
 ];
