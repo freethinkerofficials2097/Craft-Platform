@@ -1,6 +1,6 @@
 // ===================================================================
 // Host profile picture helper (shared by every game that opens a round with a random
-// "starter word": BLINDLE, ORACLE, COLORBLINDLE, COLORDLE, STRUCTLE, TEXTLE, RANGEDLE, CODEDLE,
+// "starter word": BLINDLE, ORACLE, COLORBLINDLE, COLORDLE, STRUCTLE, TEXTLE, RANGEDLE, CODEDLE, SHAPEDLE,
 // TWISTLE, CROSSDLE).
 //
 // The starter word is played by the game itself, not by a viewer, so its circle shows the profile
