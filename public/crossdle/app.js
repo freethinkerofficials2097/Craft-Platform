@@ -64,6 +64,7 @@
 
   const strictFitToggle = el('strictFitToggle');
   const keyAutoColorToggle = el('keyAutoColorToggle');
+  const starterWordToggle = el('starterWordToggle');
   const hostFab = el('hostFab');
   const hostPanelOverlay = el('hostPanelOverlay');
   const hostPanelClose = el('hostPanelClose');
@@ -437,6 +438,7 @@
     if (!game) return;
     if (strictFitToggle) strictFitToggle.checked = game.strictFit !== false; // Strict fit is ON unless the host switched it off
     if (keyAutoColorToggle) keyAutoColorToggle.checked = game.keyAutoColor !== false; // ON unless the host switched it off
+    if (starterWordToggle) starterWordToggle.checked = game.starterWord !== false; // ON unless the host switched it off
     const keyAutoColorChanged = keyAutoColorOn !== (game.keyAutoColor !== false);
     keyAutoColorOn = game.keyAutoColor !== false;
 
@@ -711,6 +713,9 @@
   });
 
   // Strict fit applies immediately, without restarting the round.
+  if (starterWordToggle) starterWordToggle.addEventListener('change', () => {
+    socket.emit('host:setStarterWord', { on: starterWordToggle.checked });
+  });
   if (keyAutoColorToggle) keyAutoColorToggle.addEventListener('change', () => {
     socket.emit('host:setKeyAutoColor', { on: keyAutoColorToggle.checked });
   });
