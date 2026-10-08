@@ -1,5 +1,6 @@
 # TikTok LIVE Game Platform
 > **Update 21:** TEXTLE now accepts any real word as a guess, even if it conflicts with earlier clues - see `CHANGES_UPDATE_21.md`.
+> **Update 22:** recorded gift animations (14 gifts, with sound) now play in every game - see `CHANGES_UPDATE_22.md`.
 
 One deployed link, a game-selector home screen, and **seven** independent
 games — **Flagle Live**, **TRAVLE Live**, **Blindle**, **Findle Live**,
