@@ -87,6 +87,7 @@ const el = {
   revealShowInput: document.getElementById("revealShowInput"),
   leaderboardShowInput: document.getElementById("leaderboardShowInput"),
   rejectionToastShowInput: document.getElementById("rejectionToastShowInput"),
+  strictFitToggle: document.getElementById("strictFitToggle"),
   applyBtn: document.getElementById("applyBtn"),
   diagToggle: document.getElementById("diagToggle"),
   diagGrid: document.getElementById("diagGrid"),
@@ -324,6 +325,7 @@ function syncStagedSettingsFromState(g) {
   el.revealShowInput.value = g.revealShowSeconds;
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
+  if (el.strictFitToggle) el.strictFitToggle.checked = g.strictFit !== false; // Strict fit is ON unless the host switched it off
   updateModePickerLabel();
 }
 
@@ -432,6 +434,10 @@ el.revealShowInput.addEventListener("change", () => {
 });
 el.leaderboardShowInput.addEventListener("change", () => {
   socket.emit("host:setLeaderboardShowSeconds", { seconds: Number(el.leaderboardShowInput.value) || 3 });
+});
+// Strict fit applies immediately, without restarting the round.
+if (el.strictFitToggle) el.strictFitToggle.addEventListener("change", () => {
+  socket.emit("host:setStrictFit", { on: el.strictFitToggle.checked });
 });
 el.rejectionToastShowInput.addEventListener("change", () => {
   socket.emit("host:setRejectionToastSeconds", { seconds: Number(el.rejectionToastShowInput.value) || 4 });

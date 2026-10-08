@@ -257,8 +257,18 @@
       </div>
 
       <div class="drawerSection">
+        <h4>Strict fit</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="strictFitToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Only accept guesses that fit the earlier symbols</span>
+        </label>
+        <p class="sectionNote">On (default): a guess must still fit the symbol row of every guess on the board - it has to group the letter positions the same way (which positions share a symbol), whatever the symbols mean. Nobody can tell what the symbols mean, so this never gives the answer away. Off: any real word of the right length goes onto the board. Your choice is remembered and applies right away.</p>
+      </div>
+
+      <div class="drawerSection">
         <h4>Guess rejection message</h4>
-        <p class="sectionNote">Shown briefly whenever a guess can't be added to the board.</p>
+        <p class="sectionNote">Shown briefly whenever a guess can't be added to the board (not a real word, already played, or - with Strict fit on - it doesn't fit an earlier row of symbols).</p>
         <div class="row">
           <label class="fieldLabel delayLabel">Show rejection message for (seconds)</label>
           <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
@@ -356,7 +366,7 @@
         <li>Guess the hidden word — any length from 4 to 20 letters, chosen in Settings. <strong>Unlimited guesses</strong>, anyone can play, anytime.</li>
         <li>Every round draws <strong>3 mystery symbols</strong>, always picked to look very different from each other. Each secretly means one thing, and nobody is told which: <em>right spot</em>, <em>wrong spot</em>, or <em>not in your guess</em>.</li>
         <li>Each guess that lands on the board gets a row of symbols beside (or under) it — <strong>one per letter of the SECRET word</strong>, not the guess. Symbol 1 is about the secret word's 1st letter, symbol 2 its 2nd, and so on.</li>
-        <li>Any fresh word with the right number of letters goes straight onto the board — no vote, no waiting. Typing the secret word wins the round instantly.</li>
+        <li>With <strong>Strict fit</strong> on (the default), a fresh word goes onto the board only if it still fits the symbol rows already there (the same letter positions must share a symbol); the host can switch Strict fit off in Settings so any real word of the right length is accepted. No vote, no waiting. Typing the secret word wins the round instantly.</li>
         <li>The tiles' colors stay hidden until the round ends — then they flip, the answer appears, and the symbols' meanings are revealed.</li>
         <li>💡 unlimited hints suggest a word that fits every clue so far (never the answer). Difficulty (Normal/Medium/Hard/Random) sets how tricky the word itself is.</li>
         <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = just you, type guesses directly.</li>

@@ -1,4 +1,5 @@
 # TikTok LIVE Game Platform
+> **Update 25:** **Strict fit** is now in every letter word game and ON by default (the host can switch it off per game in Settings; the choice is remembered) - see `CHANGES_UPDATE_25.md`.
 > **Update 24:** every word game now has a customizable **color legend**, and the host's TikTok profile picture on the starter word is now 100% reliable (the server downloads and serves it) - see `CHANGES_UPDATE_24.md`.
 > **Update 23:** new game CODEDLE (number code + green / yellow / blue / pink / gray letter clues) at `/codedle/` - see `CHANGES_UPDATE_23.md`.
 > **Update 22:** new game RANGEDLE (letters colored by alphabet distance) at `/rangedle/` - see `CHANGES_UPDATE_22.md`.
@@ -178,6 +179,14 @@ call, a fresh room-info request, the host's public TikTok profile page, and fina
 Troubleshooting: open `/host-avatar-status/<username>` on your site to see whether the server has the picture.
 It goes back to the plain colored circle in Test/Offline mode or after Disconnect.
 
+## Strict fit on every word game (update 25)
+
+Every letter word game (BLINDLE, ORACLE, COLORBLINDLE, COLORDLE, STRUCTLE, TEXTLE, RANGEDLE, CODEDLE, TWISTLE, CROSSDLE) has a
+**Strict fit** switch in its Settings (CROSSDLE: Host panel). It is **ON by default**; the host can turn it off per game, applies
+instantly, and is remembered in `data/strict-fit.json` (`server/shared/strict-fit-store.js`). ON = a guess must still fit the
+clues already on the board, using that game's own rules (see the table in `CHANGES_UPDATE_25.md`); OFF = any real word of the right
+length is accepted. The hidden word always passes, and a guess that doesn't fit is skipped with a short on-screen reason.
+
 ## Color legend on every word game (update 24)
 
 Each word game shows a small legend explaining what every color means (like RANGEDLE's). By default it sits
@@ -207,8 +216,8 @@ Live/Test/Offline, hints, leaderboards, celebration, engagement alerts, color sh
 - **Self-coloring keyboard.** No manual coloring. Each key takes the best color its letter earned in any guess this
   round: green > pink > yellow > blue > gray. No number columns clue.
 - **Scoring (Live):** 1 point for every guess placed on the board, 5 points for the guess that solves the round.
-- Any real word of the right length is accepted (a word already on the board is skipped). Settings: **Strict fit**
-  (BLINDLE's "must fit every earlier clue" rule, off by default) and **Starter word** (on by default, like BLINDLE).
+- A word already on the board is skipped. Settings: **Strict fit** (BLINDLE's "must fit every earlier clue" rule, **on by default since
+  update 25**; switch it off to accept any real word) and **Starter word** (on by default, like BLINDLE).
 - Hints suggest a word with the same code (when one exists) that best fits the colors so far - never the answer.
 
 Files: `server/codedle/codedle-server.js` + its own `public/` client folder, mounted at `/codedle/` on Socket.IO
@@ -273,8 +282,8 @@ celebration, Live/Test/Offline, hints, engagement alerts). What's different:
 - **You win when both numbers are 0** — the guess has exactly the same total straight lines and curves
   as the hidden word. It does *not* have to be the hidden word: any real word meeting both totals is
   accepted and earns **1 point**. Other valid guesses earn nothing.
-- **No keyboard and no manual coloring.** **Starter word removed (update 15):** a Structle round now opens on a blank board - the automatic random first guess is switched off for Structle. **Any real word of the right length is accepted** - there is no
-  clue-consistency rule, so viewers can test any word. A word already guessed this round is not added again:
+- **No keyboard and no manual coloring.** **Starter word removed (update 15):** a Structle round now opens on a blank board - the automatic random first guess is switched off for Structle. With **Strict fit** on (the default since update 25) a guess must give the same two numbers as every earlier guess; with it
+  switched off, **any real word of the right length is accepted** so viewers can test any word. A word already guessed this round is not added again:
   a short **"Already guessed"** note appears with the two numbers that word got (duration set in Settings).
   Words not in the dictionary or of the wrong length are ignored. Hints still suggest a word that fits every clue so far and never one that would already win.
 - Number highlighting: a lone 0 stays plain. The row (tiles and both numbers) only turns green when **both** numbers are 0.

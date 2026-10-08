@@ -231,6 +231,17 @@
         </div>
 
         <div class="host-card">
+          <div class="host-card-title">🎯 Strict fit</div>
+          <div class="host-card-row">
+            <label class="mini-label" style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" id="strictFitToggle" checked />
+              Only accept guesses that fit the earlier rows
+            </label>
+          </div>
+          <p class="mini-note" style="margin:6px 2px 0;font-size:12px;opacity:.8;line-height:1.4;">On (default): a guess must still be a possible answer given every row on the board - some decoy word must be able to explain the tiles that were shown. Off: any real word of the right length is tested and added. Your choice is remembered and applies right away.</p>
+        </div>
+
+        <div class="host-card">
           <div class="host-card-title">📊 Live event tools</div>
           <div data-engagement-tools></div>
         </div>
@@ -305,6 +316,7 @@
         <ul class="plain-list">
           <li><b>Unlimited guesses, no clock</b> - a round runs until someone solves it (or the host skips/reveals it). Take your time.</li>
           <li>Only guesses that are <b>real words at this round's length</b> get tested and shown on the board - anything else shows a quick on-screen note explaining why, then gets out of the way.</li>
+          <li>With <b>Strict fit</b> on (the default), a guess must also still be a <b>possible answer</b> given the rows already on the board - because of the decoy, a row can be explained by the real answer plus some decoy word. A guess that no decoy could explain flashes a quick reason and is skipped. The host can switch Strict fit off in the host panel to accept any real word.</li>
           <li>The host can drop a free <b>hint letter</b> any time, and one also appears automatically every few guesses.</li>
           <li>If nobody solves it before time runs out, the answer is revealed and a new round begins.</li>
         </ul>

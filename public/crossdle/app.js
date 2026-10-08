@@ -62,6 +62,7 @@
   const hintsRow = el('hintsRow');
   const hintsTiles = el('hintsTiles');
 
+  const strictFitToggle = el('strictFitToggle');
   const hostFab = el('hostFab');
   const hostPanelOverlay = el('hostPanelOverlay');
   const hostPanelClose = el('hostPanelClose');
@@ -230,8 +231,12 @@
   // --------------------------------------------------------------------
   const REJECT_TOAST_DURATION_MS = 3500;
   let rejectToastTimer = null;
-  function showRejectToast(username, guess) {
-    rejectToast.textContent = `❌ "${(guess || '').toUpperCase()}" from ${username} isn't a recognized word - not added to the board.`;
+  function showRejectToast(username, guess, info) {
+    if (info && info.reason === 'no-fit') {
+      rejectToast.textContent = `❌ "${(guess || '').toUpperCase()}" from ${username} doesn't fit the tiles of guess #${(info.conflictIndex || 0) + 1} (${String(info.conflictWord || '').toUpperCase()}) - not added to the board.`;
+    } else {
+      rejectToast.textContent = `❌ "${(guess || '').toUpperCase()}" from ${username} isn't a recognized word - not added to the board.`;
+    }
     rejectToast.classList.remove('hidden');
     if (rejectToastTimer) clearTimeout(rejectToastTimer);
     rejectToastTimer = setTimeout(() => rejectToast.classList.add('hidden'), REJECT_TOAST_DURATION_MS);
@@ -376,7 +381,7 @@
   socket.on('diagnostics:update', renderDiagnostics);
   socket.on('tiktok:status', renderTiktokStatus);
   socket.on('testMode:status', (s) => { testModeToggle.checked = !!s.active; });
-  socket.on('guess:rejected', (payload) => showRejectToast(payload.username, payload.guess));
+  socket.on('guess:rejected', (payload) => showRejectToast(payload.username, payload.guess, payload));
 
   socket.on('connect_error', () => {
     diagSummary.textContent = 'Cannot reach the server socket. Reload the page.';
@@ -424,6 +429,7 @@
 
   function renderGame(game) {
     if (!game) return;
+    if (strictFitToggle) strictFitToggle.checked = game.strictFit !== false; // Strict fit is ON unless the host switched it off
 
     roundPill.textContent = game.roundNumber ? `Round ${game.roundNumber}` : 'Round —';
     renderLeaderboardTicker(game.leaderboard || []);
@@ -690,6 +696,11 @@
     if (confirm('Reset the leaderboard for everyone? This cannot be undone.')) {
       socket.emit('host:resetLeaderboard');
     }
+  });
+
+  // Strict fit applies immediately, without restarting the round.
+  if (strictFitToggle) strictFitToggle.addEventListener('change', () => {
+    socket.emit('host:setStrictFit', { on: strictFitToggle.checked });
   });
 
   wordLengthSelect.addEventListener('change', () => {
