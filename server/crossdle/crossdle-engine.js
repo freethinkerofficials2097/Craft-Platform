@@ -9,6 +9,7 @@
 
 import { WORD_LENGTH_OPTIONS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, randomWord, isKnownWord } from './crossdle-dictionary.js';
 import { ANSWER_WORDS } from './crossdle-answers.js';
+import { getStrictFit, setStrictFit } from '../shared/strict-fit-store.js';
 
 export { WORD_LENGTH_OPTIONS };
 
@@ -90,6 +91,70 @@ const RANK = { green: 2, yellow: 1, grey: 0 };
  */
 function mergeColors(a, b) {
   return a.map((c, i) => (RANK[c] >= RANK[b[i]] ? c : b[i]));
+}
+
+// ---------------------------------------------------------------------------
+// STRICT FIT (update 25)
+// Every row on the board was colored against the REAL answer merged with a secret DECOY word
+// (a fresh, never-shown word picked from the curated answer bank for that guess), so viewers can
+// never be sure which tiles came from which word. A new guess W "fits" an earlier row when W could
+// still be the real answer behind that row: there must be SOME decoy word that, merged with W's
+// own colors for that row, gives exactly the colors that were shown. (Unlike BLINDLE the clue is
+// deliberately ambiguous, so the test is "could a decoy explain it?", not "is it identical?".)
+// The real answer always fits, because its real decoy is one of the bank words tried here.
+// ---------------------------------------------------------------------------
+const decoyPatternCache = new WeakMap(); // attempt -> every decoy color pattern that could sit under its shown colors
+
+function decoyPatternsFor(attempt, length) {
+  let patterns = decoyPatternCache.get(attempt);
+  if (patterns) return patterns;
+  patterns = [];
+  const seen = new Set();
+  const pool = ANSWER_WORDS[length] || [];
+  const shown = attempt.colors;
+  for (const decoy of pool) {
+    const p = colorsAgainst(attempt.guess, decoy);
+    let possible = true;
+    for (let i = 0; i < length; i++) {
+      if (RANK[p[i]] > RANK[shown[i]]) { possible = false; break; } // a decoy can never out-rank what was shown
+    }
+    if (!possible) continue;
+    const key = p.join(',');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    patterns.push(p);
+  }
+  decoyPatternCache.set(attempt, patterns);
+  return patterns;
+}
+
+function fitsRowWithSomeDecoy(candidate, attempt, length) {
+  const shown = attempt.colors;
+  const own = colorsAgainst(attempt.guess, candidate); // colors this row would show for `candidate` as the real answer
+  for (let i = 0; i < length; i++) {
+    if (RANK[own[i]] > RANK[shown[i]]) return false;
+  }
+  const pool = ANSWER_WORDS[length];
+  if (!pool || pool.length === 0) return true; // no bank to judge by - never block
+  for (const p of decoyPatternsFor(attempt, length)) {
+    let ok = true;
+    for (let i = 0; i < length; i++) {
+      const merged = RANK[own[i]] >= RANK[p[i]] ? own[i] : p[i];
+      if (merged !== shown[i]) { ok = false; break; }
+    }
+    if (ok) return true;
+  }
+  return false;
+}
+
+/** Strict fit check of `candidate` against every row already on the board. */
+export function checkStrictFit(candidate, attempts, length) {
+  for (let i = 0; i < attempts.length; i++) {
+    if (!fitsRowWithSomeDecoy(candidate, attempts[i], length)) {
+      return { ok: false, conflictIndex: i, conflictWord: attempts[i].guess };
+    }
+  }
+  return { ok: true };
 }
 
 /** Computes the final on-screen colors for one guess row. */
@@ -207,6 +272,14 @@ export class GameEngine {
     this.tickTimer = null;
     this._nextRoundAt = null;
     this.nextRoundDelayMs = DEFAULT_NEXT_ROUND_DELAY_MS;
+    // Strict fit is ON by default; the host's choice is remembered in data/strict-fit.json.
+    this.strictFit = getStrictFit('crossdle');
+  }
+
+  /** Host switch: ON = a guess must still fit every row on the board; OFF = any real word is tested. */
+  setStrictFit(on) {
+    this.strictFit = setStrictFit('crossdle', Boolean(on));
+    this.onChange('settings');
   }
 
   /** Host-adjustable word length (4-20 letters) used for future rounds. */
@@ -379,6 +452,15 @@ export class GameEngine {
     // of why it wasn't accepted.
     if (!isAcceptableGuess(guess, length)) return { recognized: false, reason: 'not-a-word', guess };
 
+    // Strict fit ON (default): the guess must still be a possible answer given every row already on
+    // the board (see checkStrictFit). The real answer always passes.
+    if (this.strictFit && guess !== this.round.answer) {
+      const fit = checkStrictFit(guess, this.round.attempts, length);
+      if (!fit.ok) {
+        return { recognized: false, reason: 'no-fit', guess, conflictIndex: fit.conflictIndex, conflictWord: fit.conflictWord };
+      }
+    }
+
     const decoy = pickWord(length, [this.round.answer, guess]);
     const colors = computeRowColors(guess, this.round.answer, decoy);
     const isCorrect = guess === this.round.answer;
@@ -436,6 +518,7 @@ export class GameEngine {
       roundNumber: this.roundNumber,
       wordLength: this.wordLength,
       nextRoundDelayMs: this.nextRoundDelayMs,
+      strictFit: this.strictFit,
       leaderboard: this.getLeaderboardTop(10),
       round: r && {
         number: r.number,

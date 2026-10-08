@@ -290,7 +290,7 @@ function syncStagedSettingsFromState(g) {
   el.delayInput.value = g.autoContinueDelaySeconds;
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
-  el.strictFitToggle.checked = !!g.strictFit;
+  el.strictFitToggle.checked = g.strictFit !== false; // Strict fit is ON unless the host switched it off
   updateModePickerLabel();
 }
 

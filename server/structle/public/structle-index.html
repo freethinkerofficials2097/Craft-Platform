@@ -251,8 +251,18 @@
       </div>
 
       <div class="drawerSection">
+        <h4>Strict fit</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="strictFitToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Only accept guesses that fit the earlier clues</span>
+        </label>
+        <p class="sectionNote">On (default): a guess must give the same two numbers (straight lines / curves) that every guess already on the board showed - the hidden word always does. Off: any real word of the right length is accepted, so chat can test freely. Your choice is remembered and applies right away.</p>
+      </div>
+
+      <div class="drawerSection">
         <h4>"Already guessed" message</h4>
-        <p class="sectionNote">Shown briefly when someone repeats a word that was already played this round.</p>
+        <p class="sectionNote">Shown briefly when someone repeats a word that was already played this round, or (with Strict fit on) plays a word that doesn't fit the numbers of an earlier guess.</p>
         <div class="row">
           <label class="fieldLabel delayLabel">Show message for (seconds)</label>
           <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
@@ -355,7 +365,7 @@
           </ul>
         </li>
         <li><strong>You win when both numbers are 0</strong> — your word has exactly the same total straight lines and total curves as the hidden word. It does <em>not</em> have to be the hidden word itself: any real word that meets both totals is accepted and scores <strong>1 point</strong>.</li>
-        <li><strong>Any real word</strong> of the right length is accepted as a guess — try whatever you think might fit. Use the two numbers from earlier guesses to work out which words are still possible. A word that was <strong>already guessed</strong> this round is not added again — a quick "Already guessed" note shows its two numbers instead.</li>
+        <li>With <strong>Strict fit</strong> on (the default), a guess is only accepted if it would have given the same two numbers as every guess already on the board — so use the earlier numbers to work out which words are still possible; a word that doesn't fit flashes a quick reason and is skipped. The host can switch Strict fit off in Settings, and then <strong>any real word</strong> of the right length is accepted. A word that was <strong>already guessed</strong> this round is not added again — a quick "Already guessed" note shows its two numbers instead.</li>
         <li>Letter chart used for counting (straight · curves):
           <div class="letterChart" id="letterChart"></div>
         </li>

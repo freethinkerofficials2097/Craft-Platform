@@ -83,6 +83,7 @@ const el = {
   delayInput: document.getElementById("delayInput"),
   leaderboardShowInput: document.getElementById("leaderboardShowInput"),
   rejectionToastShowInput: document.getElementById("rejectionToastShowInput"),
+  strictFitToggle: document.getElementById("strictFitToggle"),
   applyBtn: document.getElementById("applyBtn"),
   diagToggle: document.getElementById("diagToggle"),
   diagGrid: document.getElementById("diagGrid"),
@@ -306,6 +307,7 @@ function syncStagedSettingsFromState(g) {
   el.delayInput.value = g.autoContinueDelaySeconds;
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
+  if (el.strictFitToggle) el.strictFitToggle.checked = g.strictFit !== false; // Strict fit is ON unless the host switched it off
   updateModePickerLabel();
 }
 
@@ -435,6 +437,12 @@ el.leaderboardShowInput.addEventListener("change", () => {
 // on screen - no need to restart the round for this one either.
 el.rejectionToastShowInput.addEventListener("change", () => {
   send("set_rejection_toast_seconds", { seconds: Number(el.rejectionToastShowInput.value) || 4 });
+});
+
+// Strict fit applies immediately, without restarting the round. It is ON by default; the host's
+// choice is remembered by the server.
+if (el.strictFitToggle) el.strictFitToggle.addEventListener("change", () => {
+  send("set_strict_fit", { on: el.strictFitToggle.checked });
 });
 
 el.playAgainBtn.addEventListener("click", () => send("play_again", {}));

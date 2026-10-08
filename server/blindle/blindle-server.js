@@ -41,6 +41,7 @@ import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-conn
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./blindle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
+import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "./blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "./blindle-difficulty.js";
 
@@ -197,6 +198,10 @@ const game = {
   hintsUsed: 0,
   hintSuggestions: [],
   lastRejection: null,
+  // STRICT FIT (update 25): ON by default; the host can switch it off in Settings (remembered in
+  // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
+  // word of the right length is accepted and colored, so chat can probe freely.
+  strictFit: getStrictFit("blindle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -278,7 +283,14 @@ function processGuess(word, caller) {
 function attemptGuess(word, caller) {
   if (game.status !== "live") return { ok: false, error: "No round in progress." };
 
-  const consistency = checkConsistency(word);
+  // A word already on the board is never accepted twice (otherwise one viewer could farm the
+  // 1-point-per-guess reward by repeating a word). Silent for chat; offline shows the message.
+  if (game.guesses.some((g) => g.word === word)) {
+    return { ok: false, error: "That word is already on the board.", duplicate: true };
+  }
+
+  // Strict fit ON (default): the guess must fit the green/yellow/red counts of every guess on the board.
+  const consistency = game.strictFit ? checkConsistency(word) : { ok: true };
   if (!consistency.ok) {
     const reason = `Conflicts with guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatCounts(consistency.conflictCounts)})`;
     game.lastRejection = { word, reason, at: Date.now() };
@@ -675,6 +687,7 @@ function buildStatePayload() {
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
+      strictFit: game.strictFit,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -798,6 +811,10 @@ function handleClientAction(ws, msg) {
       broadcastState();
       break;
     }
+    case "set_strict_fit":
+      game.strictFit = setStrictFit("blindle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
     case "set_rejection_toast_seconds": {
       const v = Number(payload && payload.seconds);
       game.rejectionToastSeconds = Number.isFinite(v) ? Math.min(30, Math.max(1, Math.round(v))) : DEFAULT_REJECTION_TOAST_SECONDS;

@@ -36,6 +36,7 @@ import { isBlocked } from '../crossdle/crossdle-blocklist.js';
 import { Diagnostics } from './twistle-diagnostics.js';
 import { TikTokManager } from './twistle-tiktok.js';
 import { evaluateGuess, pickSymbolMap, conceptsEqual, parseGuess, SYMBOL_POOL } from './twistle-engine.js';
+import { getStrictFit, setStrictFit } from '../shared/strict-fit-store.js';
 
 // Points - identical to BLINDLE (solving is worth 10x a plain valid guess).
 const WIN_POINTS = 10;
@@ -100,6 +101,10 @@ export async function registerTwistle(app, rootIo, options = {}) {
     lastWinInfo: null, // { username, points, word, avatarUrl }
     lastRejection: null, // { word, reason, at } - a brief on-screen toast, BLINDLE-style
     rejectionToastSeconds: DEFAULT_REJECTION_TOAST_SECONDS,
+    // STRICT FIT (update 25): ON by default; the host can switch it off in Settings (remembered in
+    // data/strict-fit.json). ON = a new guess must fit the symbol row of every guess already on the
+    // board. OFF = any real word of the right length goes onto the board.
+    strictFit: getStrictFit('twistle'),
     usedWords: new Set(),
     roundScores: new Map(),
     totalScores: new Map(),
@@ -223,6 +228,32 @@ export async function registerTwistle(app, rootIo, options = {}) {
     broadcastState();
   }
 
+  // STRICT FIT for TWISTLE.
+  // Nobody is told which symbol means "correct spot" / "wrong spot" / "not in your guess", so a
+  // viewer can only see WHICH LETTER POSITIONS share a symbol. A candidate word therefore fits an
+  // earlier row when, if it were the secret word, that row would have grouped the letter positions
+  // in exactly the same way - the meanings may be assigned to the symbols in any way, and (like
+  // ORACLE) independently for every row. The real secret word always fits, and accepting or
+  // rejecting a word never reveals what any symbol means.
+  function partitionKey(row) {
+    const labels = new Map();
+    return row.map((c) => {
+      if (!labels.has(c)) labels.set(c, labels.size);
+      return labels.get(c);
+    }).join(',');
+  }
+
+  function checkStrictFit(word) {
+    for (let i = 0; i < game.rows.length; i++) {
+      const row = game.rows[i];
+      const hypothetical = evaluateGuess(word, row.word).symbols; // the row `row.word` would show if `word` were the secret
+      if (partitionKey(hypothetical) !== partitionKey(row.concepts)) {
+        return { ok: false, conflictIndex: i, conflictWord: row.word };
+      }
+    }
+    return { ok: true };
+  }
+
   function isAcceptableGuess(word) {
     if (answerSet.has(word)) return true;
     return isValidGuessWord(word) && !isBlocked(word);
@@ -261,6 +292,16 @@ export async function registerTwistle(app, rootIo, options = {}) {
       const error = 'That word is already on the board.';
       game.lastRejection = { word, reason: error, at: Date.now() };
       return { ok: false, error, reason: 'already-played' };
+    }
+
+    // Strict fit ON (default): the word must fit the symbol row of every guess on the board.
+    if (game.strictFit) {
+      const fit = checkStrictFit(word);
+      if (!fit.ok) {
+        const error = `Doesn't fit the symbols of guess #${fit.conflictIndex + 1} (${fit.conflictWord.toUpperCase()})`;
+        game.lastRejection = { word, reason: error, at: Date.now() };
+        return { ok: false, error, reason: 'no-fit' };
+      }
     }
 
     const { states, symbols } = evaluateGuess(game.secretWord, word);
@@ -473,6 +514,7 @@ export async function registerTwistle(app, rootIo, options = {}) {
         hintSuggestions: game.hintSuggestions,
         lastWinInfo: game.lastWinInfo,
         lastRejection: game.lastRejection,
+        strictFit: game.strictFit,
         rejectionToastSeconds: game.rejectionToastSeconds,
         autoContinue: game.autoContinue,
         autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -594,6 +636,10 @@ export async function registerTwistle(app, rootIo, options = {}) {
     }));
     socket.on('host:setRevealShowSeconds', guarded('setRevealShowSeconds', (payload) => {
       game.revealShowSeconds = clampSeconds(payload && payload.seconds, DEFAULT_REVEAL_SHOW_SECONDS);
+      broadcastState();
+    }));
+    socket.on('host:setStrictFit', guarded('setStrictFit', (payload) => {
+      game.strictFit = setStrictFit('twistle', Boolean(payload && payload.on));
       broadcastState();
     }));
     socket.on('host:setRejectionToastSeconds', guarded('setRejectionToastSeconds', (payload) => {

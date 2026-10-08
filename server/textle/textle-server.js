@@ -30,6 +30,7 @@ import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-conn
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./textle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
+import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -265,6 +266,10 @@ const game = {
   hintsUsed: 0,
   hintSuggestions: [],
   lastRejection: null,
+  // STRICT FIT (update 25): ON by default; the host can switch it off in Settings (remembered in
+  // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
+  // word of the right length is accepted and colored, so chat can probe freely.
+  strictFit: getStrictFit("textle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -309,7 +314,8 @@ function awardPoints(caller, points) {
   game.totalScores.set(caller, (game.totalScores.get(caller) || 0) + points);
 }
 
-const ENFORCE_CLUE_CONSISTENCY = process.env.TEXTLE_STRICT_CLUES === "1";
+// (update 25) The old TEXTLE_STRICT_CLUES environment variable is replaced by the host's "Strict fit"
+// switch in Settings (ON by default).
 
 function checkConsistency(word) {
   for (let i = 0; i < game.guesses.length; i++) {
@@ -352,11 +358,15 @@ function processGuess(word, caller) {
 function attemptGuess(word, caller) {
   if (game.status !== "live") return { ok: false, error: "No round in progress." };
 
-  // UPDATE 21: by default ANY real word is accepted onto the board, even if it could not possibly
-  // be the answer given earlier clues. Viewers don't know the answer, so they must be free to probe
-  // (e.g. test whether a letter appears twice). Set TEXTLE_STRICT_CLUES=1 to bring the old strict
-  // "must agree with every earlier clue" rule back.
-  if (ENFORCE_CLUE_CONSISTENCY) {
+  // A word already on the board is never accepted twice (no farming the 1-point-per-guess reward).
+  if (game.guesses.some((g) => g.word === word)) {
+    return { ok: false, error: "That word is already on the board.", duplicate: true };
+  }
+
+  // Strict fit ON (default, update 25): the guess must agree with the segment clue (green / yellow /
+  // gray boxes) of every guess already on the board. Strict fit OFF (host's choice, as in update 21):
+  // ANY real word is accepted onto the board so viewers can probe freely.
+  if (game.strictFit) {
     const consistency = checkConsistency(word);
     if (!consistency.ok) {
       const reason = `Conflicts with the clue from guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()})`;
@@ -797,6 +807,7 @@ function buildStatePayload() {
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
+      strictFit: game.strictFit,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -924,6 +935,10 @@ function handleClientAction(ws, msg) {
       broadcastState(true);
       break;
     }
+    case "set_strict_fit":
+      game.strictFit = setStrictFit("textle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
     case "set_rejection_toast_seconds": {
       const v = Number(payload && payload.seconds);
       game.rejectionToastSeconds = Number.isFinite(v) ? Math.min(30, Math.max(1, Math.round(v))) : DEFAULT_REJECTION_TOAST_SECONDS;

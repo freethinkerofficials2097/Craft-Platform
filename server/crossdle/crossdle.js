@@ -83,6 +83,15 @@ export async function registerCrossdle(app, rootIo, options = {}) {
         io.emit('diagnostics:update', diagnostics.getPublicState());
       } else if (result && result.reason === 'not-a-word') {
         io.emit('guess:rejected', { username, guess: result.guess, ts: Date.now() });
+      } else if (result && result.reason === 'no-fit') {
+        io.emit('guess:rejected', {
+          username,
+          guess: result.guess,
+          reason: 'no-fit',
+          conflictIndex: result.conflictIndex,
+          conflictWord: result.conflictWord,
+          ts: Date.now(),
+        });
       }
       if (result && (result.correct || result.roundOver)) {
         saveLeaderboard();
@@ -232,6 +241,14 @@ export async function registerCrossdle(app, rootIo, options = {}) {
         if (length) engine.setWordLength(length);
       } catch (err) {
         diagnostics.logError('socket.host:setWordLength', err);
+      }
+    });
+
+    socket.on('host:setStrictFit', (payload) => {
+      try {
+        engine.setStrictFit(Boolean(payload && payload.on));
+      } catch (err) {
+        diagnostics.logError('socket.host:setStrictFit', err);
       }
     });
 

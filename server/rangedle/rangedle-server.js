@@ -33,6 +33,7 @@ import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-conn
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blindle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
+import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -171,7 +172,7 @@ const game = {
   lastRejection: null,
   // false (default): any real, not-yet-guessed word is accepted. true: BLINDLE's rule - the guess
   // must also fit the colors of every guess already on the board.
-  strictFit: false,
+  strictFit: getStrictFit("rangedle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -770,7 +771,7 @@ function handleClientAction(ws, msg) {
       break;
     }
     case "set_strict_fit":
-      game.strictFit = Boolean(payload && payload.on);
+      game.strictFit = setStrictFit("rangedle", Boolean(payload && payload.on));
       broadcastState();
       break;
     case "reset_round_leaderboard":

@@ -66,6 +66,7 @@ import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-conn
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blindle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
+import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -221,6 +222,10 @@ const game = {
   hintsUsed: 0,
   hintSuggestions: [],
   lastRejection: null,
+  // STRICT FIT (update 25): ON by default; the host can switch it off in Settings (remembered in
+  // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
+  // word of the right length is accepted and colored, so chat can probe freely.
+  strictFit: getStrictFit("structle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -269,6 +274,19 @@ function fitsClues(word) {
   return true;
 }
 
+// STRICT FIT for STRUCTLE: a guess fits if, for EVERY guess already on the board, it would have
+// produced the same two numbers (straight-line difference, curve difference) that guess showed.
+// The hidden word always passes. Returns the first clue it breaks (for the rejection note).
+function checkConsistency(word) {
+  for (let i = 0; i < game.guesses.length; i++) {
+    const past = game.guesses[i];
+    if (!clueEquals(clueBetween(past.word, word), past.clue)) {
+      return { ok: false, conflictIndex: i, conflictWord: past.word, conflictClue: past.clue };
+    }
+  }
+  return { ok: true };
+}
+
 function processGuess(word, caller) {
   const clue = clueBetween(word, game.secretWord);
   const avatarUrl = knownAvatars.get(caller) || null;
@@ -305,6 +323,16 @@ function attemptGuess(word, caller) {
     const reason = `Already guessed \u2014 ${formatClue(prior.clue)}`;
     game.lastRejection = { word, reason, repeat: true, clue: prior.clue, at: Date.now() };
     return { ok: false, error: reason, rejected: true };
+  }
+
+  // Strict fit ON (default): the guess must fit the two numbers of every guess on the board.
+  if (game.strictFit) {
+    const consistency = checkConsistency(word);
+    if (!consistency.ok) {
+      const reason = `Doesn't fit the numbers of guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClue(consistency.conflictClue)})`;
+      game.lastRejection = { word, reason, at: Date.now() };
+      return { ok: false, error: reason, rejected: true };
+    }
   }
 
   processGuess(word, caller);
@@ -705,6 +733,7 @@ function buildStatePayload() {
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
+      strictFit: game.strictFit,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -823,6 +852,10 @@ function handleClientAction(ws, msg) {
       broadcastState();
       break;
     }
+    case "set_strict_fit":
+      game.strictFit = setStrictFit("structle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
     case "set_rejection_toast_seconds": {
       const v = Number(payload && payload.seconds);
       game.rejectionToastSeconds = Number.isFinite(v) ? Math.min(30, Math.max(1, Math.round(v))) : DEFAULT_REJECTION_TOAST_SECONDS;

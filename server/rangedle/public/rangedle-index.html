@@ -257,11 +257,11 @@
       <div class="drawerSection">
         <h4>Strict fit</h4>
         <label class="switchRow">
-          <input type="checkbox" id="strictFitToggle" />
+          <input type="checkbox" id="strictFitToggle" checked />
           <span class="switchTrack"><span class="switchThumb"></span></span>
           <span class="switchLabel">Only accept guesses that fit the earlier colors</span>
         </label>
-        <p class="sectionNote">Off (recommended): any real word of the right length is accepted and colored, so chat can probe freely. On: BLINDLE's rule - a guess must still fit the colors of every guess on the board, otherwise it is skipped with the message below. The colors are very precise, so with this on only a handful of words can fit after the first guess or two. Applies right away.</p>
+        <p class="sectionNote">On (default): a guess must still fit the colors of every guess on the board, otherwise it is skipped with the message below. The colors are very precise, so only a handful of words can fit after the first guess or two. Off: any real word of the right length is accepted and colored, so chat can probe freely. Your choice is remembered and applies right away.</p>
       </div>
 
       <div class="drawerSection">
@@ -365,7 +365,7 @@
         <li>Each letter of a guess is colored by how far it is <em>along the alphabet</em> from the letter in the same spot of the hidden word — forward or backward. The numbers above the keyboard are the alphabet positions (A = 1 … Z = 26).</li>
         <li><span class="legendTile rg1">red</span> 1–5 away &nbsp; <span class="legendTile rg2">orange</span> 6–10 &nbsp; <span class="legendTile rg3">yellow</span> 11–15 &nbsp; <span class="legendTile rg4">blue</span> 16–20 &nbsp; <span class="legendTile rg5">purple</span> 21–25 &nbsp; <span class="legendTile rg0">green</span> = correct letter in the correct spot.</li>
         <li>Example: an <strong>orange M</strong> (13th letter) means the hidden letter is 6–10 steps away: forward S–W (19–23) or backward C–G (3–7).</li>
-        <li>Any real word of the right length is accepted (a word already on the board is skipped). Hosts can switch on <em>Strict fit</em> in Settings so only guesses that still fit every earlier color are accepted.</li>
+        <li>A word already on the board is skipped. <em>Strict fit</em> is on by default, so only guesses that still fit every earlier color are accepted; the host can switch it off in Settings to accept any real word.</li>
         <li>Keys turn <strong>green</strong> by themselves once that letter has been matched in the right spot in any guess. Everything resets each new round.</li>
         <li><strong>Scoring (Live):</strong> 1 point for every guess placed on the board, 5 points for solving the round.</li>
         <li>💡 unlimited hints suggest a word that best fits the colors so far (never the answer). Difficulty (Normal/Medium/Hard/Random) sets how tricky the word itself is.</li>
