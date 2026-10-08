@@ -1,39 +1,37 @@
-# Update 22 - Recorded gift animations in every game (on top of Update 21)
+# Update 22 - new game: RANGEDLE (on top of Update 21)
 
-## What it does
-When a viewer sends one of these gifts, its recorded animation (with sound) plays over the game, together with
-the usual gift card (viewer name, avatar, thank-you line). Works in ALL games, because every game page already
-loads the one shared script `public/shared/engagement.js`.
+## What it is
+A BLINDLE copy with a different clue. Every letter of a guess is colored by how far it is **along the
+alphabet** (forward or backward, no wrap-around) from the letter in the same position of the hidden word:
 
-Gifts with animations: Love You So Much, Ice Cream Cone, Pop, TikTok, GG, Rose, Football, Rosa, Heart Me,
-Heart Puff, Donut, Perfume, Gold Boxing Gloves, Finger Heart. Any other gift still shows the normal gift card.
+| Color  | Meaning            |
+|--------|--------------------|
+| Red    | 1-5 away           |
+| Orange | 6-10 away          |
+| Yellow | 11-15 away         |
+| Blue   | 16-20 away         |
+| Purple | 21-25 away         |
+| Green  | correct letter     |
 
-## How the videos were prepared
-- The recordings had a solid dark backdrop. They were converted to real transparent video
-  (`public/shared/gifts/<name>.webm`, VP9 + alpha, with the original sound), so only the gift itself is drawn.
-- The original MP4s are kept next to them (`<name>.mp4`) as a fallback for Safari / Firefox, where the dark
-  backdrop is blended away with CSS instead.
-- Total size of the gifts folder: about 5 MB.
+## Screen (top to bottom)
+floating rejection-message area -> numbered keyboard (1-26 above each key, keys turn green by
+themselves once that letter was matched) -> color legend -> guess board.
+No manual key coloring and no number-columns clue.
 
-## Behavior
-- One animation at a time; extra gifts wait in line. If more than 5 are waiting, the older ones show only the
-  short card (no video) so the screen never falls far behind a busy live.
-- A combo (e.g. 5x Rose) plays the animation once, and the card shows "5x".
-- Sound: on by default. If the browser blocks sound (nobody has tapped the page yet), it plays silently instead.
-  Tapping the game once re-enables sound for later gifts.
-- Settings (inside each game's Settings panel, "Gift animations"): sound on/off, volume slider, and a
-  "Preview this gift animation" picker to test each one without going live.
-- "Fake Gift" test button now rotates through these gifts.
+## Scoring (Live mode)
+1 point for every guess placed on the board, 5 points for the guess that solves the round.
 
-## Matching (how a gift is recognised)
-By gift NAME as TikTok sends it (case-insensitive). The list is `GIFT_VIDEOS` at the top of
-`public/shared/engagement.js`. To add a gift later: put `name.webm` (+ `name.mp4`) in `public/shared/gifts/`
-and add one line to `GIFT_VIDEOS`.
+## Differences from BLINDLE (on purpose)
+- Any real word of the right length is accepted (BLINDLE's "must fit every earlier clue" rule leaves
+  almost no legal guesses with these precise colors). Host switch in Settings: **Strict fit**.
+- A word already on the board is skipped (no point farming).
+- Hints suggest the word that best fits the colors so far (never the answer).
+- Runs on its own Socket.IO namespace `/rangedle` (like ORACLE), page at `/rangedle/`.
 
-## Files changed / added
-- `public/shared/engagement.js` (video player, queue, settings)
-- `server/engagement/engagement-tracker.js` (card icons for the new gifts, test button cycling)
-- `public/shared/gifts/*` (28 new files)
+## Files
+- NEW `server/rangedle/` (server + `public/` client). Reuses BLINDLE's word bank and dictionary.
+- `server.js` mounts it; `public/index.html` has the new card; `public/shared/color-shades.js` and
+  `game-chrome.css` have its colors/title style; `package.json` version 2.12.0.
 
 ## Deploy
 Same as before: push to GitHub, Render redeploys. No new dependencies, no new environment variables.

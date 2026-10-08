@@ -17,6 +17,7 @@
 //   /colordle/ - COLORDLE  (Socket.IO namespace /colordle)
 //   /structle/ - STRUCTLE  (Socket.IO namespace /structle)
 //   /textle/   - TEXTLE    (Socket.IO namespace /textle)
+//   /rangedle/ - RANGEDLE  (Socket.IO namespace /rangedle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -41,6 +42,7 @@ import { Server } from "socket.io";
 import { registerFlagle } from "./server/flagle.js";
 import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
+import { mountRangedle } from "./server/rangedle/rangedle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -133,6 +135,13 @@ await mountStructle(app, io, { mountPath: "/structle" });
 // Hidden words are 4-15 letters by default (host can go 4-20). Reuses BLINDLE's dictionary
 // (loaded once) and has its own Socket.IO namespace /textle.
 await mountTextle(app, io, { mountPath: "/textle" });
+
+// RANGEDLE is a BLINDLE copy with a different clue: every letter of a guess is colored by how far
+// it is along the alphabet from the hidden letter (red 1-5, orange 6-10, yellow 11-15, blue 16-20,
+// purple 21-25, green = correct). Numbered keyboard + legend, keys turn green by themselves.
+// Like ORACLE it runs on its own Socket.IO namespace /rangedle (so it can never collide with
+// BLINDLE's WebSocket path) and reuses BLINDLE's word bank + dictionary (loaded once).
+await mountRangedle(app, io, { mountPath: "/rangedle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

@@ -119,15 +119,6 @@ const ROOM_WISHES = [
 // without copying any TikTok artwork. Matched by keyword, case-insensitive,
 // first match wins; anything unmatched gets a generic gift-box theme.
 const GIFT_THEMES = [
-  // UPDATE 22: themes for the gifts that have recorded animations (listed first so they win over the generic ones).
-  { test: /finger ?heart/i, icon: "🫰", from: "#ffb3c6", to: "#e0245e" },
-  { test: /(heart ?me|heart ?puff|love ?you ?so ?much)/i, icon: "💖", from: "#ff9ecb", to: "#d6336c" },
-  { test: /do(ugh)? ?nut/i, icon: "🍩", from: "#ffc2e2", to: "#e0589b" },
-  { test: /foot ?ball/i, icon: "⚽", from: "#f5f5f5", to: "#4b5563" },
-  { test: /boxing ?glove/i, icon: "🥊", from: "#ffd76a", to: "#b8720a" },
-  { test: /^gg$/i, icon: "🎮", from: "#7cf5d0", to: "#7c3aed" },
-  { test: /^pop$/i, icon: "🎈", from: "#c4b5fd", to: "#6d28d9" },
-  { test: /rosa/i, icon: "🌹", from: "#ff8fb1", to: "#c81d5b" },
   { test: /rose/i, icon: "🌹", from: "#ff8fb1", to: "#c81d5b" },
   { test: /(galaxy|universe|planet)/i, icon: "🌌", from: "#8b5cf6", to: "#1e1b4b" },
   { test: /lion/i, icon: "🦁", from: "#ffd76a", to: "#b8720a" },
@@ -141,10 +132,6 @@ const GIFT_THEMES = [
   { test: /(perfume)/i, icon: "🧴", from: "#e0c3fc", to: "#8e2de2" },
   { test: /(tiktok|banner)/i, icon: "✨", from: "#7cf5d0", to: "#0aa38a" },
   { test: /corn/i, icon: "🌽", from: "#ffe36e", to: "#c9970c" },
-];
-const TEST_GIFT_NAMES = [
-  "Love You So Much", "Ice Cream Cone", "Pop", "TikTok", "GG", "Rose", "Football",
-  "Rosa", "Heart Me", "Heart Puff", "Donut", "Perfume", "Gold Boxing Gloves", "Finger Heart",
 ];
 function pickGiftTheme(giftName) {
   const match = GIFT_THEMES.find((t) => t.test.test(giftName || ""));
@@ -531,14 +518,12 @@ export class EngagementTracker {
   triggerTest(kind) {
     const fakeUser = "test_viewer_" + Math.floor(Math.random() * 900 + 100);
     if (kind === "gift") {
-      const big = Math.random() < 0.25;
-      // UPDATE 22: cycle through the gifts that have recorded animations so "Fake Gift" shows them off.
-      const testGift = TEST_GIFT_NAMES[Math.floor(Math.random() * TEST_GIFT_NAMES.length)];
+      const big = Math.random() < 0.5;
       this.handleGift(
         {
           user: { uniqueId: fakeUser },
-          giftDetails: { giftName: big ? "TikTok Universe" : testGift, diamondCount: big ? 34999 : 1, giftType: big ? 0 : 1 },
-          repeatCount: big ? 1 : 1 + Math.floor(Math.random() * 5),
+          giftDetails: { giftName: big ? "TikTok Universe" : "Rose", diamondCount: big ? 34999 : 1, giftType: big ? 0 : 1 },
+          repeatCount: big ? 1 : 5,
           repeatEnd: true,
         },
         { game: "test" }

@@ -87,6 +87,14 @@
       { id: "yellow", label: "Yellow", hint: "right letters, wrong place (segments & keys)", std: "#FFC400", stdDark: "#D9A100", vars: ["--tx-yellow"], darkVars: ["--tx-yellow-dark"], inkVars: ["--tx-yellow-ink"] },
       { id: "gray", label: "Gray", hint: "letters not in the word (segments & keys)", std: "#7B8092", stdDark: "#5A5F70", vars: ["--tx-gray"], darkVars: ["--tx-gray-dark"], inkVars: ["--tx-gray-ink"] }
     ],
+    rangedle: [
+      { id: "hit", label: "Green", hint: "correct letter (tiles, legend & keyboard keys)", std: "#0E9F45", stdDark: "#087A32", vars: ["--rg-hit"], darkVars: ["--rg-hit-dark"], inkVars: ["--rg-hit-ink"] },
+      { id: "d1", label: "Red", hint: "1-5 letters away", std: "#E11D2E", stdDark: "#B3101F", vars: ["--rg-d1"], darkVars: ["--rg-d1-dark"], inkVars: ["--rg-d1-ink"] },
+      { id: "d2", label: "Orange", hint: "6-10 letters away", std: "#F57C00", stdDark: "#BF5F00", vars: ["--rg-d2"], darkVars: ["--rg-d2-dark"], inkVars: ["--rg-d2-ink"] },
+      { id: "d3", label: "Yellow", hint: "11-15 letters away", std: "#E5B400", stdDark: "#B38C00", vars: ["--rg-d3"], darkVars: ["--rg-d3-dark"], inkVars: ["--rg-d3-ink"] },
+      { id: "d4", label: "Blue", hint: "16-20 letters away", std: "#1E73E8", stdDark: "#1456B0", vars: ["--rg-d4"], darkVars: ["--rg-d4-dark"], inkVars: ["--rg-d4-ink"] },
+      { id: "d5", label: "Purple", hint: "21-25 letters away", std: "#7B3FE4", stdDark: "#5A25B8", vars: ["--rg-d5"], darkVars: ["--rg-d5-dark"], inkVars: ["--rg-d5-ink"] }
+    ],
     findle: [
       { id: "leaf", label: "Green", hint: "found / correct", std: "#7DC468", stdDark: "#1F6B2E", vars: ["--findle-leaf"], darkVars: ["--findle-leaf-text"], inkVars: ["--findle-leaf-dark"] },
       { id: "citrus", label: "Orange", hint: "title, score & emphasis", std: "#FFB84D", stdDark: "#8A5A17", vars: ["--findle-citrus"], darkVars: ["--findle-citrus-text"], inkVars: ["--findle-citrus-dark"] },

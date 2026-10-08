@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GAME CHROME - shared by BLINDLE, CROSSDLE, TWISTLE, ORACLE, COLORBLINDLE, COLORDLE, STRUCTLE, TEXTLE.
+   GAME CHROME - shared by BLINDLE, CROSSDLE, TWISTLE, ORACLE, COLORBLINDLE, COLORDLE, STRUCTLE, TEXTLE, RANGEDLE.
    Loaded AFTER each game's own stylesheet so it wins where they overlap.
 
    1. The reserved space above the game (TikTok's safe-top zone) now holds a
@@ -18,6 +18,7 @@ body[data-game="twistle"]      { --hero-font: "Lilita One", "Fredoka", sans-seri
 body[data-game="oracle"]       { --hero-font: "Cinzel Decorative", "Cinzel", serif;     --hero-accent: #9C6FD1; --hero-spacing: .05em; }
 body[data-game="structle"]    { --hero-font: "Lilita One", "Fredoka", sans-serif;      --hero-accent: #D9822B; --hero-spacing: .05em; }
 body[data-game="textle"]       { --hero-font: "Righteous", "Fredoka", sans-serif;       --hero-accent: #0E9F45; --hero-spacing: .06em; }
+body[data-game="rangedle"]     { --hero-font: "Righteous", "Fredoka", sans-serif;       --hero-accent: #7B3FE4; --hero-spacing: .06em; }
 body[data-game="colordle"]     { --hero-font: "Baloo 2", "Fredoka", sans-serif;         --hero-accent: #2F9E8F; --hero-spacing: .03em; }
 body[data-game="colorblindle"] { --hero-font: "Baloo 2", "Fredoka", sans-serif;         --hero-accent: #E0724A; --hero-spacing: .03em; }
 

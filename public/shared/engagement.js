@@ -131,20 +131,6 @@
         100%{ transform:translateY(110vh) rotateX(540deg) rotateY(360deg); opacity:0; }
       }
 
-      /* ---- recorded gift animations (UPDATE 22) ---- */
-      #eng-gift-layer{
-        position:fixed; inset:0; z-index:9595; pointer-events:none;
-        display:flex; align-items:center; justify-content:center; overflow:hidden;
-      }
-      .eng-gift-video{
-        height:min(100%, 900px); width:auto; max-width:100%; object-fit:contain;
-        opacity:0; transition:opacity .15s ease; background:transparent;
-      }
-      .eng-gift-video.eng-show{ opacity:1; }
-      /* Fallback (Safari / Firefox): the original MP4 has a near-black backdrop, so "screen"
-         blending makes that backdrop vanish and keeps the glowing art. */
-      .eng-gift-video.eng-blend{ mix-blend-mode:screen; }
-
       /* ---- host tools (statistics + test alerts), rendered inside each
               game's Settings panel via <div data-engagement-tools> ---- */
       .eng-tools{
@@ -182,119 +168,6 @@
   const confettiLayer = document.createElement("div");
   confettiLayer.id = "eng-confetti-layer";
   document.body.appendChild(confettiLayer);
-
-  const giftLayer = document.createElement("div");
-  giftLayer.id = "eng-gift-layer";
-  document.body.appendChild(giftLayer);
-
-  // ------------------------------------------------ recorded gift animations --
-  // Each entry: id = file name in /shared/gifts/ (id.webm + id.mp4), match = test against the gift's name.
-  // To add a new gift: drop id.webm (+ id.mp4) into public/shared/gifts/ and add one line here.
-  const GIFT_VIDEO_BASE = "/shared/gifts/";
-  const GIFT_VIDEOS = [
-    { id: "love-you-so-much",   label: "Love You So Much",   match: /love\s*you\s*so\s*much/i },
-    { id: "ice-cream-cone",     label: "Ice Cream Cone",     match: /ice\s*-?\s*cream/i },
-    { id: "pop",                label: "Pop",                match: /^pop$/i },
-    { id: "tiktok",             label: "TikTok",             match: /^tik\s*-?\s*tok$/i },
-    { id: "gg",                 label: "GG",                 match: /^gg$/i },
-    { id: "rose",               label: "Rose",               match: /^rose$/i },
-    { id: "rosa",               label: "Rosa",               match: /^rosa$/i },
-    { id: "football",           label: "Football",           match: /foot\s*ball/i },
-    { id: "heart-me",           label: "Heart Me",           match: /heart\s*me/i },
-    { id: "heart-puff",         label: "Heart Puff",         match: /heart\s*puff/i },
-    { id: "donut",              label: "Donut",              match: /do(ugh)?\s*nut/i },
-    { id: "perfume",            label: "Perfume",            match: /perfume/i },
-    { id: "gold-boxing-gloves", label: "Gold Boxing Gloves", match: /boxing\s*glove/i },
-    { id: "finger-heart",       label: "Finger Heart",       match: /finger\s*-?\s*heart/i },
-  ];
-
-  function matchGiftVideo(giftName) {
-    const name = String(giftName || "").trim().replace(/^sent\s+(an?\s+)?/i, "").replace(/[!.\s]+$/g, "");
-    if (!name) return null;
-    return GIFT_VIDEOS.find((g) => g.match.test(name)) || null;
-  }
-
-  // Transparent WebM (VP9 alpha) only on Chromium-based browsers (Chrome, Edge, Android WebView,
-  // TikTok Live Studio / OBS browser source). Everything else gets the MP4 + "screen" blend fallback.
-  const UA = navigator.userAgent || "";
-  const USE_ALPHA_WEBM = /(Chrome|Chromium|CriOS|Edg)\//.test(UA) && !/iPhone|iPad|iPod/.test(UA);
-
-  const SOUND_KEY = "eng_gift_sound";
-  const VOLUME_KEY = "eng_gift_volume";
-  function loadPref(key, fallback) {
-    try {
-      const v = localStorage.getItem(key);
-      return v === null ? fallback : v;
-    } catch (e) { return fallback; }
-  }
-  function savePref(key, value) {
-    try { localStorage.setItem(key, String(value)); } catch (e) { /* storage blocked - fine */ }
-  }
-  let giftSoundOn = loadPref(SOUND_KEY, "on") !== "off";
-  let giftVolume = Math.min(1, Math.max(0, Number(loadPref(VOLUME_KEY, "0.8")) || 0.8));
-
-  const MAX_GIFT_VIDEO_MS = 9000; // safety net: never let a stuck video block the queue
-
-  function playGiftVideo(entry, onDone) {
-    let finished = false;
-    const video = document.createElement("video");
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      video.classList.remove("eng-show");
-      setTimeout(() => {
-        try { video.pause(); } catch (e) {}
-        video.removeAttribute("src");
-        try { video.load(); } catch (e) {}
-        video.remove();
-      }, 180);
-      onDone();
-    };
-
-    video.className = "eng-gift-video" + (USE_ALPHA_WEBM ? "" : " eng-blend");
-    video.playsInline = true;
-    video.setAttribute("playsinline", "");
-    video.preload = "auto";
-    video.volume = giftVolume;
-    video.muted = !giftSoundOn;
-    video.src = GIFT_VIDEO_BASE + entry.id + (USE_ALPHA_WEBM ? ".webm" : ".mp4");
-    video.addEventListener("ended", finish);
-    video.addEventListener("error", finish);
-    giftLayer.appendChild(video);
-
-    const start = () => {
-      const p = video.play();
-      if (p && typeof p.catch === "function") {
-        p.catch(() => {
-          // Browser refused to start with sound (no tap on the page yet) - retry silently.
-          if (!video.muted) {
-            video.muted = true;
-            const q = video.play();
-            if (q && typeof q.catch === "function") q.catch(finish);
-          } else {
-            finish();
-          }
-        });
-      }
-      video.classList.add("eng-show");
-    };
-    start();
-    setTimeout(finish, MAX_GIFT_VIDEO_MS);
-  }
-
-  // Warm the browser cache a few seconds after the page loads so the very first gift doesn't stutter.
-  function preloadGiftVideos() {
-    let i = 0;
-    const next = () => {
-      if (i >= GIFT_VIDEOS.length) return;
-      const g = GIFT_VIDEOS[i++];
-      fetch(GIFT_VIDEO_BASE + g.id + (USE_ALPHA_WEBM ? ".webm" : ".mp4"))
-        .catch(() => {})
-        .finally(() => setTimeout(next, 250));
-    };
-    next();
-  }
-  window.addEventListener("load", () => setTimeout(preloadGiftVideos, 4000));
 
   // ------------------------------------------------- host tools (in Settings) --
   let socket = null;
@@ -337,16 +210,6 @@
           <div class="eng-tools-row"><span>Total Likes</span><b data-eng-stat="likes">0</b></div>
         </div>
         <div class="eng-tools-block">
-          <div class="eng-tools-title">🎬 Gift animations</div>
-          <p class="eng-tools-note">Recorded animations play over the game when a matching gift arrives. If the browser blocks sound, tap the game once.</p>
-          <label class="eng-tools-row" style="align-items:center;"><span>Play gift sounds</span><input type="checkbox" data-eng-sound ${giftSoundOn ? "checked" : ""} /></label>
-          <label class="eng-tools-row" style="align-items:center;"><span>Volume</span><input type="range" min="0" max="100" value="${Math.round(giftVolume * 100)}" data-eng-volume style="width:55%;" /></label>
-          <div class="eng-tools-grid" style="margin-top:8px;">
-            <select data-eng-gift-pick class="eng-tools-btn" style="grid-column:1 / -1;">${GIFT_VIDEOS.map((g) => `<option value="${g.id}">${g.label}</option>`).join("")}</select>
-            <button type="button" class="eng-tools-btn" data-eng-gift-play style="grid-column:1 / -1;">▶ Preview this gift animation</button>
-          </div>
-        </div>
-        <div class="eng-tools-block">
           <div class="eng-tools-title">🧪 Test alerts (host only)</div>
           <p class="eng-tools-note">Fires a fake alert on screen so you can check how it looks without going live.</p>
           <div class="eng-tools-grid">
@@ -358,27 +221,11 @@
         </div>
       </div>
     `;
-    container.querySelectorAll(".eng-tools-btn[data-kind]").forEach((btn) => {
+    container.querySelectorAll(".eng-tools-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (socket) socket.emit("engagement:test", { kind: btn.dataset.kind });
       });
     });
-    const soundBox = container.querySelector("[data-eng-sound]");
-    if (soundBox) soundBox.addEventListener("change", () => { giftSoundOn = soundBox.checked; savePref(SOUND_KEY, giftSoundOn ? "on" : "off"); });
-    const volSlider = container.querySelector("[data-eng-volume]");
-    if (volSlider) volSlider.addEventListener("input", () => { giftVolume = Math.min(1, Math.max(0, Number(volSlider.value) / 100)); savePref(VOLUME_KEY, giftVolume); });
-    const playBtn = container.querySelector("[data-eng-gift-play]");
-    const pick = container.querySelector("[data-eng-gift-pick]");
-    if (playBtn && pick) {
-      playBtn.addEventListener("click", () => {
-        const g = GIFT_VIDEOS.find((x) => x.id === pick.value);
-        if (!g) return;
-        enqueueAlert({
-          type: "gift", tier: "pop", giftName: g.label, username: "preview",
-          message: "@preview sent a " + g.label + "!", appreciation: "Gift animation preview", icon: "🎁",
-        });
-      });
-    }
     paintStats();
   }
 
@@ -466,26 +313,14 @@
 
     requestAnimationFrame(() => requestAnimationFrame(() => card.classList.add("eng-show")));
 
-    // A recorded animation exists for this gift -> play it along with the card. If a big backlog of
-    // gifts is waiting, skip the video (card only, shorter) so the screen never falls far behind.
-    const giftVideo = alert.type === "gift" ? matchGiftVideo(alert.giftName) : null;
-    const backlog = queue.length > 5;
-    const playVideo = !!giftVideo && !backlog;
-
-    let cardTimerDone = false;
-    let videoDone = !playVideo;
-    const tryClose = () => {
-      if (!(cardTimerDone && videoDone)) return;
+    setTimeout(() => {
       card.classList.remove("eng-show");
       setTimeout(() => {
         card.remove();
         showing = false;
         processQueue();
       }, CARD_TRANSITION_MS);
-    };
-
-    if (playVideo) playGiftVideo(giftVideo, () => { videoDone = true; tryClose(); });
-    setTimeout(() => { cardTimerDone = true; tryClose(); }, backlog ? 2200 : CARD_VISIBLE_MS);
+    }, CARD_VISIBLE_MS);
   }
 
   // A lightweight, CSS-driven confetti burst — plain positioned <div>s
@@ -507,5 +342,5 @@
     }
   }
 
-  window.Engagement = { enqueueAlert, mountTools, GIFT_VIDEOS, matchGiftVideo };
+  window.Engagement = { enqueueAlert, mountTools };
 })();
