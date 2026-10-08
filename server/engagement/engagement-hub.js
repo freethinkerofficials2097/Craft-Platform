@@ -26,6 +26,7 @@
 // ============================================================================
 
 import { EngagementTracker } from "./engagement-tracker.js";
+import { HostPresence } from "../shared/host-presence.js";
 
 // TikTok event names we listen for, with plain-string fallbacks in case a
 // particular library version doesn't export a given WebcastEvent constant
@@ -105,6 +106,14 @@ class EngagementHub {
     if (!connection || typeof connection.on !== "function") return;
     if (this._attachedConnections.has(connection)) return;
     this._attachedConnections.add(connection);
+
+    // (update 30) Every game calls attach() right after its TikTok connection succeeds, so this is the one
+    // place that tells the HOME page which host is live (name + profile picture for the top-left banner).
+    try {
+      HostPresence.register(connection, meta);
+    } catch (err) {
+      this.tracker.logError("attach.host-presence", err);
+    }
 
     const safely = (label, fn) => (data) => {
       try {

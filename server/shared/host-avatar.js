@@ -256,6 +256,44 @@ async function profilePagePictureUrls(name) {
   }
 }
 
+// ---------------------------------------------------------------- the host's display name (update 30)
+
+/** The display name ("Mia Zahra") TikTok's room info says the room owner has, or "". */
+export function extractOwnerNickname(roomInfo) {
+  if (!roomInfo || typeof roomInfo !== "object") return "";
+  const infos = [roomInfo, roomInfo.data, roomInfo.roomInfo, roomInfo.data && roomInfo.data.data].filter(Boolean);
+  for (const info of infos) {
+    const owner = info.owner || info.anchor || info.host || info.owner_user || info.ownerUser || null;
+    if (!owner || typeof owner !== "object") continue;
+    const nick = owner.nickname || owner.nick_name || owner.nickName || owner.display_name || owner.displayName || "";
+    if (typeof nick === "string" && nick.trim()) return nick.trim();
+  }
+  return "";
+}
+
+/** The host's display name read from their public TikTok profile page, or "" (never throws). */
+export async function resolveHostNickname(username) {
+  try {
+    const name = normalizeHostName(username);
+    if (!NAME_RE.test(name)) return "";
+    const res = await fetchFollowingSafeRedirects("https://www.tiktok.com/@" + encodeURIComponent(name), {
+      Accept: "text/html,application/xhtml+xml",
+    });
+    if (!res.ok) return "";
+    const html = await res.text();
+    const esc = name.replace(/[.]/g, "\\.");
+    const m = new RegExp('"uniqueId":"' + esc + '"[^{}]{0,300}?"nickname":"((?:[^"\\\\]|\\\\.)*)"', "i").exec(html);
+    if (!m) return "";
+    try {
+      return String(JSON.parse('"' + m[1] + '"')).trim();
+    } catch (_) {
+      return "";
+    }
+  } catch (_) {
+    return "";
+  }
+}
+
 // ---------------------------------------------------------------- public API
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
