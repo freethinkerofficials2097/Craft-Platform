@@ -2,7 +2,7 @@
 // LEGEND HUB  (update 24)
 // A tiny, game-agnostic Socket.IO namespace (/legends) that remembers, for EVERY game on the
 // platform, how the host customised that game's color legend (position, size, font, order,
-// texts, columns/rows ...). Same idea as the color-shades hub: the host settings panel and the
+// texts, columns/rows, rows x columns grid, fill order ...). Same idea as the color-shades hub: the host settings panel and the
 // on-stream display are often two different browsers (e.g. OBS), so keeping the settings here
 // makes every screen connected to the same game change together, instantly.
 //
@@ -25,7 +25,13 @@ const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 const MAX_GAMES = 40;
 const MAX_ITEMS = 16;
 
-const POSITIONS = ["top", "aboveBoard", "belowBoard"];
+const POSITIONS = ["top", "aboveKeyboard", "belowKeyboard", "aboveBoard", "belowBoard"];
+const FLOWS = ["row", "column"];
+const OVERFLOWS = ["grow", "hide"];
+const ITEM_LAYOUTS = ["side", "rev", "stack"];
+const CELL_FITS = ["equal", "content"];
+const CELL_ALIGNS = ["auto", "start", "center", "end"];
+const MAX_GRID = 12;
 const ALIGNS = ["left", "center", "right"];
 const SHAPES = ["square", "rounded", "circle", "bar"];
 
@@ -60,9 +66,18 @@ export function sanitizeLegend(raw) {
     shape: pick(raw.shape, SHAPES, "rounded"),
     scale: Math.round(num(raw.scale, 50, 220, 100)),
     chipScale: Math.round(num(raw.chipScale, 50, 220, 100)),
-    gap: Math.round(num(raw.gap, 0, 30, 6)),
-    columns: Math.round(num(raw.columns, 0, 8, 0)),
-    rows: Math.round(num(raw.rows, 0, 8, 0)),
+    // Update 31: separate row / column spacing (older saves only had "gap": columns used 1.6 x gap).
+    rowGap: Math.round(num(raw.rowGap !== undefined ? raw.rowGap : raw.gap, 0, 60, 6)),
+    colGap: Math.round(num(raw.colGap !== undefined ? raw.colGap : (Number.isFinite(Number(raw.gap)) ? Number(raw.gap) * 1.6 : 10), 0, 60, 10)),
+    maxWidth: Math.round(num(raw.maxWidth, 200, 1200, 640)),
+    columns: Math.round(num(raw.columns, 0, MAX_GRID, 0)),
+    rows: Math.round(num(raw.rows, 0, MAX_GRID, 0)),
+    // Older saves with only "rows" filled column by column; keep that look.
+    flow: pick(raw.flow, FLOWS, Number(raw.rows) > 0 && !(Number(raw.columns) > 0) ? "column" : "row"),
+    overflow: pick(raw.overflow, OVERFLOWS, "grow"),
+    itemLayout: pick(raw.itemLayout, ITEM_LAYOUTS, "side"),
+    cellFit: pick(raw.cellFit, CELL_FITS, "equal"),
+    cellAlign: pick(raw.cellAlign, CELL_ALIGNS, "auto"),
     font: str(raw.font, 24).replace(/[^a-z0-9_-]/gi, ""),
     items: []
   };
