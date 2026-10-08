@@ -113,6 +113,14 @@
         { id: "hit", glyph: "✓", label: "Green — correct letter", c: V("--rg-hit", "#0E9F45", "#fff", "#087A32") }
       ]
     },
+    shapedle: {
+      title: "What the colors mean",
+      items: [
+        { id: "green", glyph: "A", label: "Green — right spot", c: V("--sp-green", "#0E9F45", "#fff", "#087A32") },
+        { id: "yellow", glyph: "A", label: "Yellow — wrong spot", c: V("--sp-yellow", "#E5B400", "#241a00", "#B38C00") },
+        { id: "gray", glyph: "A", label: "Gray — not in word", c: V("--sp-gray", "#7B8092", "#fff", "#5A5F70") }
+      ]
+    },
     codedle: {
       title: "What the colors mean",
       items: [

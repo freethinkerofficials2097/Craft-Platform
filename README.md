@@ -1,4 +1,5 @@
 # TikTok LIVE Game Platform
+> **Update 28:** new game SHAPEDLE (a row of cute symbols, one per letter, + green / yellow / gray clues, host-selectable symbol packs) at `/shapedle/` - see `CHANGES_UPDATE_28.md`.
 > **Update 25:** **Strict fit** is now in every letter word game and ON by default (the host can switch it off per game in Settings; the choice is remembered) - see `CHANGES_UPDATE_25.md`.
 > **Update 24:** every word game now has a customizable **color legend**, and the host's TikTok profile picture on the starter word is now 100% reliable (the server downloads and serves it) - see `CHANGES_UPDATE_24.md`.
 > **Update 23:** new game CODEDLE (number code + green / yellow / blue / pink / gray letter clues) at `/codedle/` - see `CHANGES_UPDATE_23.md`.
@@ -222,6 +223,28 @@ Live/Test/Offline, hints, leaderboards, celebration, engagement alerts, color sh
 
 Files: `server/codedle/codedle-server.js` + its own `public/` client folder, mounted at `/codedle/` on Socket.IO
 namespace `/codedle`. Clue logic lives in `buildCode()` and `scoreClue()` at the top of the server file.
+
+## Shapedle (new)
+
+**Shapedle** - a BLINDLE copy built on the SHAPE-O idea (board, keyboard, hints and scoring copied from CODEDLE).
+
+- **The symbol row.** Each round a row of cute symbols appears above the board, one per letter of the hidden word. Every
+  distinct letter has its own symbol and a repeated letter repeats its symbol (`cascade` -> star heart square star heart
+  triangle circle). The row only reveals which positions hold the same letter.
+- **Tile colors** (Wordle-style duplicate counting): **green** right letter, right spot - **yellow** in the word, wrong spot -
+  **gray** not in the word.
+- **Self-coloring keyboard** (no manual coloring, no number columns): each key takes the best color its letter earned in any
+  guess this round (green > yellow > gray). The host can switch it off (Settings -> Auto-color keyboard keys).
+- **Symbols (host choice):** Settings -> Symbols - Cute Faces (default), Plush Toys (TWISTLE's), Classic Shapes, Animals,
+  Sweets & Fruit, Sky & Garden, or "Surprise me" (a different pack every round). Applies right away; remembered in
+  `data/symbol-pack.json`.
+- **Scoring (Live):** 1 point for every guess placed on the board, 5 points for the guess that solves the round.
+- Settings: **Strict fit** (on by default: the guess must repeat letters like the symbol row AND fit every earlier color),
+  **Starter word** (on by default), **Auto-color keyboard keys** (on by default).
+
+Files: `server/shapedle/shapedle-server.js` + its own `public/` client folder, mounted at `/shapedle/` on Socket.IO namespace
+`/shapedle`. Clue logic lives in `scoreClue()` / `buildSymbolRow()` / `patternKey()` at the top of the server file; the artwork
+is `server/shapedle/public/shapedle-symbols.js`.
 
 ## Colorblindle (new)
 

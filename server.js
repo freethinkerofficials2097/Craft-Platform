@@ -19,6 +19,7 @@
 //   /textle/   - TEXTLE    (Socket.IO namespace /textle)
 //   /rangedle/ - RANGEDLE  (Socket.IO namespace /rangedle)
 //   /codedle/  - CODEDLE   (Socket.IO namespace /codedle)
+//   /shapedle/ - SHAPEDLE  (Socket.IO namespace /shapedle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -45,6 +46,7 @@ import { registerTravle } from "./server/travle.js";
 import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { mountRangedle } from "./server/rangedle/rangedle-server.js";
 import { mountCodedle } from "./server/codedle/codedle-server.js";
+import { mountShapedle } from "./server/shapedle/shapedle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -164,6 +166,13 @@ await mountRangedle(app, io, { mountPath: "/rangedle" });
 // on the board, 5 for solving the round. Own Socket.IO namespace /codedle; reuses BLINDLE's word bank
 // + dictionary (loaded once).
 await mountCodedle(app, io, { mountPath: "/codedle" });
+
+// SHAPEDLE is a BLINDLE copy built on the SHAPE-O idea: the board opens with a row of cute symbols (one
+// per letter of the hidden word; the same letter repeats the same symbol) and every guess letter is
+// colored green / yellow / gray. The keyboard colors itself. Scoring: 1 point per guess on the board,
+// 5 for solving the round. The host picks the symbol style. Own Socket.IO namespace /shapedle; reuses
+// BLINDLE's word bank + dictionary (loaded once).
+await mountShapedle(app, io, { mountPath: "/shapedle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
