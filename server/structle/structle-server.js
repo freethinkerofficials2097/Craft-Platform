@@ -67,6 +67,7 @@ import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blind
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -226,6 +227,9 @@ const game = {
   // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
   // word of the right length is accepted and colored, so chat can probe freely.
   strictFit: getStrictFit("structle"),
+  // true (default): every round opens with one automatic, never-winning starter word.
+  // The host can switch it off in Settings (remembered in data/starter-word.json).
+  starterWord: getStarterWord("structle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -356,6 +360,7 @@ function pickStarterWord(wordLength) {
 }
 
 function seedStarterGuess() {
+  if (!game.starterWord) return;
   const starter = pickStarterWord(game.wordLength);
   if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
   const clue = clueBetween(starter, game.secretWord);
@@ -377,8 +382,7 @@ function startRound(overrideWord) {
   game.status = "live";
   game.roundNumber += 1;
   game.autoContinueAt = null;
-  // Starter word DISABLED for STRUCTLE: rounds now open on a blank board.
-  // (seedStarterGuess() is intentionally not called; helper kept for reference.)
+  seedStarterGuess(); // no-op when the host switched Starter word off
   broadcastState();
 }
 
@@ -734,6 +738,7 @@ function buildStatePayload() {
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
       strictFit: game.strictFit,
+      starterWord: game.starterWord,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -852,6 +857,10 @@ function handleClientAction(ws, msg) {
       broadcastState();
       break;
     }
+    case "set_starter_word":
+      game.starterWord = setStarterWord("structle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
     case "set_strict_fit":
       game.strictFit = setStrictFit("structle", Boolean(payload && payload.on));
       broadcastState();

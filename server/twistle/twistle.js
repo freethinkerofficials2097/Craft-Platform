@@ -37,6 +37,7 @@ import { Diagnostics } from './twistle-diagnostics.js';
 import { TikTokManager } from './twistle-tiktok.js';
 import { evaluateGuess, pickSymbolMap, conceptsEqual, parseGuess, SYMBOL_POOL } from './twistle-engine.js';
 import { getStrictFit, setStrictFit } from '../shared/strict-fit-store.js';
+import { getStarterWord, setStarterWord } from '../shared/starter-word-store.js';
 
 // Points - identical to BLINDLE (solving is worth 10x a plain valid guess).
 const WIN_POINTS = 10;
@@ -105,6 +106,9 @@ export async function registerTwistle(app, rootIo, options = {}) {
     // data/strict-fit.json). ON = a new guess must fit the symbol row of every guess already on the
     // board. OFF = any real word of the right length goes onto the board.
     strictFit: getStrictFit('twistle'),
+    // STARTER WORD (update 27): ON by default; the host can switch it off in Settings (remembered in
+    // data/starter-word.json). ON = every round opens with one automatic, never-winning symbol row.
+    starterWord: getStarterWord('twistle'),
     usedWords: new Set(),
     roundScores: new Map(),
     totalScores: new Map(),
@@ -178,6 +182,7 @@ export async function registerTwistle(app, rootIo, options = {}) {
   }
 
   function seedStarterGuess() {
+    if (!game.starterWord) return;
     const starter = pickStarterWord(game.wordLength);
     if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
     const { states, symbols } = evaluateGuess(game.secretWord, starter);
@@ -515,6 +520,7 @@ export async function registerTwistle(app, rootIo, options = {}) {
         lastWinInfo: game.lastWinInfo,
         lastRejection: game.lastRejection,
         strictFit: game.strictFit,
+        starterWord: game.starterWord,
         rejectionToastSeconds: game.rejectionToastSeconds,
         autoContinue: game.autoContinue,
         autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -636,6 +642,10 @@ export async function registerTwistle(app, rootIo, options = {}) {
     }));
     socket.on('host:setRevealShowSeconds', guarded('setRevealShowSeconds', (payload) => {
       game.revealShowSeconds = clampSeconds(payload && payload.seconds, DEFAULT_REVEAL_SHOW_SECONDS);
+      broadcastState();
+    }));
+    socket.on('host:setStarterWord', guarded('setStarterWord', (payload) => {
+      game.starterWord = setStarterWord('twistle', Boolean(payload && payload.on));
       broadcastState();
     }));
     socket.on('host:setStrictFit', guarded('setStrictFit', (payload) => {

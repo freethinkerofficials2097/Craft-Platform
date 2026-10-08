@@ -82,6 +82,7 @@ const el = {
   leaderboardShowInput: document.getElementById("leaderboardShowInput"),
   rejectionToastShowInput: document.getElementById("rejectionToastShowInput"),
   strictFitToggle: document.getElementById("strictFitToggle"),
+  starterWordToggle: document.getElementById("starterWordToggle"),
   keyAutoColorToggle: document.getElementById("keyAutoColorToggle"),
   applyBtn: document.getElementById("applyBtn"),
   diagToggle: document.getElementById("diagToggle"),
@@ -312,6 +313,7 @@ function syncStagedSettingsFromState(g) {
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
   if (el.strictFitToggle) el.strictFitToggle.checked = g.strictFit !== false; // Strict fit is ON unless the host switched it off
+  if (el.starterWordToggle) el.starterWordToggle.checked = g.starterWord !== false; // ON unless the host switched it off
   if (el.keyAutoColorToggle) el.keyAutoColorToggle.checked = g.keyAutoColor !== false; // ON unless the host switched it off
   updateModePickerLabel();
 }
@@ -448,6 +450,11 @@ el.rejectionToastShowInput.addEventListener("change", () => {
 // choice is remembered by the server.
 if (el.strictFitToggle) el.strictFitToggle.addEventListener("change", () => {
   send("set_strict_fit", { on: el.strictFitToggle.checked });
+});
+
+// Starter word: ON by default, remembered by the server, used from the next round.
+if (el.starterWordToggle) el.starterWordToggle.addEventListener("change", () => {
+  send("set_starter_word", { on: el.starterWordToggle.checked });
 });
 
 // Keyboard auto-color applies immediately; ON by default, the host's choice is remembered by the server.

@@ -416,8 +416,7 @@ el.applyBtn.addEventListener("click", () => {
     lengthMin: Number(el.lengthMinSelect.value),
     lengthMax: Number(el.lengthMaxSelect.value),
     autoContinue: el.autoContinueToggle.checked,
-    autoContinueDelaySeconds: Number(el.delayInput.value) || 3,
-    starterWord: el.starterWordToggle.checked
+    autoContinueDelaySeconds: Number(el.delayInput.value) || 3
   });
   closeDrawer(el.settingsOverlay);
 });
@@ -443,6 +442,11 @@ el.strictFitToggle.addEventListener("change", () => {
 // Keyboard auto-color applies immediately; ON by default, the host's choice is remembered by the server.
 if (el.keyAutoColorToggle) el.keyAutoColorToggle.addEventListener("change", () => {
   send("set_key_autocolor", { on: el.keyAutoColorToggle.checked });
+});
+
+// Starter word: ON by default, remembered by the server, used from the next round.
+el.starterWordToggle.addEventListener("change", () => {
+  send("set_starter_word", { on: el.starterWordToggle.checked });
 });
 
 el.playAgainBtn.addEventListener("click", () => send("play_again", {}));

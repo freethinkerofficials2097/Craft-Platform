@@ -11,6 +11,7 @@ import { WORD_LENGTH_OPTIONS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, randomWord, isKn
 import { ANSWER_WORDS } from './crossdle-answers.js';
 import { getStrictFit, setStrictFit } from '../shared/strict-fit-store.js';
 import { getKeyAutoColor, setKeyAutoColor } from '../shared/key-autocolor-store.js';
+import { getStarterWord, setStarterWord } from '../shared/starter-word-store.js';
 
 export { WORD_LENGTH_OPTIONS };
 
@@ -277,6 +278,14 @@ export class GameEngine {
     this.strictFit = getStrictFit('crossdle');
     // Keyboard auto-color is ON by default; the host's choice is remembered in data/key-autocolor.json.
     this.keyAutoColor = getKeyAutoColor('crossdle');
+    // Starter word is ON by default; the host's choice is remembered in data/starter-word.json.
+    this.starterWord = getStarterWord('crossdle');
+  }
+
+  /** Host switch: ON = every round opens with one automatic starter row; OFF = blank board. Used from the next round. */
+  setStarterWord(on) {
+    this.starterWord = setStarterWord('crossdle', Boolean(on));
+    this.onChange('settings');
   }
 
   /** Host switch: ON = keyboard keys take their letter's tile color; OFF = plain keys. */
@@ -342,6 +351,7 @@ export class GameEngine {
    * tiles gives viewers an immediate starting clue instead of a cold guess.
    */
   _seedStarterGuess() {
+    if (!this.starterWord) return;
     const length = this.round.wordLength;
     const starter = pickWord(length, [this.round.answer]);
     if (!starter || starter === this.round.answer) return; // extremely small word bank at this length — skip rather than risk a free win
@@ -529,6 +539,7 @@ export class GameEngine {
       nextRoundDelayMs: this.nextRoundDelayMs,
       strictFit: this.strictFit,
       keyAutoColor: this.keyAutoColor,
+      starterWord: this.starterWord,
       leaderboard: this.getLeaderboardTop(10),
       round: r && {
         number: r.number,

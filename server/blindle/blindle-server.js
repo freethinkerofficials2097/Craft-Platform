@@ -42,6 +42,7 @@ import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./blindle-answer
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "./blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "./blindle-difficulty.js";
 
@@ -202,6 +203,9 @@ const game = {
   // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
   // word of the right length is accepted and colored, so chat can probe freely.
   strictFit: getStrictFit("blindle"),
+  // true (default): every round opens with one automatic, never-winning starter word.
+  // The host can switch it off in Settings (remembered in data/starter-word.json).
+  starterWord: getStarterWord("blindle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -317,6 +321,7 @@ function pickStarterWord(wordLength) {
 }
 
 function seedStarterGuess() {
+  if (!game.starterWord) return;
   const starter = pickStarterWord(game.wordLength);
   if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
   const counts = scoreCounts(starter, game.secretWord);
@@ -688,6 +693,7 @@ function buildStatePayload() {
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
       strictFit: game.strictFit,
+      starterWord: game.starterWord,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -811,6 +817,10 @@ function handleClientAction(ws, msg) {
       broadcastState();
       break;
     }
+    case "set_starter_word":
+      game.starterWord = setStarterWord("blindle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
     case "set_strict_fit":
       game.strictFit = setStrictFit("blindle", Boolean(payload && payload.on));
       broadcastState();

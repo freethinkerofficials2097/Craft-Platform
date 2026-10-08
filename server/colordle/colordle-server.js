@@ -62,6 +62,7 @@ import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blind
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
@@ -242,6 +243,9 @@ const game = {
   // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
   // word of the right length is accepted and colored, so chat can probe freely.
   strictFit: getStrictFit("colordle"),
+  // true (default): every round opens with one automatic, never-winning starter word.
+  // The host can switch it off in Settings (remembered in data/starter-word.json).
+  starterWord: getStarterWord("colordle"),
   // true (default): the on-screen keyboard colors itself from the tiles. Host can switch it off.
   keyAutoColor: getKeyAutoColor("colordle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
@@ -381,6 +385,7 @@ function pickStarterWord(wordLength) {
 }
 
 function seedStarterGuess() {
+  if (!game.starterWord) return;
   const starter = pickStarterWord(game.wordLength);
   if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
   const pattern = scorePattern(starter, game.secretWord);
@@ -404,7 +409,7 @@ function startRound(overrideWord) {
   game.status = "live";
   game.roundNumber += 1;
   game.autoContinueAt = null;
-  // COLORDLE has NO automatic starter word: every round begins with just the empty colored boxes.
+  seedStarterGuess(); // no-op when the host switched Starter word off (then: just the empty colored boxes)
   broadcastState();
 }
 
@@ -759,6 +764,7 @@ function buildStatePayload() {
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
       strictFit: game.strictFit,
+      starterWord: game.starterWord,
       keyAutoColor: game.keyAutoColor,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
@@ -880,6 +886,10 @@ function handleClientAction(ws, msg) {
     }
     case "set_key_autocolor":
       game.keyAutoColor = setKeyAutoColor("colordle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
+    case "set_starter_word":
+      game.starterWord = setStarterWord("colordle", Boolean(payload && payload.on));
       broadcastState();
       break;
     case "set_strict_fit":

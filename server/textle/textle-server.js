@@ -31,6 +31,7 @@ import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./textle-answers
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
@@ -271,6 +272,9 @@ const game = {
   // data/strict-fit.json). ON = a guess must fit every clue already on the board. OFF = any real
   // word of the right length is accepted and colored, so chat can probe freely.
   strictFit: getStrictFit("textle"),
+  // true (default): every round opens with one automatic, never-winning starter word.
+  // The host can switch it off in Settings (remembered in data/starter-word.json).
+  starterWord: getStarterWord("textle"),
   // true (default): the on-screen keyboard colors itself from the tiles. Host can switch it off.
   keyAutoColor: getKeyAutoColor("textle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
@@ -389,8 +393,7 @@ function attemptGuess(word, caller) {
 // points to anyone - so its green/yellow/red counts give viewers an
 // immediate starting clue instead of a cold guess.
 const STARTER_GUESS_LABEL = "🎲 Starter word";
-// Update 16: switched OFF - a new round starts with NO given starter word. Set to true to bring it back.
-const STARTER_WORD_ENABLED = false; // update 16: every round now opens on a blank board
+// Update 27: the starter word is a host switch again (Settings -> Starter word), ON by default.
 
 function pickStarterWord(wordLength) {
   const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, wordLength, "random")
@@ -400,7 +403,7 @@ function pickStarterWord(wordLength) {
 }
 
 function seedStarterGuess() {
-  if (!STARTER_WORD_ENABLED) return;
+  if (!game.starterWord) return;
   const starter = pickStarterWord(game.wordLength);
   if (!starter) return; // nothing eligible at this length - round still starts fine, just blank
   const clue = computeClue(starter, game.secretWord);
@@ -811,6 +814,7 @@ function buildStatePayload() {
       hintSuggestions: game.hintSuggestions,
       lastRejection: game.lastRejection,
       strictFit: game.strictFit,
+      starterWord: game.starterWord,
       keyAutoColor: game.keyAutoColor,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
@@ -941,6 +945,10 @@ function handleClientAction(ws, msg) {
     }
     case "set_key_autocolor":
       game.keyAutoColor = setKeyAutoColor("textle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
+    case "set_starter_word":
+      game.starterWord = setStarterWord("textle", Boolean(payload && payload.on));
       broadcastState();
       break;
     case "set_strict_fit":

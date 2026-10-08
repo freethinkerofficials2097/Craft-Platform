@@ -49,6 +49,7 @@ import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blind
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
@@ -247,9 +248,9 @@ const game = {
   strictFit: getStrictFit("codedle"),
   // true (default): the on-screen keyboard colors itself from the tiles. Host can switch it off.
   keyAutoColor: getKeyAutoColor("codedle"),
-  // true (default, like BLINDLE): every round opens with one automatic, never-winning starter word
-  // so chat has a first set of colors to read. Host can switch it off in Settings.
-  starterWord: true,
+  // true (default): every round opens with one automatic, never-winning starter word so chat has
+  // a first set of colors to read. Host can switch it off in Settings (remembered in data/starter-word.json).
+  starterWord: getStarterWord("codedle"),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -403,7 +404,7 @@ function applySettings(settings) {
   const lengthMax = settings.lengthMax;
   const autoContinue = settings.autoContinue;
   const autoContinueDelaySeconds = settings.autoContinueDelaySeconds;
-  if (typeof settings.starterWord === "boolean") game.starterWord = settings.starterWord;
+  if (typeof settings.starterWord === "boolean") game.starterWord = setStarterWord("codedle", settings.starterWord);
 
   if (["live", "test", "offline"].includes(mode)) {
     if (mode !== "live" && game.mode === "live") stopEverything();
@@ -854,6 +855,10 @@ function handleClientAction(ws, msg) {
     }
     case "set_key_autocolor":
       game.keyAutoColor = setKeyAutoColor("codedle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
+    case "set_starter_word":
+      game.starterWord = setStarterWord("codedle", Boolean(payload && payload.on));
       broadcastState();
       break;
     case "set_strict_fit":
