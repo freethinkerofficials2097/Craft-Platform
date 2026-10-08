@@ -39,7 +39,6 @@ const el = {
   autoContinueNote: document.getElementById("autoContinueNote"),
   idleBanner: document.getElementById("idleBanner"),
   keyboardSection: document.getElementById("keyboardSection"),
-  legendSection: document.getElementById("legendSection"),
   keyboard: document.getElementById("keyboard"),
 
   controlsHandle: document.getElementById("controlsHandle"),
@@ -907,14 +906,13 @@ function renderBanners(g) {
   }
 }
 
-// The numbered keyboard and the color legend sit together above the board for the whole
-// round (also after it ends, so the green keys stay visible); hidden only while idle.
+// The numbered keyboard sits above the board for the whole round (also after it ends, so the green
+// keys stay visible); hidden only while idle. (The color legend is built by /shared/legend.js.)
 function renderKeyboardVisibility(g) {
   const show = g.status !== "idle";
   const display = show ? "block" : "none";
   if (el.keyboardSection.style.display !== display) lastTilesSignature = "";
   el.keyboardSection.style.display = display;
-  el.legendSection.style.display = display;
 }
 
 function renderSettingsChips(state) {

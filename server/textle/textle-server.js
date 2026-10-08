@@ -29,7 +29,7 @@ import { fileURLToPath } from "url";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./textle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
-import { resolveHostAvatar, isHostUser } from "../shared/host-avatar.js";
+import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
@@ -560,7 +560,14 @@ function handleIncomingRawEvent(raw) {
   diagnostics.lastReceivedAt = Date.now();
   if (avatarUrl) knownAvatars.set(username, avatarUrl);
   if (avatarUrl && !hostAvatarUrl && game.mode === "live" && isHostUser(username, diagnostics.tiktokUsername)) {
-    hostAvatarUrl = avatarUrl; // late fallback: the host's own chat message carries their picture
+    // late fallback: the host's own chat message carries their picture. The server downloads it and
+    // serves its own copy (the raw TikTok link is often .heic / expired / blocked in the browser).
+    adoptHostAvatar(diagnostics.tiktokUsername, avatarUrl).then((url) => {
+      if (url && !hostAvatarUrl && game.mode === "live") {
+        hostAvatarUrl = url;
+        broadcastState();
+      }
+    });
   }
 
   game.recentComments.unshift({ username, text, avatarUrl: knownAvatars.get(username) || null, at: Date.now() });
@@ -666,7 +673,7 @@ async function connectToTikTok(username) {
       broadcastState();
       // Look up the host's profile picture (for the starter-word row) without
       // holding up the connection; broadcast again once it's known.
-      resolveHostAvatar(connection, connectState).then((url) => {
+      resolveHostAvatar(connection, connectState, username, () => liveConnection !== connection).then((url) => {
         if (url && liveConnection === connection) {
           hostAvatarUrl = url;
           broadcastState();

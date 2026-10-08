@@ -29,7 +29,7 @@
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 import { extractChatFields, extractMessageId } from './twistle-diagnostics.js';
 import { Engagement } from '../engagement/engagement-hub.js';
-import { resolveHostAvatar, isHostUser } from '../shared/host-avatar.js';
+import { resolveHostAvatar, adoptHostAvatar, isHostUser } from '../shared/host-avatar.js';
 
 const MAX_CONNECT_ATTEMPTS = 3;
 const BACKOFF_MS = [2000, 5000, 10000]; // short backoff between retries
@@ -192,7 +192,12 @@ export class TikTokManager {
         if (!this._isNewMessage(msgId)) return; // duplicate delivery of the same message
         const { username: user, text, avatarUrl } = extractChatFields(data);
         // Late fallback: the host's own chat message carries their profile picture.
-        if (avatarUrl && !this.hostAvatarUrl && isHostUser(user, this.desiredUsername)) this._setHostAvatar(avatarUrl);
+        if (avatarUrl && !this.hostAvatarUrl && isHostUser(user, this.desiredUsername)) {
+          // The server downloads the picture and serves its own copy (raw TikTok links are often .heic / expired / blocked).
+          adoptHostAvatar(this.desiredUsername, avatarUrl).then((url) => {
+            if (url && !this.hostAvatarUrl && !this._isStale(myGeneration)) this._setHostAvatar(url);
+          });
+        }
         this.onComment(user, text, 'tiktok', avatarUrl);
       } catch (err) {
         this.diagnostics.logError('tiktok.chatHandler', err);
@@ -229,7 +234,7 @@ export class TikTokManager {
     Engagement.attach(connection, { game: 'twistle', tiktokUsername: username });
 
     // Look up the host's profile picture without holding up the connection.
-    resolveHostAvatar(connection, connectState).then((url) => {
+    resolveHostAvatar(connection, connectState, username, () => this._isStale(myGeneration) || this.connection !== connection).then((url) => {
       if (url && !this._isStale(myGeneration) && this.connection === connection) this._setHostAvatar(url);
     });
   }

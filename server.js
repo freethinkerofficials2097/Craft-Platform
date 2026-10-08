@@ -55,6 +55,8 @@ import { registerCrossdle } from "./server/crossdle/crossdle.js";
 import { registerTwistle } from "./server/twistle/twistle.js";
 import { Engagement } from "./server/engagement/engagement-hub.js";
 import { ColorShadesHub } from "./server/shared/color-shades-hub.js";
+import { LegendHub } from "./server/shared/legend-hub.js";
+import { serveHostAvatar, hostAvatarStatus } from "./server/shared/host-avatar.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,6 +75,12 @@ process.on("unhandledRejection", (err) => {
   console.error("Unhandled rejection (kept server alive):", err);
 });
 
+// The connected host's TikTok profile picture, downloaded and kept by the server (see
+// server/shared/host-avatar.js) so every browser loads it from this site and it can never be blocked,
+// expire or be an unsupported format. Registered before the static files and every game.
+app.get("/host-avatar/:name", serveHostAvatar);
+app.get("/host-avatar-status/:name", hostAvatarStatus);
+
 // Serves /public/index.html at "/", and transparently serves
 // /public/flagle/*, /public/travle/*, /public/crossdle/*, and
 // /public/twistle/* at their matching URLs, plus the shared /shared/*
@@ -90,6 +98,11 @@ Engagement.init(io);
 // every screen connected to a game in sync (Socket.IO namespace /shades). See
 // server/shared/color-shades-hub.js and public/shared/color-shades.js.
 ColorShadesHub.init(io);
+
+// Platform-wide customizable color legends (update 24): remembers how the host arranged each game's
+// legend (position, size, font, order, texts, rows/columns) and keeps every screen of that game in
+// sync (Socket.IO namespace /legends). See server/shared/legend-hub.js and public/shared/legend.js.
+LegendHub.init(io);
 
 registerFlagle(io);
 registerTravle(io);

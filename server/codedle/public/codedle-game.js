@@ -39,7 +39,6 @@ const el = {
   autoContinueNote: document.getElementById("autoContinueNote"),
   idleBanner: document.getElementById("idleBanner"),
   keyboardSection: document.getElementById("keyboardSection"),
-  legendSection: document.getElementById("legendSection"),
   codeSection: document.getElementById("codeSection"),
   codeRow: document.getElementById("codeRow"),
   starterWordToggle: document.getElementById("starterWordToggle"),
@@ -959,7 +958,6 @@ function renderKeyboardVisibility(g) {
   const display = show ? "block" : "none";
   if (el.keyboardSection.style.display !== display) lastTilesSignature = "";
   el.keyboardSection.style.display = display;
-  el.legendSection.style.display = display;
   el.codeSection.style.display = display;
 }
 

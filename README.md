@@ -1,4 +1,5 @@
 # TikTok LIVE Game Platform
+> **Update 24:** every word game now has a customizable **color legend**, and the host's TikTok profile picture on the starter word is now 100% reliable (the server downloads and serves it) - see `CHANGES_UPDATE_24.md`.
 > **Update 23:** new game CODEDLE (number code + green / yellow / blue / pink / gray letter clues) at `/codedle/` - see `CHANGES_UPDATE_23.md`.
 > **Update 22:** new game RANGEDLE (letters colored by alphabet distance) at `/rangedle/` - see `CHANGES_UPDATE_22.md`.
 > **Update 21:** TEXTLE now accepts any real word as a guess, even if it conflicts with earlier clues - see `CHANGES_UPDATE_21.md`.
@@ -165,14 +166,29 @@ Flagle's per-host model later.
 
 ## Host picture on the starter word
 
-Blindle, Oracle, Twistle and CROSSDLE open every round with an automatic
-"starter word". Its avatar circle now shows the TikTok profile picture of the
-**host of the current LIVE session** (the account the game is connected to)
-instead of a generic colored initial. Shared logic: `server/shared/host-avatar.js`.
-The picture is taken from the room info TikTok returns on connect (with a second
-lookup, and finally the host's own chat messages, as fallbacks). It appears as
-soon as the connection is up - even mid-round - and goes back to the plain
-circle in Test/Offline mode, after Disconnect, or if TikTok gives no picture.
+Every game that opens a round with an automatic "starter word" (BLINDLE, ORACLE, COLORBLINDLE, COLORDLE,
+STRUCTLE, TEXTLE, RANGEDLE, CODEDLE, TWISTLE and CROSSDLE) shows the TikTok profile picture of the **host of the
+current LIVE session** (the account the game is connected to) in the starter word's circle.
+Shared logic: `server/shared/host-avatar.js`.
+
+Since update 24 the **server downloads the picture itself** and serves its own copy at `/host-avatar/<username>`, so
+the browser never depends on TikTok's CDN (which used to fail for some hosts: .heic files, expired links, blocked
+hot-links). It looks for the picture in this order and keeps retrying for a few minutes: the room info from the connect
+call, a fresh room-info request, the host's public TikTok profile page, and finally the host's own chat messages.
+Troubleshooting: open `/host-avatar-status/<username>` on your site to see whether the server has the picture.
+It goes back to the plain colored circle in Test/Offline mode or after Disconnect.
+
+## Color legend on every word game (update 24)
+
+Each word game shows a small legend explaining what every color means (like RANGEDLE's). By default it sits
+directly under the floating message window and above the keyboard and the guess board; nothing overlaps - the board
+simply uses the height that is left (and the legend auto-shrinks if it ever gets too tall).
+Open **Settings -> Color legend** to change: show/hide, position (top / just above the board / below the board),
+alignment, title, the text and the chip text of every entry, the order of the entries (arrows), which entries show,
+custom entries and colors, overall size, chip size, spacing, font, chip shape, number of **columns** and **rows**,
+background panel, and Auto-fit. Changes apply instantly and are shared by every screen connected to that game.
+Files: `public/shared/legend.js` + `legend.css` (the legend, its defaults per game and the settings panel) and
+`server/shared/legend-hub.js` (Socket.IO namespace `/legends`; saved in `data/legends.json`).
 
 ## Codedle (new)
 

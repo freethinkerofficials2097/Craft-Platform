@@ -20,6 +20,8 @@
 <link rel="stylesheet" href="/shared/game-colors.css" />
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="rangedle"></script>
+<link rel="stylesheet" href="/shared/legend.css" />
+<script src="/shared/legend.js" data-game="rangedle"></script>
 <script src="/shared/title-font.js" defer></script>
 </head>
 <body data-game="rangedle">
@@ -59,19 +61,6 @@
 
         <div class="keyboardSection" id="keyboardSection" aria-label="Alphabet letters with their numbers">
           <div class="keyboard" id="keyboard"></div>
-        </div>
-
-        <!-- Color legend: sits between the keyboard and the guess board, never overlapping either -->
-        <div class="legendSection" id="legendSection" aria-label="Color legend">
-          <div class="legendTitle">Distance from the hidden letter</div>
-          <div class="legendRow">
-            <span class="legendChip rg1">1–5</span>
-            <span class="legendChip rg2">6–10</span>
-            <span class="legendChip rg3">11–15</span>
-            <span class="legendChip rg4">16–20</span>
-            <span class="legendChip rg5">21–25</span>
-            <span class="legendChip rg0">Match</span>
-          </div>
         </div>
 
         <div class="tilesWrap" id="tilesWrap"></div>

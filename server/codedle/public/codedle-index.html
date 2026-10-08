@@ -20,6 +20,8 @@
 <link rel="stylesheet" href="/shared/game-colors.css" />
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="codedle"></script>
+<link rel="stylesheet" href="/shared/legend.css" />
+<script src="/shared/legend.js" data-game="codedle"></script>
 <script src="/shared/title-font.js" defer></script>
 </head>
 <body data-game="codedle">
@@ -56,20 +58,6 @@
 
     <main class="stage" id="stage">
       <section class="round-card">
-
-        <!-- Color legend: directly under the floating message window and above the board.
-             Order of the round card (top to bottom): floating message slot (outside this card)
-             -> legend -> self-coloring keyboard -> number code -> guess board. Nothing overlaps. -->
-        <div class="legendSection" id="legendSection" aria-label="Color legend">
-          <div class="legendTitle">What the colors mean</div>
-          <ul class="legendList">
-            <li class="legendItem" title="Right letter in the right spot"><span class="legendChip cd0">A</span><span class="legendText"><b>Green</b> — right spot</span></li>
-            <li class="legendItem" title="The letter is in the word, but in a different spot"><span class="legendChip cd1">A</span><span class="legendText"><b>Yellow</b> — wrong spot</span></li>
-            <li class="legendItem" title="The letter is close to the hidden letter of that spot (within 3 letters of the alphabet)"><span class="legendChip cd2">A</span><span class="legendText"><b>Blue</b> — within 3 letters of target</span></li>
-            <li class="legendItem" title="Meets both the yellow and the blue condition"><span class="legendChip cd3">A</span><span class="legendText"><b>Pink</b> — yellow + blue</span></li>
-            <li class="legendItem" title="The letter does not exist in the word"><span class="legendChip cd4">A</span><span class="legendText"><b>Gray</b> — not in word</span></li>
-          </ul>
-        </div>
 
         <div class="keyboardSection" id="keyboardSection" aria-label="Alphabet - keys color themselves from the guesses">
           <div class="keyboard" id="keyboard"></div>
