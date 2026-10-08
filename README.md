@@ -441,3 +441,7 @@ unlimited hints, Live/Test/Offline modes, full TikTok engagement alerts.
 
 Full details for each game's own mechanics are documented inside that
 game — tap **?** / **How to Play** on its own screen.
+
+
+## Update 29
+SHAPEDLE Settings -> Symbols: tick several symbol sets (new: Flags, Professions, Sports, Transport), color intensity / brightness / size, animation, and use selected viewers' round TikTok profile pictures as symbols (saved even after they leave). See `CHANGES_UPDATE_29.md`.
