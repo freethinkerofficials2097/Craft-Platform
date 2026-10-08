@@ -1,4 +1,5 @@
 # TikTok LIVE Game Platform
+> **Update 31:** the legend settings are now called **LEGENDS SETTINGS**, with new positions (directly above / below the keyboard) and an exact rows x columns layout - see `CHANGES_UPDATE_31.md`.
 > **Update 28:** new game SHAPEDLE (a row of cute symbols, one per letter, + green / yellow / gray clues, host-selectable symbol packs) at `/shapedle/` - see `CHANGES_UPDATE_28.md`.
 > **Update 25:** **Strict fit** is now in every letter word game and ON by default (the host can switch it off per game in Settings; the choice is remembered) - see `CHANGES_UPDATE_25.md`.
 > **Update 24:** every word game now has a customizable **color legend**, and the host's TikTok profile picture on the starter word is now 100% reliable (the server downloads and serves it) - see `CHANGES_UPDATE_24.md`.
@@ -193,9 +194,9 @@ length is accepted. The hidden word always passes, and a guess that doesn't fit 
 Each word game shows a small legend explaining what every color means (like RANGEDLE's). By default it sits
 directly under the floating message window and above the keyboard and the guess board; nothing overlaps - the board
 simply uses the height that is left (and the legend auto-shrinks if it ever gets too tall).
-Open **Settings -> Color legend** to change: show/hide, position (top / just above the board / below the board),
+Open **Settings -> LEGENDS SETTINGS** to change: show/hide, position (top / directly above the keyboard / directly below the keyboard / just above the board / below the board),
 alignment, title, the text and the chip text of every entry, the order of the entries (arrows), which entries show,
-custom entries and colors, overall size, chip size, spacing, font, chip shape, number of **columns** and **rows**,
+custom entries and colors, overall size, chip size, row and column spacing, maximum width, font, chip shape, an exact **rows x columns** grid (quick layouts, fill order, what to do with extra entries),
 background panel, and Auto-fit. Changes apply instantly and are shared by every screen connected to that game.
 Files: `public/shared/legend.js` + `legend.css` (the legend, its defaults per game and the settings panel) and
 `server/shared/legend-hub.js` (Socket.IO namespace `/legends`; saved in `data/legends.json`).

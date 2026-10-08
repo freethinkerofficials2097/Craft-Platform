@@ -1,5 +1,5 @@
 /* ==========================================================================
-   COLOR LEGEND  (update 24) - shared by every word game on the platform.
+   LEGENDS SETTINGS / COLOR LEGEND  (update 24, extended in update 31) - shared by every word game.
 
    What it does
      - Builds a small "what the colors mean" legend for the game named in
@@ -154,7 +154,24 @@
   if (!DEF) return; // not a game with a legend
 
   var MAX_ITEMS = 16;
-  var POSITIONS = [["top", "Top - under the floating message window"], ["aboveBoard", "Just above the guess board"], ["belowBoard", "Below the guess board"]];
+  var POSITIONS = [
+    ["top", "Top - under the floating message window"],
+    ["aboveKeyboard", "Directly above the keyboard"],
+    ["belowKeyboard", "Directly below the keyboard"],
+    ["aboveBoard", "Just above the guess board"],
+    ["belowBoard", "Below the guess board"]
+  ];
+  var FLOWS = [["row", "Across - fill row by row"], ["column", "Down - fill column by column"]];
+  var OVERFLOWS = [["grow", "Add extra rows / columns so every entry shows"], ["hide", "Hide the entries that do not fit"]];
+  var ITEM_LAYOUTS = [["side", "Color chip, then text"], ["rev", "Text, then color chip"], ["stack", "Color chip above the text"]];
+  var CELL_FITS = [["equal", "Equal-width cells"], ["content", "Fit to each entry (compact)"]];
+  var CELL_ALIGNS = [["auto", "Same as Alignment"], ["start", "Left"], ["center", "Center"], ["end", "Right"]];
+  var MAX_GRID = 12;
+  // Quick layouts shown as buttons: [label, columns, rows]  (0 = Auto)
+  var PRESETS = [
+    ["Auto", 0, 0], ["1 row", 0, 1], ["1 column", 1, 0], ["2 rows", 0, 2], ["2 columns", 2, 0],
+    ["2 × 2", 2, 2], ["2 × 3", 3, 2], ["3 × 2", 2, 3], ["3 × 3", 3, 3], ["2 × 4", 4, 2], ["4 × 2", 2, 4]
+  ];
   var ALIGNS = [["left", "Left"], ["center", "Center"], ["right", "Right"]];
   var SHAPES = [["rounded", "Rounded square"], ["square", "Square"], ["circle", "Circle"], ["bar", "Wide bar"]];
   var FONTS = [
@@ -204,7 +221,9 @@
     return {
       visible: true, position: "top", align: "center",
       showTitle: true, title: DEF.title, showText: true, panel: true, autoFit: true,
-      shape: "rounded", scale: 100, chipScale: 100, gap: 6, columns: 0, rows: 0, font: "default",
+      shape: "rounded", scale: 100, chipScale: 100, rowGap: 6, colGap: 10, maxWidth: 640,
+      columns: 0, rows: 0, flow: "row", overflow: "grow", itemLayout: "side", cellFit: "equal", cellAlign: "auto",
+      font: "default",
       items: DEF.items.map(function (d) { return { id: d.id, enabled: true, label: d.label, glyph: d.glyph }; })
     };
   }
@@ -232,9 +251,16 @@
       shape: inList(SHAPES, raw.shape, "rounded"),
       scale: clampNum(raw.scale, 50, 220, 100),
       chipScale: clampNum(raw.chipScale, 50, 220, 100),
-      gap: clampNum(raw.gap, 0, 30, 6),
-      columns: clampNum(raw.columns, 0, 8, 0),
-      rows: clampNum(raw.rows, 0, 8, 0),
+      rowGap: clampNum(raw.rowGap !== undefined ? raw.rowGap : raw.gap, 0, 60, 6),
+      colGap: clampNum(raw.colGap !== undefined ? raw.colGap : (isFinite(Number(raw.gap)) ? Number(raw.gap) * 1.6 : 10), 0, 60, 10),
+      maxWidth: clampNum(raw.maxWidth, 200, 1200, 640),
+      columns: clampNum(raw.columns, 0, MAX_GRID, 0),
+      rows: clampNum(raw.rows, 0, MAX_GRID, 0),
+      flow: inList(FLOWS, raw.flow, (Number(raw.rows) > 0 && !(Number(raw.columns) > 0)) ? "column" : "row"),
+      overflow: inList(OVERFLOWS, raw.overflow, "grow"),
+      itemLayout: inList(ITEM_LAYOUTS, raw.itemLayout, "side"),
+      cellFit: inList(CELL_FITS, raw.cellFit, "equal"),
+      cellAlign: inList(CELL_ALIGNS, raw.cellAlign, "auto"),
       font: inList(FONTS.map(function (f) { return f.id; }), raw.font, "default"),
       items: []
     };
@@ -309,6 +335,10 @@
   }
 
   /* ------------------------------------------------------------------ DOM placement */
+  // The on-screen keyboard block (most games: #keyboardSection, CROSSDLE: .keyboard-section). STRUCTLE has none.
+  function keyboardEl() {
+    return document.getElementById("keyboardSection") || document.querySelector(".keyboard-section");
+  }
   function findParts() {
     var container = document.querySelector(".round-card") || document.querySelector(".board-section");
     if (!container) return null;
@@ -323,7 +353,15 @@
     if (!p) return;
     var pos = S.position;
     var board = p.board;
-    if (pos === "belowBoard" && board && board.parentNode) {
+    var kb = keyboardEl();
+    if (pos === "aboveKeyboard" && kb && kb.parentNode) {
+      kb.parentNode.insertBefore(el, kb);                          // directly above the keyboard
+    } else if (pos === "belowKeyboard" && kb && kb.parentNode) {
+      kb.parentNode.insertBefore(el, kb.nextSibling);              // directly below the keyboard
+    } else if (pos === "belowKeyboard" && board && board.parentNode) {
+      var a2 = p.code && p.code.parentNode === board.parentNode ? p.code : board;   // game has no keyboard
+      a2.parentNode.insertBefore(el, a2);
+    } else if (pos === "belowBoard" && board && board.parentNode) {
       board.parentNode.insertBefore(el, board.nextSibling);
     } else if (pos === "aboveBoard" && board && board.parentNode) {
       var anchor = p.code && p.code.parentNode === board.parentNode ? p.code : board;
@@ -354,19 +392,64 @@
     return true;
   }
 
+  // Works out the exact grid for the number of entries that will show.
+  //   Columns only -> that many columns, rows follow.   Rows only -> that many rows, columns follow.
+  //   Both set     -> exactly rows x columns cells; if there are more entries than cells the host chooses to
+  //                   add extra rows/columns ("grow") or to hide the entries that do not fit ("hide").
+  function layoutInfo(n) {
+    var C = S.columns, R = S.rows;
+    var L = { mode: "auto", cols: 0, rows: 0, cells: 0, shown: n, hidden: 0, grown: false, empty: 0 };
+    if (!C && !R) return L;
+    if (C && R) {
+      L.mode = "grid"; L.cols = C; L.rows = R; L.cells = C * R;
+      if (n > L.cells) {
+        if (S.overflow === "hide") { L.shown = L.cells; L.hidden = n - L.cells; }
+        else {
+          L.grown = true;
+          if (S.flow === "column") L.cols = Math.ceil(n / R); else L.rows = Math.ceil(n / C);
+        }
+      }
+    } else if (C) {
+      L.mode = "columns"; L.cols = C; L.rows = Math.max(1, Math.ceil(n / C));
+    } else {
+      L.mode = "rows"; L.rows = R; L.cols = Math.max(1, Math.ceil(n / R));
+    }
+    L.empty = Math.max(0, L.cols * L.rows - L.shown);
+    return L;
+  }
+  function updateLayoutInfo(L) {
+    if (!panelRoot) return;
+    var box = panelRoot.querySelector("#lgInfo");
+    if (!box) return;
+    var txt;
+    if (L.mode === "auto") {
+      txt = "Automatic layout: " + L.shown + " entries, the number of columns adapts to the available width.";
+    } else {
+      txt = L.shown + " entries shown in " + L.rows + " row" + (L.rows === 1 ? "" : "s") + " × " + L.cols + " column" + (L.cols === 1 ? "" : "s") + ".";
+      if (L.mode === "grid" && L.grown) txt += " Your " + S.rows + " × " + S.columns + " grid has only " + (S.rows * S.columns) + " cells, so extra " + (S.flow === "column" ? "columns were" : "rows were") + " added.";
+      else if (L.hidden > 0) txt += " " + L.hidden + " entr" + (L.hidden === 1 ? "y does" : "ies do") + " not fit and " + (L.hidden === 1 ? "is" : "are") + " hidden.";
+      else if (L.empty > 0) txt += " " + L.empty + " empty cell" + (L.empty === 1 ? "" : "s") + ".";
+    }
+    box.textContent = txt;
+  }
+
   function render() {
     if (!el) { if (!buildSection()) return; }
     var dm = defMap();
     var visibleItems = S.items.filter(function (it) { return it.enabled; });
+    var L = layoutInfo(visibleItems.length);
+    if (L.hidden > 0) visibleItems = visibleItems.slice(0, L.shown);
 
     el.hidden = !S.visible || visibleItems.length === 0;
     el.className = "lgSection" +
       (S.panel ? " lgPanel" : "") +
       " lgAlign" + S.align.charAt(0).toUpperCase() + S.align.slice(1) +
       " lgShape-" + S.shape +
-      ((S.columns > 0 || S.rows > 0) ? " lgGrid" : "") +
-      (S.columns > 0 ? " lgCols" : "") +
-      (S.rows > 0 ? " lgRows" : "");
+      (L.mode === "auto" ? " lgAuto" : " lgFixed") +
+      (L.mode !== "auto" && S.flow === "column" ? " lgFlowCol" : "") +
+      (S.cellFit === "content" ? " lgFit-content" : "") +
+      " lgIL-" + S.itemLayout +
+      (S.cellAlign !== "auto" ? " lgCell-" + S.cellAlign : "");
 
     var font = fontById(S.font);
     ensureFont(font);
@@ -374,9 +457,13 @@
     else el.style.setProperty("--lg-font", font.fam ? "'" + font.css + "', sans-serif" : font.css);
     el.style.setProperty("--lg-scale", String(S.scale / 100));
     el.style.setProperty("--lg-chip", String(S.chipScale / 100));
-    el.style.setProperty("--lg-gap", S.gap + "px");
-    el.style.setProperty("--lg-cols", String(Math.max(1, S.columns)));
-    el.style.setProperty("--lg-rows", String(Math.max(1, S.rows)));
+    el.style.setProperty("--lg-row-gap", S.rowGap + "px");
+    el.style.setProperty("--lg-col-gap", S.colGap + "px");
+    el.style.setProperty("--lg-cols", String(Math.max(1, L.cols)));
+    el.style.setProperty("--lg-rows", String(Math.max(1, L.rows)));
+    el.style.setProperty("--lg-jc", S.align === "left" ? "flex-start" : (S.align === "right" ? "flex-end" : "center"));
+    el.style.maxWidth = S.maxWidth + "px";
+    updateLayoutInfo(L);
     el.style.setProperty("--lg-fit", "1");
 
     var html = "";
@@ -485,17 +572,36 @@
     for (var i = 1; i <= maxN; i++) a.push([String(i), String(i)]);
     return a;
   }
+  function positionList() {
+    // CROSSDLE/others have a keyboard; STRUCTLE has none, so the two keyboard choices are hidden there.
+    return keyboardEl() ? POSITIONS : POSITIONS.filter(function (o) { return !/Keyboard$/.test(o[0]); });
+  }
   function panelHtml() {
+    var presets = PRESETS.map(function (pr, i) {
+      return '<button type="button" class="lgBtn lgPreset" data-i="' + i + '">' + esc(pr[0]) + "</button>";
+    }).join("");
     return '' +
       '<label class="lgCheck"><input type="checkbox" id="lgVisible"> <span>Show the legend</span></label>' +
-      '<div class="lgRow"><label for="lgPosition">Position</label>' + selectHtml("lgPosition", POSITIONS, S.position) + "</div>" +
+      '<h5>Position</h5>' +
+      '<div class="lgRow"><label for="lgPosition">Place the legend</label>' + selectHtml("lgPosition", positionList(), S.position) + "</div>" +
       '<div class="lgRow"><label for="lgAlign">Alignment</label>' + selectHtml("lgAlign", ALIGNS, S.align) + "</div>" +
-      '<div class="lgRow"><label for="lgColumns">Columns</label>' + selectHtml("lgColumns", numOptions(8), String(S.columns)) +
-      '<label for="lgRows" style="min-width:auto">Rows</label>' + selectHtml("lgRows", numOptions(8), String(S.rows)) + "</div>" +
+      '<h5>Layout - how many rows and columns</h5>' +
+      '<div class="lgPresets" id="lgPresets">' + presets + "</div>" +
+      '<div class="lgRow"><label for="lgColumns">Columns</label>' + selectHtml("lgColumns", numOptions(MAX_GRID), String(S.columns)) + "</div>" +
+      '<div class="lgRow"><label for="lgRows">Rows</label>' + selectHtml("lgRows", numOptions(MAX_GRID), String(S.rows)) + "</div>" +
+      '<p class="lgHelp">Set only <b>Columns</b> and the rows follow; set only <b>Rows</b> and the columns follow; set <b>both</b> for an exact rows × columns grid (for example 2 rows × 3 columns = 6 cells). <b>Auto</b> lets the screen width decide.</p>' +
+      '<div class="lgRow"><label for="lgFlow">Fill order</label>' + selectHtml("lgFlow", FLOWS, S.flow) + "</div>" +
+      '<div class="lgRow"><label for="lgOverflow">Too many entries</label>' + selectHtml("lgOverflow", OVERFLOWS, S.overflow) + "</div>" +
+      '<div class="lgRow"><label for="lgItemLayout">Each entry</label>' + selectHtml("lgItemLayout", ITEM_LAYOUTS, S.itemLayout) + "</div>" +
+      '<div class="lgRow"><label for="lgCellFit">Cell width</label>' + selectHtml("lgCellFit", CELL_FITS, S.cellFit) + "</div>" +
+      '<div class="lgRow"><label for="lgCellAlign">Inside each cell</label>' + selectHtml("lgCellAlign", CELL_ALIGNS, S.cellAlign) + "</div>" +
+      '<div class="lgRow"><label for="lgRowGap">Row spacing</label><input type="range" id="lgRowGap" min="0" max="60" step="1"><span class="lgVal" id="lgRowGapVal"></span></div>' +
+      '<div class="lgRow"><label for="lgColGap">Column spacing</label><input type="range" id="lgColGap" min="0" max="60" step="1"><span class="lgVal" id="lgColGapVal"></span></div>' +
+      '<div class="lgRow"><label for="lgMaxWidth">Maximum width</label><input type="range" id="lgMaxWidth" min="200" max="1200" step="10"><span class="lgVal" id="lgMaxWidthVal"></span></div>' +
+      '<div class="lgInfo" id="lgInfo" aria-live="polite"></div>' +
       '<h5>Size &amp; look</h5>' +
       '<div class="lgRow"><label for="lgScale">Overall size</label><input type="range" id="lgScale" min="50" max="220" step="5"><span class="lgVal" id="lgScaleVal"></span></div>' +
       '<div class="lgRow"><label for="lgChipScale">Chip size</label><input type="range" id="lgChipScale" min="50" max="220" step="5"><span class="lgVal" id="lgChipScaleVal"></span></div>' +
-      '<div class="lgRow"><label for="lgGap">Spacing</label><input type="range" id="lgGap" min="0" max="30" step="1"><span class="lgVal" id="lgGapVal"></span></div>' +
       '<div class="lgRow"><label for="lgFont">Font</label>' + selectHtml("lgFont", FONTS.map(function (f) { return [f.id, f.name]; }), S.font) + "</div>" +
       '<div class="lgRow"><label for="lgShape">Chip shape</label>' + selectHtml("lgShape", SHAPES, S.shape) + "</div>" +
       '<label class="lgCheck"><input type="checkbox" id="lgShowText"> <span>Show the text next to each color</span></label>' +
@@ -520,7 +626,15 @@
     q("lgRows").value = String(S.rows);
     q("lgScale").value = S.scale; q("lgScaleVal").textContent = S.scale + "%";
     q("lgChipScale").value = S.chipScale; q("lgChipScaleVal").textContent = S.chipScale + "%";
-    q("lgGap").value = S.gap; q("lgGapVal").textContent = S.gap + "px";
+    q("lgFlow").value = S.flow;
+    q("lgOverflow").value = S.overflow;
+    q("lgItemLayout").value = S.itemLayout;
+    q("lgCellFit").value = S.cellFit;
+    q("lgCellAlign").value = S.cellAlign;
+    q("lgRowGap").value = S.rowGap; q("lgRowGapVal").textContent = S.rowGap + "px";
+    q("lgColGap").value = S.colGap; q("lgColGapVal").textContent = S.colGap + "px";
+    q("lgMaxWidth").value = S.maxWidth; q("lgMaxWidthVal").textContent = S.maxWidth + "px";
+    markPresets();
     q("lgFont").value = S.font;
     q("lgShape").value = S.shape;
     q("lgShowText").checked = S.showText;
@@ -528,6 +642,16 @@
     q("lgAutoFit").checked = S.autoFit;
     q("lgShowTitle").checked = S.showTitle;
     q("lgTitle").value = S.title;
+    updateLayoutInfo(layoutInfo(S.items.filter(function (it) { return it.enabled; }).length));
+  }
+
+  function markPresets() {
+    if (!panelRoot) return;
+    var btns = panelRoot.querySelectorAll(".lgPreset");
+    for (var i = 0; i < btns.length; i++) {
+      var pr = PRESETS[Number(btns[i].getAttribute("data-i"))];
+      btns[i].classList.toggle("on", !!pr && pr[1] === S.columns && pr[2] === S.rows);
+    }
   }
 
   function resolveHex(expr) {
@@ -589,11 +713,29 @@
     on("lgVisible", "change", function (e) { S.visible = e.target.checked; commit(false); });
     on("lgPosition", "change", function (e) { S.position = e.target.value; commit(false); });
     on("lgAlign", "change", function (e) { S.align = e.target.value; commit(false); });
-    on("lgColumns", "change", function (e) { S.columns = Number(e.target.value); commit(false); });
-    on("lgRows", "change", function (e) { S.rows = Number(e.target.value); commit(false); });
+    on("lgColumns", "change", function (e) { S.columns = Number(e.target.value); markPresets(); commit(false); });
+    on("lgRows", "change", function (e) { S.rows = Number(e.target.value); markPresets(); commit(false); });
+    on("lgFlow", "change", function (e) { S.flow = e.target.value; commit(false); });
+    on("lgOverflow", "change", function (e) { S.overflow = e.target.value; commit(false); });
+    on("lgItemLayout", "change", function (e) { S.itemLayout = e.target.value; commit(false); });
+    on("lgCellFit", "change", function (e) { S.cellFit = e.target.value; commit(false); });
+    on("lgCellAlign", "change", function (e) { S.cellAlign = e.target.value; commit(false); });
+    on("lgRowGap", "input", function (e) { S.rowGap = Number(e.target.value); q("lgRowGapVal").textContent = S.rowGap + "px"; commit(false); });
+    on("lgColGap", "input", function (e) { S.colGap = Number(e.target.value); q("lgColGapVal").textContent = S.colGap + "px"; commit(false); });
+    on("lgMaxWidth", "input", function (e) { S.maxWidth = Number(e.target.value); q("lgMaxWidthVal").textContent = S.maxWidth + "px"; commit(false); });
+    Array.prototype.forEach.call(panelRoot.querySelectorAll(".lgPreset"), function (b) {
+      b.addEventListener("click", function () {
+        var pr = PRESETS[Number(b.getAttribute("data-i"))];
+        if (!pr) return;
+        S.columns = pr[1]; S.rows = pr[2];
+        if (S.columns > 0 && S.rows === 0) S.flow = "row";
+        q("lgColumns").value = String(S.columns); q("lgRows").value = String(S.rows);
+        markPresets();
+        commit(false);
+      });
+    });
     on("lgScale", "input", function (e) { S.scale = Number(e.target.value); q("lgScaleVal").textContent = S.scale + "%"; commit(false); });
     on("lgChipScale", "input", function (e) { S.chipScale = Number(e.target.value); q("lgChipScaleVal").textContent = S.chipScale + "%"; commit(false); });
-    on("lgGap", "input", function (e) { S.gap = Number(e.target.value); q("lgGapVal").textContent = S.gap + "px"; commit(false); });
     on("lgFont", "change", function (e) { S.font = e.target.value; commit(false); });
     on("lgShape", "change", function (e) { S.shape = e.target.value; commit(false); });
     on("lgShowText", "change", function (e) { S.showText = e.target.checked; commit(false); });
@@ -619,13 +761,13 @@
 
     var wrap = document.createElement("div");
     wrap.id = "legendSettings";
-    var intro = "Customize the color legend that explains each color to your viewers: where it sits, its size, font, the order and wording of every entry, and how many rows or columns it uses. Changes apply right away and every screen connected to this game updates together.";
+    var intro = "Customize the legend that explains each color to your viewers: where it sits (top, above or below the keyboard, above or below the board), exactly how many rows and columns it uses, its size, font, and the order and wording of every entry. Changes apply right away and every screen connected to this game updates together.";
     if (host.classList.contains("host-card")) {
       wrap.className = "host-card";
-      wrap.innerHTML = '<div class="host-card-title">🏷️ Color legend</div><p class="host-note" style="font-size:12px;opacity:.75;margin:0 0 8px">' + esc(intro) + '</p><div class="lgPanelUI"></div>';
+      wrap.innerHTML = '<div class="host-card-title">🏷️ LEGENDS SETTINGS</div><p class="host-note" style="font-size:12px;opacity:.75;margin:0 0 8px">' + esc(intro) + '</p><div class="lgPanelUI"></div>';
     } else {
       wrap.className = "drawerSection";
-      wrap.innerHTML = '<h4>Color legend</h4><p class="sectionNote">' + esc(intro) + '</p><div class="lgPanelUI"></div>';
+      wrap.innerHTML = '<h4>LEGENDS SETTINGS</h4><p class="sectionNote">' + esc(intro) + '</p><div class="lgPanelUI"></div>';
     }
     host.parentNode.insertBefore(wrap, host.nextSibling);
     panelRoot = wrap.querySelector(".lgPanelUI");
