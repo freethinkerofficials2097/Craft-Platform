@@ -45,6 +45,8 @@ try {
 const GIFT_EVENT = WebcastEvent.GIFT || "gift";
 const LIKE_EVENT = WebcastEvent.LIKE || "like";
 const SHARE_EVENT = WebcastEvent.SHARE || "share";
+const FOLLOW_EVENT = WebcastEvent.FOLLOW || "follow";
+const SUBSCRIBE_EVENT = WebcastEvent.SUBSCRIBE || "subscribe";
 
 class EngagementHub {
   constructor() {
@@ -126,6 +128,9 @@ class EngagementHub {
     connection.on(GIFT_EVENT, safely("gift", (data) => this.tracker.handleGift(data, meta)));
     connection.on(LIKE_EVENT, safely("like", (data) => this.tracker.handleLike(data, meta)));
     connection.on(SHARE_EVENT, safely("share", (data) => this.tracker.handleShare(data, meta)));
+    // (update 40) follows + subscriptions go to the records archive
+    connection.on(FOLLOW_EVENT, safely("follow", (data) => this.tracker.handleSimple("follow", data, meta)));
+    connection.on(SUBSCRIBE_EVENT, safely("subscribe", (data) => this.tracker.handleSimple("subscribe", data, meta)));
   }
 }
 

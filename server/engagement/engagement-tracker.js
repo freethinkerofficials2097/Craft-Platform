@@ -34,22 +34,17 @@
 //      "just crossed 10k!" alerts the moment the host connects.
 // ============================================================================
 
+import { LADDERS, isMajor, stageInfo } from "./milestone-stages.js";
+import { Records } from "../shared/records-store.js";
+
 const MAX_RAW_SAMPLES = 8;
 const MAX_ERROR_LOG = 25;
 
-// Individual (per-user, this session) LIKE milestones. Per spec: exact
-// named early milestones, then round-number thousands after that.
-const INDIVIDUAL_LIKE_MILESTONES = [
-  100, 300, 500, 700, 1000, 2000, 3000, 4000, 5000, 10000,
-  20000, 30000, 40000, 50000, 75000, 100000, 150000, 200000, 250000, 500000, 1000000,
-];
-
-// Room-wide (whole session, all viewers combined) milestones — bigger,
-// "massive alert" tier.
-const ROOM_LIKE_MILESTONES = [
-  1000, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2000000, 5000000, 10000000,
-];
-const ROOM_SHARE_MILESTONES = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000];
+// (update 40) Every milestone ladder now lives in milestone-stages.js (many more stages than before, plus ladders for
+// shares and gift coins). Records (server/shared/records-store.js) save EVERY stage that is crossed.
+const INDIVIDUAL_LIKE_MILESTONES = LADDERS.like;
+const ROOM_LIKE_MILESTONES = LADDERS.roomLike;
+const ROOM_SHARE_MILESTONES = LADDERS.roomShare;
 
 // A gift's total coin value (single gift, or a whole finished combo) at
 // or above this is treated as a "big gift" -> confetti-tier alert instead
@@ -202,18 +197,14 @@ const REPEAT_COUNT_PATHS = ["repeatCount", "repeat_count", "combo.repeatCount"];
 const REPEAT_END_PATHS = ["repeatEnd", "repeat_end"];
 const GROUP_ID_PATHS = ["groupId", "group_id", "logId", "log_id"];
 
+const NICK_PATHS = ["user.nickname", "nickname", "user.displayName", "sender.nickname"];
 const LIKE_COUNT_PATHS = ["likeCount", "count", "like_count"];
 const TOTAL_LIKE_PATHS = ["totalLikeCount", "total", "total_like_count"];
 
 function tierLabel(n) {
-  if (n >= 1000000) {
-    const m = n / 1000000;
-    return (Number.isInteger(m) ? m : m.toFixed(1)) + "m";
-  }
-  if (n >= 1000) {
-    const k = n / 1000;
-    return (Number.isInteger(k) ? k : k.toFixed(1)) + "k";
-  }
+  const trim = (x) => String(Math.round(x * 100) / 100);
+  if (n >= 1000000) return trim(n / 1000000) + "m";
+  if (n >= 1000) return trim(n / 1000) + "k";
   return String(n);
 }
 
@@ -243,6 +234,11 @@ export class EngagementTracker {
     this._perUserLikes = new Map(); // username -> { total, baselineSet, hit:Set }
     this._perUserShares = new Map(); // username -> count (session)
 
+    this._perUserCoins = new Map(); // username -> { total, hit:Set } (update 40)
+    this._roomCoinTotal = 0;
+    this._roomCoinMilestonesHit = new Set();
+
+    this._pendingAlerts = new Map(); // ladder|user -> highest milestone alert of the current event (update 40)
     this._comboBuffers = new Map(); // key -> { data, timer }
   }
 
@@ -269,14 +265,44 @@ export class EngagementTracker {
   _extractUser(raw) {
     const username = firstNonEmpty(raw, USERNAME_PATHS);
     const avatar = firstNonEmpty(raw, AVATAR_PATHS);
+    const nick = firstNonEmpty(raw, NICK_PATHS);
     return {
       username: username != null ? String(username) : "viewer",
       avatarUrl: avatar != null ? String(avatar) : null,
+      nickname: nick != null ? String(nick) : "",
     };
   }
 
-  _fireAlert(type, payload, tier) {
-    this.onAlert(type, { ...payload, tier, ts: Date.now() });
+  // (update 40) Every alert is ALSO saved to the records archive (all stages), but is only SHOWN on screen when it
+  // passes the host's alert mode: "all" (default) = every stage, "major" = only the stages that existed before update 40.
+  _fireAlert(type, payload, tier, ladder, meta = {}) {
+    const full = { ...payload, tier, ts: Date.now(), host: meta.tiktokUsername || "" };
+    try { Records.addAlert(type, full); } catch (err) { this.logError("records.addAlert", err); }
+    if (ladder && Records.alertMode === "major" && !isMajor(ladder, payload.milestone)) return;
+    if (ladder) {
+      // One event can jump over several stages (a big like batch, a big gift). All of them are saved to the records,
+      // but only the HIGHEST one is shown on screen (see _flushAlerts), so the stream never gets a burst of alerts.
+      this._pendingAlerts.set(ladder + "|" + (payload.username || "room"), { type, full });
+      return;
+    }
+    this.onAlert(type, full);
+  }
+
+  _flushAlerts() {
+    if (!this._pendingAlerts.size) return;
+    const list = [...this._pendingAlerts.values()];
+    this._pendingAlerts.clear();
+    for (const a of list) this.onAlert(a.type, a.full);
+  }
+
+  /** Shared look + wording for every milestone alert, with its stage number and tier (Bronze ... Mythic). */
+  _milestoneLook(ladder, m, unit) {
+    const info = stageInfo(ladder, m);
+    return {
+      stage: info.stage, stages: info.stages, tierName: info.tier, metric: unit,
+      icon: info.icon, gradientFrom: info.from, gradientTo: info.to,
+      stat: `${info.tier} · stage ${info.stage}/${info.stages} · ${tierLabel(m)} ${unit}`,
+    };
   }
 
   // -------------------------------------------------------------- gifts --
@@ -290,7 +316,7 @@ export class EngagementTracker {
   handleGift(raw, meta = {}) {
     try {
       this._recordRawSample("gift", raw);
-      const { username, avatarUrl } = this._extractUser(raw);
+      const { username, avatarUrl, nickname } = this._extractUser(raw);
       const giftName = String(firstNonEmpty(raw, GIFT_NAME_PATHS) || "a gift");
       const giftId = firstNonEmpty(raw, GIFT_ID_PATHS);
       const giftType = firstNonEmpty(raw, GIFT_TYPE_PATHS);
@@ -328,15 +354,20 @@ export class EngagementTracker {
                 : `@${data.username} sent ${/^[aeiou]/i.test(data.giftName) ? "an" : "a"} ${data.giftName}!`,
             appreciation: pickWish(big ? BIG_GIFT_WISHES : GIFT_WISHES),
             stat: data.totalCoinValue > 0 ? `${data.totalCoinValue.toLocaleString()} ${data.totalCoinValue === 1 ? "coin" : "coins"}` : null,
+            nickname: data.nickname,
           },
-          big ? "confetti" : "pop"
+          big ? "confetti" : "pop",
+          null,
+          meta
         );
+        this._giftMilestones(data, meta);
+        this._flushAlerts();
         this.onDiagnosticsChange();
       };
 
       if (!isStreakable) {
         // Single, non-combo gift — finalize immediately, nothing to buffer.
-        finalize({ username, avatarUrl, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount });
+        finalize({ username, avatarUrl, nickname, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount });
         return;
       }
 
@@ -345,7 +376,7 @@ export class EngagementTracker {
       const existing = this._comboBuffers.get(key);
       if (existing) clearTimeout(existing.timer);
 
-      const data = { username, avatarUrl, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount };
+      const data = { username, avatarUrl, nickname, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount };
 
       if (repeatEnd) {
         this._comboBuffers.delete(key);
@@ -364,17 +395,65 @@ export class EngagementTracker {
     }
   }
 
+  /** (update 40) Coins climb two ladders: this viewer's coins and the whole room's coins. */
+  _giftMilestones(data, meta) {
+    const coins = data.totalCoinValue || 0;
+    if (coins <= 0) return;
+    const u = this._perUserCoins.get(data.username) || { total: 0, hit: new Set() };
+    this._perUserCoins.set(data.username, u);
+    const prev = u.total;
+    u.total += coins;
+    for (const m of LADDERS.gift) {
+      if (prev < m && u.total >= m && !u.hit.has(m)) {
+        u.hit.add(m);
+        const look = this._milestoneLook("gift", m, "coins");
+        this._fireAlert(
+          "gift_milestone",
+          {
+            game: meta.game || null, username: data.username, avatarUrl: data.avatarUrl, nickname: data.nickname, milestone: m,
+            ...look,
+            message: `@${data.username} has gifted ${tierLabel(m)} coins!`,
+            appreciation: pickWish(m >= 10000 ? BIG_MILESTONE_WISHES : MILESTONE_WISHES),
+          },
+          m >= 10000 ? "confetti" : m >= 1000 ? "pop-big" : "pop",
+          "gift",
+          meta
+        );
+      }
+    }
+    const prevRoom = this._roomCoinTotal;
+    this._roomCoinTotal += coins;
+    for (const m of LADDERS.roomGift) {
+      if (prevRoom < m && this._roomCoinTotal >= m && !this._roomCoinMilestonesHit.has(m)) {
+        this._roomCoinMilestonesHit.add(m);
+        const look = this._milestoneLook("roomGift", m, "coins");
+        this._fireAlert(
+          "room_gift_milestone",
+          {
+            game: meta.game || null, milestone: m, ...look,
+            message: `The room just gifted ${tierLabel(m)} coins!`,
+            appreciation: pickWish(ROOM_WISHES),
+          },
+          "confetti",
+          "roomGift",
+          meta
+        );
+      }
+    }
+  }
+
   // --------------------------------------------------------------- likes --
 
   handleLike(raw, meta = {}) {
     try {
       this._recordRawSample("like", raw);
-      const { username, avatarUrl } = this._extractUser(raw);
+      const { username, avatarUrl, nickname } = this._extractUser(raw);
       const batch = Number(firstNonEmpty(raw, LIKE_COUNT_PATHS)) || 1;
       const roomTotalReported = Number(firstNonEmpty(raw, TOTAL_LIKE_PATHS));
 
       this.lastEvents.like = { username, batch, ts: Date.now() };
       this.counters.totalLikes += batch;
+      try { Records.addLike({ username, nick: nickname, batch, game: meta.game, host: meta.tiktokUsername }); } catch (err) { this.logError("records.addLike", err); }
 
       // ---- per-user individual milestone ----
       let user = this._perUserLikes.get(username);
@@ -393,22 +472,22 @@ export class EngagementTracker {
         for (const m of INDIVIDUAL_LIKE_MILESTONES) {
           if (prevUserTotal < m && user.total >= m && !user.hit.has(m)) {
             user.hit.add(m);
-            const big = m >= 10000;
+            const look = this._milestoneLook("like", m, "likes");
             this._fireAlert(
               "like_milestone",
               {
                 game: meta.game || null,
                 username,
                 avatarUrl,
+                nickname,
                 milestone: m,
-                icon: big ? "🏆" : m >= 1000 ? "⭐" : "👍",
-                gradientFrom: big ? "#ffe27a" : m >= 1000 ? "#ffd76a" : "#a7f3d0",
-                gradientTo: big ? "#c98a0c" : m >= 1000 ? "#e0a409" : "#0f9b6c",
+                ...look,
                 message: `@${username} just hit ${tierLabel(m)} likes!`,
-                appreciation: pickWish(big ? BIG_MILESTONE_WISHES : MILESTONE_WISHES),
-                stat: `${tierLabel(m)} likes this session`,
+                appreciation: pickWish(m >= 10000 ? BIG_MILESTONE_WISHES : MILESTONE_WISHES),
               },
-              big ? "confetti" : m >= 1000 ? "pop-big" : "pop"
+              m >= 10000 ? "confetti" : m >= 1000 ? "pop-big" : "pop",
+              "like",
+              meta
             );
           }
         }
@@ -435,19 +514,19 @@ export class EngagementTracker {
               {
                 game: meta.game || null,
                 milestone: m,
-                icon: "🌟",
-                gradientFrom: "#ff9ecb",
-                gradientTo: "#8b5cf6",
+                ...this._milestoneLook("roomLike", m, "likes"),
                 message: `The room just hit ${tierLabel(m)} likes!`,
                 appreciation: pickWish(ROOM_WISHES),
-                stat: `${tierLabel(m)} total likes this session`,
               },
-              "confetti"
+              "confetti",
+              "roomLike",
+              meta
             );
           }
         }
       }
 
+      this._flushAlerts();
       this.onDiagnosticsChange();
     } catch (err) {
       this.logError("handleLike", err);
@@ -459,7 +538,7 @@ export class EngagementTracker {
   handleShare(raw, meta = {}) {
     try {
       this._recordRawSample("share", raw);
-      const { username, avatarUrl } = this._extractUser(raw);
+      const { username, avatarUrl, nickname } = this._extractUser(raw);
 
       this.lastEvents.share = { username, ts: Date.now() };
       this.counters.totalShares += 1;
@@ -478,9 +557,29 @@ export class EngagementTracker {
           message: `@${username} just shared the Live!`,
           appreciation: pickWish(SHARE_WISHES),
           stat: null,
+          nickname,
         },
-        "glow-gold"
+        "glow-gold",
+        null,
+        meta
       );
+
+      // (update 40) a viewer's own share ladder
+      const myShares = this._perUserShares.get(username);
+      if (LADDERS.share.includes(myShares)) {
+        this._fireAlert(
+          "share_milestone",
+          {
+            game: meta.game || null, username, avatarUrl, nickname, milestone: myShares,
+            ...this._milestoneLook("share", myShares, "shares"),
+            message: `@${username} has shared the Live ${myShares} times!`,
+            appreciation: pickWish(MILESTONE_WISHES),
+          },
+          myShares >= 25 ? "confetti" : "pop-big",
+          "share",
+          meta
+        );
+      }
 
       const prevRoomShares = this._roomShareTotal;
       this._roomShareTotal += 1;
@@ -492,21 +591,33 @@ export class EngagementTracker {
             {
               game: meta.game || null,
               milestone: m,
-              icon: "🌟",
-              gradientFrom: "#9fd8ff",
-              gradientTo: "#1d4ed8",
+              ...this._milestoneLook("roomShare", m, "shares"),
               message: `The room just hit ${tierLabel(m)} shares!`,
               appreciation: pickWish(ROOM_WISHES),
-              stat: `${tierLabel(m)} total shares this session`,
             },
-            "confetti"
+            "confetti",
+            "roomShare",
+            meta
           );
         }
       }
 
+      this._flushAlerts();
       this.onDiagnosticsChange();
     } catch (err) {
       this.logError("handleShare", err);
+    }
+  }
+
+  // ------------------------------------------------- follows / subscriptions --
+  // (update 40) Saved to the records archive only (no on-screen alert, so nothing changes during a stream).
+  handleSimple(kind, raw, meta = {}) {
+    try {
+      this._recordRawSample(kind, raw);
+      const { username, nickname } = this._extractUser(raw);
+      Records.addSimple(kind, { username, nick: nickname, game: meta.game, host: meta.tiktokUsername });
+    } catch (err) {
+      this.logError("handle." + kind, err);
     }
   }
 
@@ -537,7 +648,7 @@ export class EngagementTracker {
         user = { total: 0, baselineSet: true, hit: new Set() };
         this._perUserLikes.set(fakeUser, user);
       }
-      const next = INDIVIDUAL_LIKE_MILESTONES.find((m) => !user.hit.has(m)) || INDIVIDUAL_LIKE_MILESTONES[0];
+      const next = INDIVIDUAL_LIKE_MILESTONES[Math.floor(Math.random() * INDIVIDUAL_LIKE_MILESTONES.length)];
       this.handleLike({ user: { uniqueId: fakeUser }, likeCount: next - user.total, totalLikeCount: this._roomLikeTotal }, { game: "test" });
     } else if (kind === "room") {
       // Bonus test button target: force the very next room-wide milestone.
