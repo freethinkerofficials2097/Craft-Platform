@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="/shared/theme.css" />
 <script src="/shared/theme.js"></script>
 <link rel="stylesheet" href="/home.css" />
+<link rel="stylesheet" href="/home-views.css" />
+<link rel="stylesheet" href="/platform-home.css" />
 <style>
   :root{
     /* Base surface tokens now come from the shared theme system
@@ -168,7 +170,9 @@
         <span class="hb-label" id="hbLabel">TIKTOK LIVE GAMES</span>
       </div>
       <div class="top-tools">
-        <button type="button" class="cu-open" id="cuOpen" aria-label="Customize game cards" title="Customize game cards">🎛️</button>
+        <!-- (update 38) "Customize game cards" moved into ⚙️ Home settings → Cards. This button stays in the page only because
+             home.js opens its panel through it; /platform-home.js hides it and the Cards tab clicks it. -->
+        <button type="button" class="cu-open" id="cuOpen" aria-label="Customize game cards" title="Customize game cards" style="display:none">🎛️</button>
         <label class="theme-picker">
           🎨
           <select data-theme-select aria-label="Platform theme color">
@@ -185,13 +189,6 @@
     <h1>Choose a <span class="pop-blue">game</span></h1>
     <p class="hub-sub">Each game reads your TikTok LIVE chat directly — audience comments become guesses automatically. Pick one to open its own control board.</p>
 
-    <div class="feature-strip">
-      <div class="feature-chip fc-1"><div class="fc-icon">📡</div><div class="fc-label">LIVE CHAT</div></div>
-      <div class="feature-chip fc-2"><div class="fc-icon">🧪</div><div class="fc-label">TEST MODE</div></div>
-      <div class="feature-chip fc-3"><div class="fc-icon">🎮</div><div class="fc-label">OFFLINE</div></div>
-      <div class="feature-chip fc-4"><div class="fc-icon">🏆</div><div class="fc-label">LEADERBOARD</div></div>
-      <div class="feature-chip fc-5"><div class="fc-icon">🎁</div><div class="fc-label">GIFTS</div></div>
-    </div>
 
     <a class="game-card flagle-card" data-game="flagle" href="/flagle/">
       <span class="game-icon">🚩</span>
@@ -351,5 +348,8 @@
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/home.js"></script>
+  <script src="/home-views.js"></script>
+  <script src="/shared/session.js"></script>
+  <script src="/platform-home.js"></script>
 </body>
 </html>
