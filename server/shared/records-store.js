@@ -41,11 +41,61 @@ export const TYPE_LABELS = {
   room_gift_milestone: "Room gift milestone",
 };
 
+// ---- on-screen alert rules (update 43). Records always keep everything; these only decide what pops up on stream. ----
+export const ALERT_KINDS = {
+  gift: "Gifts",
+  share: "Shares",
+  like_milestone: "Viewer like milestones",
+  share_milestone: "Viewer share milestones",
+  gift_milestone: "Viewer gift (coin) milestones",
+  room_like_milestone: "Room like milestones",
+  room_share_milestone: "Room share milestones",
+  room_gift_milestone: "Room gift (coin) milestones",
+  follow: "New followers",
+  subscribe: "New subscribers",
+};
+const ALERT_DEFAULTS = {
+  alertMode: "all", // "all" = every stage, "major" = only the original bigger stages
+  kinds: { gift: true, share: true, like_milestone: true, share_milestone: true, gift_milestone: true, room_like_milestone: true, room_share_milestone: true, room_gift_milestone: true, follow: false, subscribe: false },
+  minGiftCoins: 0, // gifts worth fewer coins than this are saved but not announced
+  bigGiftCoins: 500, // a gift/combo at or above this gets the big confetti card
+  viewerCooldownSec: 0, // the same viewer is announced at most once per this many seconds (big ones always pass)
+  autoThrottle: { on: true, maxPerMinute: 12 }, // busy stream: small alerts pause automatically, big ones still show
+  onlyWhenLive: false, // automatically hide alerts unless the platform is connected LIVE (test buttons still show)
+  display: { durationSec: 4, position: "top", scale: 100, confetti: true, showWish: true, showAvatar: true, maxQueue: 25 },
+};
+const clampNum = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+function sanitizeAlerts(input, cur) {
+  const i = input && typeof input === "object" ? input : {};
+  const c = cur || ALERT_DEFAULTS;
+  const out = JSON.parse(JSON.stringify(c));
+  if (i.alertMode === "all" || i.alertMode === "major") out.alertMode = i.alertMode;
+  if (i.kinds && typeof i.kinds === "object") for (const k of Object.keys(ALERT_KINDS)) if (typeof i.kinds[k] === "boolean") out.kinds[k] = i.kinds[k];
+  if (i.minGiftCoins !== undefined) out.minGiftCoins = Math.round(clampNum(i.minGiftCoins, 0, 1000000, c.minGiftCoins));
+  if (i.bigGiftCoins !== undefined) out.bigGiftCoins = Math.round(clampNum(i.bigGiftCoins, 1, 10000000, c.bigGiftCoins));
+  if (i.viewerCooldownSec !== undefined) out.viewerCooldownSec = Math.round(clampNum(i.viewerCooldownSec, 0, 3600, c.viewerCooldownSec));
+  if (i.autoThrottle && typeof i.autoThrottle === "object") {
+    if (typeof i.autoThrottle.on === "boolean") out.autoThrottle.on = i.autoThrottle.on;
+    if (i.autoThrottle.maxPerMinute !== undefined) out.autoThrottle.maxPerMinute = Math.round(clampNum(i.autoThrottle.maxPerMinute, 1, 120, c.autoThrottle.maxPerMinute));
+  }
+  if (typeof i.onlyWhenLive === "boolean") out.onlyWhenLive = i.onlyWhenLive;
+  if (i.display && typeof i.display === "object") {
+    const d = i.display, o = out.display;
+    if (d.durationSec !== undefined) o.durationSec = clampNum(d.durationSec, 1.5, 20, c.display.durationSec);
+    if (["top", "middle", "bottom"].includes(d.position)) o.position = d.position;
+    if (d.scale !== undefined) o.scale = Math.round(clampNum(d.scale, 50, 160, c.display.scale));
+    for (const b of ["confetti", "showWish", "showAvatar"]) if (typeof d[b] === "boolean") o[b] = d[b];
+    if (d.maxQueue !== undefined) o.maxQueue = Math.round(clampNum(d.maxQueue, 1, 60, c.display.maxQueue));
+  }
+  return out;
+}
+let settingsListener = null;
+
 const state = {
   records: [], // newest last
   viewers: {}, // username -> aggregate
   sessions: [], // { id, start, last, host, test, counts }
-  settings: { alertMode: "all" }, // "all" = alert on every stage, "major" = only the original stages
+  settings: { alertMode: "all", alerts: null }, // alerts: the full on-screen alert rules (see ALERT_DEFAULTS)
   trimmed: 0,
 };
 let likeRows = new Map(); // "session|user" -> record (rows of type "likes" are updated in place)
@@ -63,6 +113,7 @@ function load() {
     if (raw.viewers && typeof raw.viewers === "object") state.viewers = raw.viewers;
     if (Array.isArray(raw.sessions)) state.sessions = raw.sessions;
     if (raw.settings && typeof raw.settings === "object") state.settings = { ...state.settings, ...raw.settings };
+    state.settings.alerts = sanitizeAlerts(state.settings.alerts || { alertMode: state.settings.alertMode }, ALERT_DEFAULTS);
     state.trimmed = num(raw.trimmed);
     for (const r of state.records) {
       if (r.type === "likes") likeRows.set(r.session + "|" + r.user, r);
@@ -95,15 +146,17 @@ for (const sig of ["SIGTERM", "SIGINT"]) {
 }
 
 // --------------------------------------------------------------- sessions --
-function sessionFor(host, test, ts) {
+function sessionFor(host, test, ts, key) {
   if (test) return { id: "test", start: ts, last: ts, host: "", test: true, counts: {} };
   let s = state.sessions.length ? state.sessions[state.sessions.length - 1] : null;
-  if (!s || s.test || ts - s.last > SESSION_IDLE_MS || (host && s.host && host !== s.host)) {
-    s = { id: "s" + ts.toString(36), start: ts, last: ts, host: host || "", test: false, counts: {} };
+  // (update 43) a different TikTok LIVE room always starts a new stream session, so likes of two lives never merge
+  if (!s || s.test || ts - s.last > SESSION_IDLE_MS || (host && s.host && host !== s.host) || (key && s.key && key !== s.key)) {
+    s = { id: "s" + ts.toString(36), start: ts, last: ts, host: host || "", test: false, counts: {}, key: key ? String(key).slice(0, 40) : "" };
     state.sessions.push(s);
     if (state.sessions.length > 400) state.sessions.shift();
   }
   if (host && !s.host) s.host = host;
+  if (key && !s.key) s.key = String(key).slice(0, 40);
   return s;
 }
 
@@ -139,7 +192,7 @@ function base(type, d) {
   const ts = Date.now();
   const test = d.game === "test";
   const host = clip(d.host, 40).toLowerCase();
-  const s = sessionFor(host, test, ts);
+  const s = sessionFor(host, test, ts, d.sessionKey);
   s.last = ts;
   s.counts[type] = (s.counts[type] || 0) + 1;
   const room = Boolean(d.room);
@@ -208,7 +261,7 @@ function addAlert(type, p) {
 function addLike(p) {
   const test = p.game === "test";
   const ts = Date.now();
-  const s = sessionFor(clip(p.host, 40).toLowerCase(), test, ts);
+  const s = sessionFor(clip(p.host, 40).toLowerCase(), test, ts, p.sessionKey);
   const user = clip(p.username, 40).toLowerCase() || "viewer";
   const key = s.id + "|" + user;
   let rec = likeRows.get(key);
@@ -461,11 +514,17 @@ export function mountRecords(app, express) {
   });
   app.post("/api/records/settings", express.json({ limit: "4kb" }), (req, res) => {
     if (!guard(req, res)) return;
-    const m = req.body && req.body.alertMode;
-    if (m === "all" || m === "major") state.settings.alertMode = m;
+    const b = req.body || {};
+    const patch = b.alerts && typeof b.alerts === "object" ? { ...b.alerts } : {};
+    if (b.alertMode === "all" || b.alertMode === "major") patch.alertMode = b.alertMode;
+    if (b.reset === "alerts") state.settings.alerts = sanitizeAlerts(null, ALERT_DEFAULTS);
+    else state.settings.alerts = sanitizeAlerts(patch, state.settings.alerts);
+    state.settings.alertMode = state.settings.alerts.alertMode;
     saveNow();
+    try { if (settingsListener) settingsListener(state.settings.alerts); } catch (_) { /* never break the API */ }
     res.json(state.settings);
   });
+  app.get("/api/records/settings", (req, res) => { noStore(res); res.json({ ...state.settings, kinds: ALERT_KINDS, defaults: ALERT_DEFAULTS }); });
 
   console.log("[records] archive ready (" + state.records.length + " saved records) at /records  ->  " + FILE);
 }
@@ -474,6 +533,9 @@ export const Records = {
   addAlert,
   addLike,
   addSimple,
-  get alertMode() { return state.settings.alertMode; },
+  get alertMode() { return state.settings.alerts ? state.settings.alerts.alertMode : state.settings.alertMode; },
+  get alerts() { return state.settings.alerts || (state.settings.alerts = sanitizeAlerts(null, ALERT_DEFAULTS)); },
+  onSettings(fn) { settingsListener = typeof fn === "function" ? fn : null; },
+  keyOk,
   setViewerCountSource(fn) { viewerSource = fn; },
 };

@@ -259,7 +259,9 @@ class PlatformHubClass {
 
   // ------------------------------------------------------------------ master connection
   _makeMaster(user) {
-    const opts = { processInitialData: true, fetchRoomInfoOnConnect: true };
+    // update 43: processInitialData OFF - after every (re)connect TikTok replays the last few minutes of messages, which would
+    // otherwise be counted again as new likes / gifts / shares and be read again as new guesses.
+    const opts = { processInitialData: false, fetchRoomInfoOnConnect: true };
     const key = process.env.EULERSTREAM_API_KEY || process.env.TIKTOK_SIGN_API_KEY;
     if (key) opts.signApiKey = key;
     const master = new TikTokLiveConnection(user, opts);

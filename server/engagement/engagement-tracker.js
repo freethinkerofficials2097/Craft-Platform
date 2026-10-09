@@ -35,7 +35,7 @@
 // ============================================================================
 
 import { LADDERS, isMajor, stageInfo } from "./milestone-stages.js";
-import { Records } from "../shared/records-store.js";
+import { Records, ALERT_KINDS } from "../shared/records-store.js";
 
 const MAX_RAW_SAMPLES = 8;
 const MAX_ERROR_LOG = 25;
@@ -49,7 +49,8 @@ const ROOM_SHARE_MILESTONES = LADDERS.roomShare;
 // A gift's total coin value (single gift, or a whole finished combo) at
 // or above this is treated as a "big gift" -> confetti-tier alert instead
 // of the small pop used for an ordinary gift.
-const BIG_GIFT_COIN_THRESHOLD = 500;
+const BIG_GIFT_COIN_THRESHOLD = 500; // default only; the host can change it (Records > Alerts)
+const MAX_LIKE_BATCH = 1000;
 
 // How long to wait, with no further update to a streakable combo, before
 // we assume it's over even though repeatEnd never arrived.
@@ -98,6 +99,11 @@ const BIG_MILESTONE_WISHES = [
   "Certified superfan — thank you!",
   "That's a huge achievement — well done!",
   "Absolutely unstoppable!",
+];
+const FOLLOW_WISHES = [
+  "Welcome to the family!",
+  "So glad you are here!",
+  "Thanks for following - you rock!",
 ];
 const ROOM_WISHES = [
   "Thank you all for the amazing energy!",
@@ -196,6 +202,7 @@ const COIN_PATHS = [
 const REPEAT_COUNT_PATHS = ["repeatCount", "repeat_count", "combo.repeatCount"];
 const REPEAT_END_PATHS = ["repeatEnd", "repeat_end"];
 const GROUP_ID_PATHS = ["groupId", "group_id", "logId", "log_id"];
+const MSG_ID_PATHS = ["common.msgId", "msgId", "common.msg_id", "msg_id"];
 
 const NICK_PATHS = ["user.nickname", "nickname", "user.displayName", "sender.nickname"];
 const LIKE_COUNT_PATHS = ["likeCount", "count", "like_count"];
@@ -219,14 +226,31 @@ export class EngagementTracker {
     this.onAlert = onAlert || (() => {});
     this.onDiagnosticsChange = onDiagnosticsChange || (() => {});
 
-    this.counters = { totalGifts: 0, totalLikes: 0, totalShares: 0, totalCoins: 0 };
     this.rawSamples = []; // { kind, text, ts }
     this.errors = []; // { context, message, ts }
     this.lastEvents = { gift: null, like: null, share: null };
+    this.sessionKey = "";
+    this.liveSource = null; // () => true when the platform's shared connection is LIVE (set by the hub)
+    this._recentShown = []; // timestamps of alerts shown on screen (auto-throttle)
+    this._viewerShown = new Map(); // username -> last time an alert for them was shown (cooldown)
+    this._initCounting();
+  }
+
+  // ------------------------------------------------- counting session (update 43) --
+  // ONE counting session = one TikTok LIVE room. Everything the tracker counts (totals, per-viewer likes / shares / coins,
+  // the milestone ladders already passed) starts again from zero when a NEW live room is connected, so a new stream never
+  // inherits the previous stream's numbers. Reconnecting to the same room keeps counting.
+  _initCounting() {
+    this.counters = { totalGifts: 0, totalLikes: 0, totalShares: 0, totalCoins: 0 };
+    this.sessionStartedAt = Date.now();
+    this.dup = { blocked: 0, comboRepeats: 0 };
+    this._seenIds = new Map(); // kind|messageId -> true (bounded): one TikTok message is counted once, ever
+    this._comboDone = new Map(); // gift combo key -> how many repeats were already counted
 
     this._roomLikeTotal = 0;
     this._roomLikeBaselineSet = false;
     this._roomLikeMilestonesHit = new Set();
+    this.tiktokRoomLikes = null; // the room total TikTok itself reports (the number the TikTok app shows)
 
     this._roomShareTotal = 0;
     this._roomShareMilestonesHit = new Set();
@@ -234,12 +258,49 @@ export class EngagementTracker {
     this._perUserLikes = new Map(); // username -> { total, baselineSet, hit:Set }
     this._perUserShares = new Map(); // username -> count (session)
 
-    this._perUserCoins = new Map(); // username -> { total, hit:Set } (update 40)
+    this._perUserCoins = new Map(); // username -> { total, hit:Set }
     this._roomCoinTotal = 0;
     this._roomCoinMilestonesHit = new Set();
 
-    this._pendingAlerts = new Map(); // ladder|user -> highest milestone alert of the current event (update 40)
+    this._pendingAlerts = new Map(); // ladder|user -> highest milestone alert of the current event
+    if (this._comboBuffers) for (const b of this._comboBuffers.values()) clearTimeout(b.timer);
     this._comboBuffers = new Map(); // key -> { data, timer }
+  }
+
+  /** A different room key (new LIVE) starts a fresh count. Same key (reconnect) changes nothing. */
+  startSession(key) {
+    key = key ? String(key) : "";
+    if (!key || key === this.sessionKey) return false;
+    const first = !this.sessionKey;
+    this.sessionKey = key;
+    if (!first) {
+      this._initCounting();
+      console.log("[engagement] new LIVE room " + key + " - counters restarted from zero");
+    } else {
+      this.sessionStartedAt = Date.now();
+    }
+    this.onDiagnosticsChange();
+    return true;
+  }
+
+  /** Host pressed "Start a fresh count" (or a new stream is about to begin). */
+  resetCounting() {
+    this._initCounting();
+    this.onDiagnosticsChange();
+  }
+
+  /** True the FIRST time a TikTok message id is seen. Messages without an id cannot be checked (counted as new). */
+  _isNew(kind, raw) {
+    const id = firstNonEmpty(raw, MSG_ID_PATHS);
+    if (id === undefined) return true;
+    const k = kind + "|" + String(id);
+    if (this._seenIds.has(k)) { this.dup.blocked += 1; return false; }
+    this._seenIds.set(k, true);
+    if (this._seenIds.size > 8000) {
+      let n = 0;
+      for (const key of this._seenIds.keys()) { this._seenIds.delete(key); if (++n >= 2000) break; }
+    }
+    return true;
   }
 
   // -------------------------------------------------------------- utils --
@@ -278,12 +339,38 @@ export class EngagementTracker {
   _fireAlert(type, payload, tier, ladder, meta = {}) {
     const full = { ...payload, tier, ts: Date.now(), host: meta.tiktokUsername || "" };
     try { Records.addAlert(type, full); } catch (err) { this.logError("records.addAlert", err); }
-    if (ladder && Records.alertMode === "major" && !isMajor(ladder, payload.milestone)) return;
+    const cfg = Records.alerts;
+    if (ladder && meta.game !== "test" && cfg.alertMode === "major" && !isMajor(ladder, payload.milestone)) return;
     if (ladder) {
       // One event can jump over several stages (a big like batch, a big gift). All of them are saved to the records,
       // but only the HIGHEST one is shown on screen (see _flushAlerts), so the stream never gets a burst of alerts.
       this._pendingAlerts.set(ladder + "|" + (payload.username || "room"), { type, full });
       return;
+    }
+    this._deliver(type, full);
+  }
+
+  /** (update 43) The host's alert rules. Everything is ALWAYS saved to Records; these rules only decide what pops up on screen. */
+  _deliver(type, full) {
+    const cfg = Records.alerts;
+    const isTest = full.game === "test";
+    if (!isTest) {
+      if (cfg.kinds[type] === false) return; // this kind of alert is switched off
+      if (type === "gift" && (Number(full.totalCoinValue) || 0) < cfg.minGiftCoins) return; // too small to announce
+      if (cfg.onlyWhenLive && this.liveSource && !this.liveSource()) return; // auto: only while the platform is LIVE
+      const now = Date.now();
+      const high = full.tier === "confetti" || full.big === true || String(type).startsWith("room_");
+      if (cfg.viewerCooldownSec > 0 && full.username && !high) {
+        const last = this._viewerShown.get(full.username) || 0;
+        if (now - last < cfg.viewerCooldownSec * 1000) return; // same viewer alerted too recently
+      }
+      this._recentShown = this._recentShown.filter((t) => now - t < 60000);
+      if (cfg.autoThrottle.on && !high && this._recentShown.length >= cfg.autoThrottle.maxPerMinute) return; // busy: only big ones get through
+      this._recentShown.push(now);
+      if (full.username) {
+        this._viewerShown.set(full.username, now);
+        if (this._viewerShown.size > 3000) { const k = this._viewerShown.keys().next().value; this._viewerShown.delete(k); }
+      }
     }
     this.onAlert(type, full);
   }
@@ -292,16 +379,17 @@ export class EngagementTracker {
     if (!this._pendingAlerts.size) return;
     const list = [...this._pendingAlerts.values()];
     this._pendingAlerts.clear();
-    for (const a of list) this.onAlert(a.type, a.full);
+    for (const a of list) this._deliver(a.type, a.full);
   }
 
   /** Shared look + wording for every milestone alert, with its stage number and tier (Bronze ... Mythic). */
   _milestoneLook(ladder, m, unit) {
+    const scopeNote = ladder.startsWith("room") ? (ladder === "roomLike" && this.tiktokRoomLikes != null ? "TikTok total" : "counted live") : "since connect";
     const info = stageInfo(ladder, m);
     return {
       stage: info.stage, stages: info.stages, tierName: info.tier, metric: unit,
       icon: info.icon, gradientFrom: info.from, gradientTo: info.to,
-      stat: `${info.tier} · stage ${info.stage}/${info.stages} · ${tierLabel(m)} ${unit}`,
+      stat: `${info.tier} · stage ${info.stage}/${info.stages} · ${tierLabel(m)} ${unit}` + (scopeNote ? " · " + scopeNote : ""),
     };
   }
 
@@ -315,6 +403,7 @@ export class EngagementTracker {
    */
   handleGift(raw, meta = {}) {
     try {
+      if (meta.game !== "test" && !this._isNew("gift", raw)) return; // the same TikTok message is never counted twice
       this._recordRawSample("gift", raw);
       const { username, avatarUrl, nickname } = this._extractUser(raw);
       const giftName = String(firstNonEmpty(raw, GIFT_NAME_PATHS) || "a gift");
@@ -329,10 +418,22 @@ export class EngagementTracker {
 
       this.lastEvents.gift = { username, giftName, repeatCount, ts: Date.now() };
 
-      const finalize = (data) => {
-        this.counters.totalGifts += 1;
+      // A streak that pauses for >1.5 s is finished early by the safety timer and can then continue under the SAME group
+      // id with a higher cumulative repeat count. Count only the NEW repeats each time, never the whole streak again.
+      const finalize = (data, comboKey) => {
+        let first = true;
+        if (comboKey) {
+          const prior = this._comboDone.get(comboKey) || 0;
+          first = prior === 0;
+          const fresh = data.repeatCount - prior;
+          if (fresh <= 0) { this.dup.comboRepeats += 1; return; }
+          this._comboDone.set(comboKey, data.repeatCount);
+          if (this._comboDone.size > 3000) { const k = this._comboDone.keys().next().value; this._comboDone.delete(k); }
+          data = { ...data, repeatCount: fresh, totalCoinValue: data.coinCount * fresh };
+        }
+        if (first) this.counters.totalGifts += 1;
         this.counters.totalCoins += data.totalCoinValue;
-        const big = data.totalCoinValue >= BIG_GIFT_COIN_THRESHOLD;
+        const big = data.totalCoinValue >= Math.max(1, Records.alerts.bigGiftCoins);
         const theme = pickGiftTheme(data.giftName);
         this._fireAlert(
           "gift",
@@ -367,7 +468,7 @@ export class EngagementTracker {
 
       if (!isStreakable) {
         // Single, non-combo gift — finalize immediately, nothing to buffer.
-        finalize({ username, avatarUrl, nickname, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount });
+        finalize({ username, avatarUrl, nickname, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount }, null);
         return;
       }
 
@@ -378,15 +479,16 @@ export class EngagementTracker {
 
       const data = { username, avatarUrl, nickname, giftName, repeatCount, coinCount, totalCoinValue: coinCount * repeatCount };
 
+      const comboKey = (meta.game === "test" ? "t|" : "") + key;
       if (repeatEnd) {
         this._comboBuffers.delete(key);
-        finalize(data);
+        finalize(data, comboKey);
         return;
       }
 
       const timer = setTimeout(() => {
         this._comboBuffers.delete(key);
-        finalize(data);
+        try { finalize(data, comboKey); } catch (err) { this.logError("gift-combo-timer", err); }
       }, COMBO_INACTIVITY_MS);
 
       this._comboBuffers.set(key, { data, timer });
@@ -446,14 +548,25 @@ export class EngagementTracker {
 
   handleLike(raw, meta = {}) {
     try {
+      if (meta.game !== "test" && !this._isNew("like", raw)) return; // the same TikTok message is never counted twice
       this._recordRawSample("like", raw);
       const { username, avatarUrl, nickname } = this._extractUser(raw);
-      const batch = Number(firstNonEmpty(raw, LIKE_COUNT_PATHS)) || 1;
-      const roomTotalReported = Number(firstNonEmpty(raw, TOTAL_LIKE_PATHS));
+      const reported = Number(firstNonEmpty(raw, TOTAL_LIKE_PATHS));
+      const haveTotal = Number.isFinite(reported) && reported > 0;
+      // How many likes THIS message adds: TikTok's own per-message count. If it is missing, use how much TikTok's
+      // room total moved; only as a last resort assume 1. Never more than MAX_LIKE_BATCH (a single message cannot
+      // legitimately carry thousands of taps).
+      let batch = Number(firstNonEmpty(raw, LIKE_COUNT_PATHS));
+      if (!Number.isFinite(batch) || batch <= 0) {
+        batch = haveTotal && this.tiktokRoomLikes != null && reported > this.tiktokRoomLikes ? reported - this.tiktokRoomLikes : 1;
+      }
+      if (batch > MAX_LIKE_BATCH && meta.game !== "test") { this.logError("handleLike", new Error("a like message claimed " + batch + " likes - counted as " + MAX_LIKE_BATCH)); batch = MAX_LIKE_BATCH; }
+      const roomTotalReported = haveTotal ? reported : NaN;
 
       this.lastEvents.like = { username, batch, ts: Date.now() };
       this.counters.totalLikes += batch;
-      try { Records.addLike({ username, nick: nickname, batch, game: meta.game, host: meta.tiktokUsername }); } catch (err) { this.logError("records.addLike", err); }
+      if (haveTotal) this.tiktokRoomLikes = Math.max(this.tiktokRoomLikes || 0, reported);
+      try { Records.addLike({ username, nick: nickname, batch, game: meta.game, host: meta.tiktokUsername, sessionKey: meta.roomId }); } catch (err) { this.logError("records.addLike", err); }
 
       // ---- per-user individual milestone ----
       let user = this._perUserLikes.get(username);
@@ -495,11 +608,10 @@ export class EngagementTracker {
 
       // ---- room-wide milestone ----
       const prevRoomTotal = this._roomLikeTotal;
-      // Prefer the library's own running total if it reports one and it's
-      // sane (monotonic, not a reset-looking value); otherwise fall back
-      // to our own running sum of batches.
-      if (Number.isFinite(roomTotalReported) && roomTotalReported >= prevRoomTotal) {
-        this._roomLikeTotal = roomTotalReported;
+      // TikTok's own room total (the number the TikTok app shows) is the truth whenever it is reported, so the room
+      // milestones always agree with TikTok. Only when a message carries no total do we add this message's count.
+      if (Number.isFinite(roomTotalReported)) {
+        this._roomLikeTotal = Math.max(prevRoomTotal, roomTotalReported);
       } else {
         this._roomLikeTotal += batch;
       }
@@ -537,6 +649,7 @@ export class EngagementTracker {
 
   handleShare(raw, meta = {}) {
     try {
+      if (meta.game !== "test" && !this._isNew("share", raw)) return; // the same TikTok message is never counted twice
       this._recordRawSample("share", raw);
       const { username, avatarUrl, nickname } = this._extractUser(raw);
 
@@ -613,9 +726,17 @@ export class EngagementTracker {
   // (update 40) Saved to the records archive only (no on-screen alert, so nothing changes during a stream).
   handleSimple(kind, raw, meta = {}) {
     try {
+      if (meta.game !== "test" && !this._isNew(kind, raw)) return;
       this._recordRawSample(kind, raw);
-      const { username, nickname } = this._extractUser(raw);
-      Records.addSimple(kind, { username, nick: nickname, game: meta.game, host: meta.tiktokUsername });
+      const { username, avatarUrl, nickname } = this._extractUser(raw);
+      Records.addSimple(kind, { username, nick: nickname, game: meta.game, host: meta.tiktokUsername, sessionKey: meta.roomId });
+      // (update 43) optional on-screen thank-you (off by default; switch on in Records > Alerts)
+      this._deliver(kind, {
+        type: kind, game: meta.game || null, username, avatarUrl, nickname, tier: "pop", ts: Date.now(), host: meta.tiktokUsername || "",
+        icon: kind === "follow" ? "➕" : "⭐", gradientFrom: kind === "follow" ? "#a7f3d0" : "#ffe27a", gradientTo: kind === "follow" ? "#0f9b6c" : "#c98a0c",
+        message: kind === "follow" ? `@${username} just followed!` : `@${username} just subscribed!`,
+        appreciation: pickWish(kind === "follow" ? FOLLOW_WISHES : GIFT_WISHES), stat: null,
+      });
     } catch (err) {
       this.logError("handle." + kind, err);
     }
@@ -627,6 +748,32 @@ export class EngagementTracker {
    * so Test Mode exercises exactly the same parsing/combo/milestone logic
    * as production traffic — never a separately-maintained fake. */
   triggerTest(kind) {
+    // Test alerts must NEVER change the real numbers: run them on a scratch copy of the counting state, then put the
+    // real state back untouched.
+    const saved = {
+      counters: this.counters, sessionStartedAt: this.sessionStartedAt, dup: this.dup, seen: this._seenIds, comboDone: this._comboDone,
+      rl: this._roomLikeTotal, rlb: this._roomLikeBaselineSet, rlh: this._roomLikeMilestonesHit, tkl: this.tiktokRoomLikes,
+      rs: this._roomShareTotal, rsh: this._roomShareMilestonesHit, pul: this._perUserLikes, pus: this._perUserShares,
+      puc: this._perUserCoins, rc: this._roomCoinTotal, rch: this._roomCoinMilestonesHit, pend: this._pendingAlerts,
+      combo: this._comboBuffers, last: this.lastEvents,
+    };
+    this._comboBuffers = null; // keep the real combo timers alive
+    this._initCounting();
+    this.lastEvents = { gift: null, like: null, share: null };
+    try {
+      this._triggerTestInner(kind);
+    } finally {
+      this._comboBuffers = saved.combo;
+      this.counters = saved.counters; this.sessionStartedAt = saved.sessionStartedAt; this.dup = saved.dup; this._seenIds = saved.seen; this._comboDone = saved.comboDone;
+      this._roomLikeTotal = saved.rl; this._roomLikeBaselineSet = saved.rlb; this._roomLikeMilestonesHit = saved.rlh; this.tiktokRoomLikes = saved.tkl;
+      this._roomShareTotal = saved.rs; this._roomShareMilestonesHit = saved.rsh; this._perUserLikes = saved.pul; this._perUserShares = saved.pus;
+      this._perUserCoins = saved.puc; this._roomCoinTotal = saved.rc; this._roomCoinMilestonesHit = saved.rch; this._pendingAlerts = saved.pend;
+      this.lastEvents = saved.last;
+      this.onDiagnosticsChange();
+    }
+  }
+
+  _triggerTestInner(kind) {
     const fakeUser = "test_viewer_" + Math.floor(Math.random() * 900 + 100);
     if (kind === "gift") {
       const big = Math.random() < 0.5;
@@ -663,6 +810,15 @@ export class EngagementTracker {
   getPublicState() {
     return {
       counters: { ...this.counters },
+      counting: {
+        sessionKey: this.sessionKey || null,
+        since: this.sessionStartedAt,
+        platformLikes: this.counters.totalLikes,
+        tiktokRoomLikes: this.tiktokRoomLikes,
+        duplicatesBlocked: this.dup.blocked,
+        comboRepeatsSkipped: this.dup.comboRepeats,
+        viewersTracked: this._perUserLikes.size,
+      },
       lastEvents: this.lastEvents,
       rawSamples: this.rawSamples,
       errors: this.errors.slice(0, 8),

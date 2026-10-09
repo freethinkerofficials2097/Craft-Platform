@@ -135,7 +135,9 @@ const knownAvatars = new Map();
 function avatarFor(name) {
   const info = viewerInfo(String(name || ""));
   if (info) return viewerBasePath + "/viewer-avatar/" + encodeURIComponent(info.u) + "?v=" + info.v;
-  return avatarFor(name);
+  // update 44: fall back to the last link TikTok sent (was calling itself forever -> stack overflow
+  // for any viewer without a saved picture, which broke every broadcast and chat guess)
+  return knownAvatars.get(String(name || "")) || null;
 }
 
 // The profile picture of the HOST of the current TikTok LIVE session (the
