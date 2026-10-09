@@ -210,6 +210,13 @@
           <div class="eng-tools-row"><span>Total Likes</span><b data-eng-stat="likes">0</b></div>
         </div>
         <div class="eng-tools-block">
+          <div class="eng-tools-title">📜 Records</div>
+          <p class="eng-tools-note">Every gift, like, share, follow and milestone is saved with the time, the viewer, the game and the audience.</p>
+          <div class="eng-tools-grid">
+            <a class="eng-tools-btn" href="/records" target="_blank" rel="noopener" style="text-decoration:none;grid-column:1/-1">📜 Open Records (new tab)</a>
+          </div>
+        </div>
+        <div class="eng-tools-block">
           <div class="eng-tools-title">🧪 Test alerts (host only)</div>
           <p class="eng-tools-note">Fires a fake alert on screen so you can check how it looks without going live.</p>
           <div class="eng-tools-grid">
@@ -268,7 +275,7 @@
     return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
-  const DEFAULT_ICON = { gift: "🎁", share: "🔥", like_milestone: "👍", room_like_milestone: "🌟", room_share_milestone: "🌟" };
+  const DEFAULT_ICON = { gift: "🎁", share: "🔥", like_milestone: "👍", room_like_milestone: "🌟", room_share_milestone: "🌟", gift_milestone: "💰", share_milestone: "📣", room_gift_milestone: "🌟" };
 
   function renderCard(alert) {
     const card = document.createElement("div");
@@ -277,7 +284,7 @@
     card.style.setProperty("--eng-to", alert.gradientTo || "#e0245e");
 
     const icon = alert.icon || DEFAULT_ICON[alert.type] || "🎉";
-    const isRoomAlert = alert.type === "room_like_milestone" || alert.type === "room_share_milestone";
+    const isRoomAlert = alert.type === "room_like_milestone" || alert.type === "room_share_milestone" || alert.type === "room_gift_milestone";
 
     const avatarHtml = alert.avatarUrl
       ? `<img class="eng-mini-avatar" src="${escapeHtml(alert.avatarUrl)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'eng-mini-avatar',textContent:'👤'}))" />`

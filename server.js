@@ -64,6 +64,7 @@ import { mountHomeCards } from "./server/shared/home-cards-store.js";
 import { mountHomeGroups } from "./server/shared/home-groups-store.js";
 import { installTikTokResilience, mountTikTokHealth } from "./server/shared/tiktok-resilience.js";
 import { PlatformHub } from "./server/shared/platform-hub.js";
+import { mountRecords, Records } from "./server/shared/records-store.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -101,6 +102,11 @@ mountTikTokHealth(app);
 // links to, plus the detailed connection status for the HOME floating window. See server/shared/platform-hub.js.
 // Registered before the games so every game's connect() can already be handed the shared connection.
 PlatformHub.init(app, express);
+
+// Records archive (update 40): every gift, like, share, follow and milestone saved with time, game, host and audience.
+// Page: /records   API: /api/records...   See server/shared/records-store.js.
+mountRecords(app, express);
+Records.setViewerCountSource(() => PlatformHub.viewers);
 
 // Serves /public/index.html at "/", and transparently serves
 // /public/flagle/*, /public/travle/*, /public/crossdle/*, and
