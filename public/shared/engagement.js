@@ -213,7 +213,7 @@
           <div class="eng-tools-title">📜 Records</div>
           <p class="eng-tools-note">Every gift, like, share, follow and milestone is saved with the time, the viewer, the game and the audience.</p>
           <div class="eng-tools-grid">
-            <a class="eng-tools-btn" href="/records" target="_blank" rel="noopener" style="text-decoration:none;grid-column:1/-1">📜 Open Records (new tab)</a>
+            <a class="eng-tools-btn" href="/records.html" target="_blank" rel="noopener" style="text-decoration:none;grid-column:1/-1">📜 Open Records (new tab)</a>
           </div>
         </div>
         <div class="eng-tools-block">

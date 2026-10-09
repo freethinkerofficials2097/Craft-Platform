@@ -113,6 +113,12 @@ Records.setViewerCountSource(() => PlatformHub.viewers);
 // /public/twistle/* at their matching URLs, plus the shared /shared/*
 // theme + celebration assets every game links to — one static
 // middleware covers the whole platform.
+// Records page (update 40/41): express.static only serves a file under its FULL name (/records.html), so the short
+// address /records needs its own explicit route - without it the browser showed "Cannot GET /records".
+// Registered BEFORE the static middleware and the games; all spellings open the same page.
+const sendRecordsPage = (req, res) => res.sendFile(path.join(__dirname, "public", "records.html"));
+app.get(["/records", "/records/", "/Records", "/record", "/records.htm"], sendRecordsPage);
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // Platform-wide Gift/Like/Share alerts + diagnostics + host Test Event
