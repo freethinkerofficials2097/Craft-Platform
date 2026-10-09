@@ -37,6 +37,7 @@ import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.
 import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 
+import { PlatformHub } from "../shared/platform-hub.js";
 function safely(label, fn) {
   return (...args) => {
     try {
@@ -1022,3 +1023,19 @@ export async function mountTextle(app, io, options = {}) {
 
   return { mountPath };
 }
+
+// Update 42: the HOME page's shared TikTok connection links this game by itself - no need to open the game and press
+// Connect. Uses the same actions the game's own buttons send (switch to Live, then connect), only when not linked yet.
+PlatformHub.registerGame(
+  "textle",
+  (username) => {
+    const ws = { emit() {}, send() {} };
+    if (game.mode !== "live") handleClientAction(ws, { type: "apply_settings", payload: { mode: "live" } });
+    handleClientAction(ws, { type: "connect_tiktok", payload: { username } });
+  },
+  (username) => {
+    const u = String(username || "").replace(/^@/, "").toLowerCase();
+    const cur = String(diagnostics.tiktokUsername || "").replace(/^@/, "").toLowerCase();
+    return game.mode === "live" && ["live", "connecting", "retrying"].includes(diagnostics.connectionStatus) && (!cur || cur === u);
+  }
+);
