@@ -130,7 +130,7 @@
     var viewerSort = "coins", viewerQ = "";
 
     var tabs = el("div", "rx-tabs"), body = el("div", "rx-body");
-    [["overview", "📊 Overview"], ["timeline", "🕒 Timeline"], ["audience", "👥 Audience"], ["backup", "💾 Backup & settings"]].forEach(function (t) {
+    [["overview", "📊 Overview"], ["timeline", "🕒 Timeline"], ["audience", "👥 Audience"], ["alerts", "🔔 Alerts"], ["backup", "💾 Backup & settings"]].forEach(function (t) {
       var b = el("button", "rx-tab", t[1]); b.type = "button"; b.dataset.k = t[0];
       b.onclick = function () { tab = t[0]; draw(); };
       tabs.appendChild(b);
@@ -392,16 +392,6 @@
       };
       b3.appendChild(file); b3.appendChild(st); body.appendChild(b3);
 
-      var b4 = el("div", "rx-box"); b4.appendChild(el("h4", "", "🔔 Milestone alerts on screen"));
-      b4.appendChild(el("p", "rx-note", "Records ALWAYS save every stage. This only decides which stages pop up on the stream."));
-      var cur = (m.settings && m.settings.alertMode) || "all", mrow = el("div", "rx-bar");
-      [["all", "Every stage (most alerts)"], ["major", "Only the original, bigger stages"]].forEach(function (o) {
-        var c = el("button", "rx-chip" + (cur === o[0] ? " on" : ""), o[1]); c.type = "button";
-        c.onclick = function () { post("/api/records/settings", { alertMode: o[0] }).then(function () { refreshMeta(); }).catch(function (e) { window.alert(e.message); }); };
-        mrow.appendChild(c);
-      });
-      b4.appendChild(mrow); body.appendChild(b4);
-
       var b5 = el("div", "rx-box"); b5.appendChild(el("h4", "", "🧹 Clean up"));
       var r5 = el("div", "rx-grid2");
       var c1 = el("button", "rx-btn alt", "Delete test records"); c1.type = "button";
@@ -418,11 +408,94 @@
       body.appendChild(b6);
     }
 
+
+    /* ---------- ALERTS: which notifications show, automatic rules, display options + counting accuracy (update 43) ---------- */
+    var alertsDraft = null;
+    function drawAlerts() {
+      body.innerHTML = "";
+      var holder = el("div", "rx-empty", "Loading…"); body.appendChild(holder);
+      Promise.all([getJSON("/api/records/settings"), getJSON("/api/engagement/counters").catch(function () { return null; })]).then(function (r) {
+        if (tab !== "alerts") return;
+        var st = r[0], cnt = r[1], cfg = alertsDraft || JSON.parse(JSON.stringify(st.alerts)), defs = st.defaults;
+        alertsDraft = cfg;
+        body.innerHTML = "";
+
+        /* counting accuracy */
+        var c0 = el("div", "rx-box"); c0.appendChild(el("h4", "", "🎯 Counting accuracy"));
+        if (cnt && cnt.counting) {
+          var k = cnt.counting, c = cnt.counters || {};
+          c0.appendChild(el("p", "rx-note", "Every TikTok message is counted exactly once (even when several games are open), the count restarts from zero for each new LIVE, and test buttons never touch these numbers."));
+          var g0 = el("div", "rx-cards");
+          [[nf(k.platformLikes), "Likes counted here"], [k.tiktokRoomLikes != null ? nf(k.tiktokRoomLikes) : "–", "Room likes TikTok reports"], [nf(c.totalGifts), "Gifts"], [nf(c.totalCoins), "Coins"], [nf(c.totalShares), "Shares"], [nf(k.duplicatesBlocked), "Duplicates blocked"]].forEach(function (x) {
+            var d = el("div", "rx-card"); d.appendChild(el("b", "", x[0])); d.appendChild(el("span", "", x[1])); g0.appendChild(d);
+          });
+          c0.appendChild(g0);
+          c0.appendChild(el("p", "rx-note", "Counting since " + dt(k.since) + (k.sessionKey ? " · LIVE room " + k.sessionKey : "") + ". “Likes counted here” only includes likes sent after the platform connected; TikTok's own room total also includes earlier likes, and the room milestones follow TikTok's number."));
+          var rb = el("button", "rx-btn alt", "Start a fresh count now"); rb.type = "button";
+          rb.onclick = function () { if (window.confirm("Reset the live counters to zero? (Saved Records are not touched.)")) post("/api/engagement/reset", {}).then(function () { drawAlerts(); }).catch(function (e) { window.alert(e.message); }); };
+          c0.appendChild(rb);
+        } else c0.appendChild(el("p", "rx-note", "Counters are not available right now."));
+        body.appendChild(c0);
+
+        function box(title, note) { var b = el("div", "rx-box"); b.appendChild(el("h4", "", title)); if (note) b.appendChild(el("p", "rx-note", note)); body.appendChild(b); return b; }
+        function toggle(parent, label, get, set) {
+          var b = el("button", "rx-chip" + (get() ? " on" : ""), (get() ? "✅ " : "⬜ ") + label); b.type = "button"; b.style.margin = "0 6px 6px 0";
+          b.onclick = function () { set(!get()); drawAlerts(); }; parent.appendChild(b);
+        }
+        function numField(parent, label, get, set, min, max, step, unit) {
+          var row = el("div", "rx-bar"); row.appendChild(el("span", "rx-lbl", label));
+          var inp = el("input", "rx-in"); inp.type = "number"; inp.min = min; inp.max = max; inp.step = step || 1; inp.value = get(); inp.style.width = "110px";
+          inp.onchange = function () { var v = Number(inp.value); if (isFinite(v)) set(Math.min(max, Math.max(min, v))); inp.value = get(); };
+          row.appendChild(inp); if (unit) row.appendChild(el("span", "rx-note", unit)); parent.appendChild(row);
+        }
+
+        /* which alerts */
+        var b1 = box("🔔 Which alerts pop up on stream", "Switch each kind on or off. Everything is ALWAYS saved to Records, switched off or not.");
+        Object.keys(st.kinds).forEach(function (kk) { toggle(b1, st.kinds[kk], function () { return cfg.kinds[kk] !== false; }, function (v) { cfg.kinds[kk] = v; }); });
+        var mrow = el("div", "rx-bar"); mrow.appendChild(el("span", "rx-lbl", "Milestone stages:"));
+        [["all", "Every stage (most alerts)"], ["major", "Only the bigger stages"]].forEach(function (o) {
+          var c = el("button", "rx-chip" + (cfg.alertMode === o[0] ? " on" : ""), o[1]); c.type = "button"; c.onclick = function () { cfg.alertMode = o[0]; drawAlerts(); }; mrow.appendChild(c);
+        });
+        b1.appendChild(mrow);
+
+        /* automatic rules */
+        var b2 = box("🤖 Automatic rules", "These switch alerts on and off by themselves, so the stream never gets cluttered. Big gifts and room milestones always get through.");
+        toggle(b2, "Busy stream: pause small alerts automatically", function () { return cfg.autoThrottle.on; }, function (v) { cfg.autoThrottle.on = v; });
+        numField(b2, "…when more than", function () { return cfg.autoThrottle.maxPerMinute; }, function (v) { cfg.autoThrottle.maxPerMinute = v; }, 1, 120, 1, "alerts in the last minute");
+        numField(b2, "Hide gifts worth fewer than", function () { return cfg.minGiftCoins; }, function (v) { cfg.minGiftCoins = v; }, 0, 1000000, 1, "coins (0 = announce every gift)");
+        numField(b2, "A gift counts as BIG from", function () { return cfg.bigGiftCoins; }, function (v) { cfg.bigGiftCoins = v; }, 1, 10000000, 1, "coins (gets the confetti card)");
+        numField(b2, "Same viewer at most once per", function () { return cfg.viewerCooldownSec; }, function (v) { cfg.viewerCooldownSec = v; }, 0, 3600, 1, "seconds (0 = no limit)");
+        toggle(b2, "Only show alerts while the platform is connected LIVE", function () { return cfg.onlyWhenLive; }, function (v) { cfg.onlyWhenLive = v; });
+
+        /* display */
+        var b3 = box("🎨 How alerts look", "Applies to every game screen at once.");
+        numField(b3, "Show each alert for", function () { return cfg.display.durationSec; }, function (v) { cfg.display.durationSec = v; }, 1.5, 20, 0.5, "seconds");
+        numField(b3, "Size", function () { return cfg.display.scale; }, function (v) { cfg.display.scale = v; }, 50, 160, 5, "% (100 = normal)");
+        numField(b3, "Waiting line holds at most", function () { return cfg.display.maxQueue; }, function (v) { cfg.display.maxQueue = v; }, 1, 60, 1, "alerts");
+        var prow = el("div", "rx-bar"); prow.appendChild(el("span", "rx-lbl", "Position:"));
+        [["top", "Top"], ["middle", "Middle"], ["bottom", "Bottom"]].forEach(function (o) {
+          var c = el("button", "rx-chip" + (cfg.display.position === o[0] ? " on" : ""), o[1]); c.type = "button"; c.onclick = function () { cfg.display.position = o[0]; drawAlerts(); }; prow.appendChild(c);
+        });
+        b3.appendChild(prow);
+        toggle(b3, "Confetti for big alerts", function () { return cfg.display.confetti; }, function (v) { cfg.display.confetti = v; });
+        toggle(b3, "Thank-you line", function () { return cfg.display.showWish; }, function (v) { cfg.display.showWish = v; });
+        toggle(b3, "Viewer picture", function () { return cfg.display.showAvatar; }, function (v) { cfg.display.showAvatar = v; });
+
+        var save = el("div", "rx-grid2");
+        var sb = el("button", "rx-btn", "💾 Save alert settings"); sb.type = "button";
+        sb.onclick = function () { post("/api/records/settings", { alerts: cfg }).then(function () { alertsDraft = null; sb.textContent = "✅ Saved - live on every screen"; setTimeout(drawAlerts, 900); }).catch(function (e) { window.alert(e.message); }); };
+        var db = el("button", "rx-btn alt", "↩️ Back to the defaults"); db.type = "button";
+        db.onclick = function () { if (window.confirm("Put every alert setting back to its default?")) post("/api/records/settings", { reset: "alerts" }).then(function () { alertsDraft = null; drawAlerts(); }).catch(function (e) { window.alert(e.message); }); };
+        save.appendChild(sb); save.appendChild(db); body.appendChild(save);
+        body.appendChild(el("p", "rx-note", "Tip: use the 🧪 test buttons in any game's Settings to preview an alert after saving."));
+      }).catch(function (e) { body.innerHTML = ""; body.appendChild(el("div", "rx-empty", "Could not load: " + e.message)); });
+    }
+
     function refreshMeta() { return getJSON("/api/records/meta").then(function (m) { meta = m; if (tab === "backup") drawBackup(); return m; }).catch(function () {}); }
 
     function draw() {
       Array.prototype.forEach.call(tabs.children, function (b) { b.classList.toggle("on", b.dataset.k === tab); });
-      if (tab === "overview") drawOverview(); else if (tab === "timeline") drawTimeline(); else if (tab === "audience") drawAudience(); else drawBackup();
+      if (tab === "overview") drawOverview(); else if (tab === "timeline") drawTimeline(); else if (tab === "audience") drawAudience(); else if (tab === "alerts") drawAlerts(); else drawBackup();
     }
 
     refreshMeta().then(draw);

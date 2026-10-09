@@ -23,6 +23,6 @@
   <div class="card"><div id="rx-root"></div></div>
 </div>
 <script src="/shared/records-ui.js"></script>
-<script>RecordsUI.mount(document.getElementById("rx-root"));</script>
+<script>var rx = RecordsUI.mount(document.getElementById("rx-root")); if (/alerts/i.test(location.hash) && rx && rx.setTab) rx.setTab("alerts");</script>
 </body>
 </html>

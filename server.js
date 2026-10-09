@@ -126,6 +126,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // (see server/engagement/engagement-hub.js). Initialized before any game
 // registers so Engagement.attach() is ready the instant a game connects.
 Engagement.init(io);
+Engagement.mountApi(app, express); // update 43: GET /api/engagement/counters, POST /api/engagement/reset
 
 // Platform-wide "Color shades" (update 16): remembers each game's 10-step color choices and keeps
 // every screen connected to a game in sync (Socket.IO namespace /shades). See
