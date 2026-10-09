@@ -27,6 +27,7 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
+import { explainTikTokError } from "../shared/tiktok-errors.js";
 import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "./textle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
@@ -669,6 +670,14 @@ async function connectToTikTok(username) {
         })
       );
       connection.on(
+        "reconnected",
+        safely("reconnected-event", () => {
+          diagnostics.connectionStatus = "live";
+          diagnostics.lastErrorMessage = null;
+          broadcastState();
+        })
+      );
+      connection.on(
         WebcastEvent.ERROR,
         safely("error-event", (err) => console.error("[TikTok] connection error event:", err))
       );
@@ -699,6 +708,7 @@ async function connectToTikTok(username) {
     } catch (err) {
       console.error(`[TikTok] Connect attempt ${attempt + 1} failed:`, err?.message || err);
       diagnostics.retryAttempt = attempt + 1;
+      diagnostics.lastErrorMessage = "Try " + (attempt + 1) + " failed. " + describeConnectError(err);
       const isLastAttempt = attempt === RETRY_DELAYS_MS.length;
       if (isLastAttempt) {
         diagnostics.connectionStatus = "error";
@@ -715,6 +725,10 @@ async function connectToTikTok(username) {
 }
 
 function describeConnectError(err) {
+  return explainTikTokError(err, (typeof diagnostics !== "undefined" && diagnostics && diagnostics.tiktokUsername) || "");
+}
+// (older generic wording, no longer used)
+function describeConnectErrorLegacy(err) {
   const message = String(err?.message || err || "").toLowerCase();
   if (message.includes("not found") || message.includes("does not exist") || message.includes("user_not_found")) {
     return "That TikTok username couldn't be found. Double-check the spelling (no @).";
@@ -734,7 +748,7 @@ function describeConnectError(err) {
   if (message.includes("age") || message.includes("restricted") || message.includes("private")) {
     return "TikTok is restricting this LIVE (age-restricted or private), so it can't be joined from here.";
   }
-  return "Couldn't connect to TikTok LIVE after several tries. You can try again anytime.";
+  return "Couldn't connect to TikTok LIVE. Make sure the account is LIVE right now, wait about a minute, then press Connect again (TikTok sometimes limits requests from the server).";
 }
 
 const FAKE_USERNAMES = [

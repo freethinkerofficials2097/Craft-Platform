@@ -659,7 +659,7 @@ function renderViewerList() {
     const nameEl = document.createElement("b");
     nameEl.textContent = v.n || v.u;
     const sub = document.createElement("small");
-    sub.textContent = "@" + v.u + " · seen " + timeAgo(v.last) + (v.url ? "" : " · picture not saved yet");
+    sub.textContent = "@" + v.u + " · seen " + timeAgo(v.last) + (v.url ? "" : " · picture not saved yet" + (v.why ? " (" + v.why + ", still retrying)" : " (retrying)"));
     info.appendChild(nameEl); info.appendChild(sub);
     const del = document.createElement("button");
     del.type = "button"; del.className = "viewerForget"; del.title = "Remove this person (they will not be added back automatically)"; del.textContent = "✕";
@@ -679,6 +679,8 @@ el.viewerSearch.addEventListener("input", renderViewerList);
 el.viewerTickAll.addEventListener("click", () => send("set_all_viewers_selected", { on: true, onlyWithPicture: true }));
 el.viewerUntickAll.addEventListener("click", () => send("set_all_viewers_selected", { on: false }));
 if (el.viewerAllowRemoved) el.viewerAllowRemoved.addEventListener("click", () => send("allow_removed_viewers", {}));
+const retryPicsBtn = document.getElementById("viewerRetryPics");
+if (retryPicsBtn) retryPicsBtn.addEventListener("click", () => send("retry_viewer_pictures", {}));
 el.viewerForgetAll.addEventListener("click", () => {
   if (window.confirm("Forget everyone, delete all saved profile pictures and clear your removed-people list? Anyone who joins or chats afterwards is added (and ticked) again. This cannot be undone.")) send("forget_all_viewers", {});
 });
@@ -968,6 +970,9 @@ function widthConstrainedTileSize(usableWidth, wordLength, hGap) {
 }
 
 function computeTileMetrics(wordLength, rowCount) {
+  // update 39: tile size is sized for the word only (never for how many guesses there are - extra rows scroll),
+  // and with "Auto-resize tiles" switched off a word longer than 15 letters keeps the 15-letter size and scrolls sideways.
+  wordLength = window.TileFit ? window.TileFit.fitLength(wordLength) : wordLength;
   const containerWidth = el.tilesWrap.clientWidth || 320;
   const hGap = 2;
   const avatarGap = 8;
@@ -997,7 +1002,7 @@ function computeTileMetrics(wordLength, rowCount) {
 
   const availableHeight = computeAvailableTilesHeight();
   const vGap = 8;
-  const rows = Math.max(1, rowCount);
+  const rows = 1; // update 39: was Math.max(1, rowCount) - more guesses used to shrink every tile
   const rowHeightBudget = Math.floor((availableHeight - vGap * (rows - 1)) / rows);
   let tileSizeByHeight = Math.floor(rowHeightBudget / 1.18);
   tileSizeByHeight = Math.max(8, Math.min(90, tileSizeByHeight));

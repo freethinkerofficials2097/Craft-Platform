@@ -7,6 +7,7 @@
 // ===================================================================
 
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
+import { explainTikTokError } from "./shared/tiktok-errors.js";
 import { Engagement } from "./engagement/engagement-hub.js";
 
 if (process.env.TIKTOK_SIGN_API_KEY) {
@@ -36,6 +37,10 @@ function extractComment(data) {
 }
 
 function friendlyError(err, username) {
+  return explainTikTokError(err, username);
+}
+// (older generic wording, no longer used)
+function friendlyErrorLegacy(err, username) {
   const raw = err?.message || String(err);
   const lower = raw.toLowerCase();
   // "Not currently live" shows up in several different wordings depending
@@ -73,9 +78,14 @@ export function registerTravle(io) {
   const nsp = io.of("/travle");
 
   let liveConn = null;
+  let currentConn = null; // update 36: also the connection that is auto-reconnecting after a drop
   let liveUsername = null;
 
   async function stopLive() {
+    if (currentConn && currentConn !== liveConn) {
+      try { await currentConn.disconnect(); } catch (e) {}
+    }
+    currentConn = null;
     if (liveConn) {
       try { await liveConn.disconnect(); } catch (e) {}
     }
@@ -145,6 +155,11 @@ export function registerTravle(io) {
           });
 
           conn.on("error", (err) => console.error("[travle] TikTok connection error:", err?.info || err));
+          currentConn = conn;
+          conn.on("reconnected", () => {
+            liveConn = conn;
+            nsp.emit("tiktok-status", { connected: true, username, reconnected: true });
+          });
 
           const state = await conn.connect();
           liveConn = conn;
