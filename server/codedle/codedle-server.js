@@ -24,9 +24,11 @@
 // hints, Live / Test / Offline modes, host-set secret word, difficulty tiers, win celebration +
 // leaderboards.
 //
-// Guess rule: any real word of the right length that is not already on the board is accepted
-// and colored (it does NOT have to match the code - guesses are probes). The host can switch
-// BLINDLE's "must fit every earlier clue" rule on in Settings ("Strict fit").
+// Guess rule (update 45): a guess must be a real word of the right length, not already on the board,
+// AND its own letters must follow the CODE - i.e. sorting the guess alphabetically must give the same
+// numbers as the code on screen (same letters-come-before/after-each-other pattern). Words that break
+// the code are never accepted. The same applies to the automatic starter word and to hints. The host
+// can additionally switch BLINDLE's "must fit every earlier clue" rule on in Settings ("Strict fit").
 //
 // Differences from BLINDLE:
 //   - the clue is one of five colors per LETTER, plus the numeric code row on top of the board
@@ -169,6 +171,13 @@ function scoreClue(guess, answer) {
     out[i] = inWord ? (close ? PINK : YELLOW) : close ? BLUE : GRAY;
   }
   return out;
+}
+
+// update 45: true when `word` follows the code shown on the board (same alphabetical-order pattern
+// as the hidden word). The hidden word itself always matches.
+function matchesCode(word, secret) {
+  if (!word || !secret || word.length !== secret.length) return false;
+  return cluesEqual(buildCode(word), buildCode(secret));
 }
 
 function cluesEqual(a, b) {
@@ -338,6 +347,17 @@ function attemptGuess(word, caller) {
     return { ok: false, error: "That word is already on the board.", duplicate: true };
   }
 
+  // update 45: the guess must obey the code on the board. Chat guesses that break it are ignored
+  // silently (no toast, so random words can't flood the screen); host / offline guesses get the message.
+  if (!matchesCode(word, game.secretWord)) {
+    if (caller === "Host") {
+      const reason = `"${word.toUpperCase()}" doesn't follow the code ${buildCode(game.secretWord).join(" ")}`;
+      game.lastRejection = { word, reason, at: Date.now() };
+      return { ok: false, error: reason, rejected: true };
+    }
+    return { ok: false, error: "Doesn't follow the code.", rejected: true, silent: true };
+  }
+
   const consistency = game.strictFit ? checkConsistency(word) : { ok: true };
   if (!consistency.ok) {
     const reason = `Doesn't fit the colors of guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClue(consistency.conflictClue)})`;
@@ -359,7 +379,7 @@ const STARTER_GUESS_LABEL = "🎲 Starter word";
 
 function pickStarterWord(wordLength) {
   const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, wordLength, "random")
-    .filter((w) => w !== game.secretWord);
+    .filter((w) => w !== game.secretWord && matchesCode(w, game.secretWord)); // update 45: starter obeys the code too
   if (pool.length === 0) return null;
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -478,6 +498,9 @@ function useHint() {
     (w) => w !== game.secretWord && !onBoard.has(w) && !game.hintSuggestions.includes(w)
   );
   if (candidates.length === 0) return;
+  // update 45: hints must follow the code too (when any such word exists)
+  const codeFit = candidates.filter((w) => matchesCode(w, game.secretWord));
+  if (codeFit.length > 0) candidates = codeFit;
 
   const secretCode = buildCode(game.secretWord);
   const scored = candidates.map((w) => {
@@ -714,7 +737,9 @@ function startTestMode() {
         text = game.secretWord;
       } else if (game.status === "live" && roll < 0.4) {
         const pool = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty);
-        text = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : FAKE_JUNK_WORDS[0];
+        const fit = pool.filter((w) => matchesCode(w, game.secretWord)); // update 45: test viewers mostly send code-following words
+        const src = fit.length > 0 && Math.random() < 0.8 ? fit : pool;
+        text = src.length > 0 ? src[Math.floor(Math.random() * src.length)] : FAKE_JUNK_WORDS[0];
       } else {
         text = FAKE_JUNK_WORDS[Math.floor(Math.random() * FAKE_JUNK_WORDS.length)];
       }
