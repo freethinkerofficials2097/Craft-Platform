@@ -996,6 +996,7 @@ function escapeHtml(str) {
 
 function render(state) {
   lastState = state;
+  if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
   detectWinTransition(state.game);
   detectFreshRound(state.game);
   renderHeader(state);
