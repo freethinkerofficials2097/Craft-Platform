@@ -683,6 +683,7 @@ let lastRoundNumber = null;
 
 function render(state) {
   lastState = state;
+  if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
   detectNewRound(state.game);
   applyAutoRed(state.game);
   detectWinTransition(state.game);

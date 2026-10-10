@@ -676,6 +676,7 @@ let revealedColors = null;
 
 function render(state) {
   lastState = state;
+  if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
   const newColors = state.game.columnColors || null;
   if (JSON.stringify(newColors) !== JSON.stringify(revealedColors)) lastTilesSignature = "";
   revealedColors = newColors;

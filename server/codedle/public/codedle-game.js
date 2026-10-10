@@ -631,6 +631,7 @@ let lastTilesSignature = "";
 
 function render(state) {
   lastState = state;
+  if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
   detectWinTransition(state.game);
   renderHeader(state);
   renderModeUI(state.game);
