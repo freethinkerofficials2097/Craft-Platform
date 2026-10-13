@@ -48,14 +48,17 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
 import { explainTikTokError } from "../shared/tiktok-errors.js";
-import { ANSWER_WORDS, MIN_WORD_LENGTH, MAX_WORD_LENGTH } from "../blindle/blindle-answers.js";
+import { ANSWER_WORDS as EN_ANSWER_WORDS, MIN_WORD_LENGTH } from "../blindle/blindle-answers.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
+import * as HC from "../shared/hint-config-store.js"; // update 58: three hint types + host hint settings
+import * as WH from "../shared/word-hints.js";
 import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { getKeyAutoColor, setKeyAutoColor } from "../shared/key-autocolor-store.js";
-import { dictionaryState, loadDictionary, isValidGuessWord } from "../blindle/blindle-dictionary.js";
-import { buildDifficultyIndex, getWordsForDifficulty } from "../blindle/blindle-difficulty.js";
+import { dictionaryState, loadDictionary } from "../blindle/blindle-dictionary.js";
+import { buildDifficultyIndex } from "../blindle/blindle-difficulty.js";
+import * as WL from "../shared/word-language.js"; // update 48: word language
 
 import { PlatformHub } from "../shared/platform-hub.js";
 function safely(label, fn) {
@@ -219,7 +222,29 @@ function buildLetterStates(guesses) {
   return best;
 }
 
-const difficultyIndex = buildDifficultyIndex(ANSWER_WORDS);
+// ---- WORD LANGUAGE (update 48) -------------------------------------------------------------
+// The host picks the word language in Settings (English / Indonesian / Bahasa Melayu / 4 mixes).
+// ANSWER_WORDS, MAX_WORD_LENGTH and the difficulty index follow that choice.
+const WORD_GAME_ID = "codedle";
+let wordLanguage = WL.getLanguage(WORD_GAME_ID);
+let ANSWER_WORDS = WL.getBank(wordLanguage, EN_ANSWER_WORDS).answers;
+let MAX_WORD_LENGTH = WL.getBank(wordLanguage, EN_ANSWER_WORDS).maxLength;
+let difficultyIndex = buildDifficultyIndex(ANSWER_WORDS);
+const getWordsForDifficulty = WL.getWordsForDifficulty;
+function isValidGuessWord(word) {
+  return WL.isValidGuess(wordLanguage, word);
+}
+function applyWordLanguage(mode) {
+  const bank = WL.getBank(mode, EN_ANSWER_WORDS);
+  wordLanguage = bank.mode;
+  ANSWER_WORDS = bank.answers;
+  MAX_WORD_LENGTH = bank.maxLength;
+  difficultyIndex = buildDifficultyIndex(ANSWER_WORDS);
+  game.usedWords.clear();
+  game.wordLength = clampWordLength(game.wordLength);
+  if (game.lengthMin !== undefined) game.lengthMin = clampWordLength(game.lengthMin);
+  if (game.lengthMax !== undefined) game.lengthMax = clampWordLength(game.lengthMax);
+}
 
 const DEFAULT_AUTO_CONTINUE_DELAY = 3;
 const DEFAULT_LEADERBOARD_SHOW_SECONDS = 3;
@@ -253,6 +278,10 @@ const game = {
   roundNumber: 0, // bumps every time a new round starts - the page uses it to clear its manual colors
   hintsUsed: 0,
   hintSuggestions: [],
+  hints: [], // update 58: every hint given this round ({type, text, ...})
+  hintLastAt: 0,
+  hintAutoAt: 0,
+  hintNote: null,
   lastRejection: null,
   // false (default): any real, not-yet-guessed word is accepted. true: BLINDLE's rule - the guess
   // must also fit the colors of every guess already on the board.
@@ -400,6 +429,10 @@ function startRound(overrideWord) {
   game.guesses = [];
   game.hintsUsed = 0;
   game.hintSuggestions = [];
+  game.hints = [];
+  game.hintLastAt = 0;
+  game.hintAutoAt = 0;
+  game.hintNote = null;
   game.lastRejection = null;
   game.lastWinInfo = null;
   game.roundScores.clear();
@@ -488,7 +521,7 @@ function endGame() {
 // equals the hidden word's code (the numbers on screen), then words that reproduce as many of the
 // colors on the board as possible. Never the answer itself, never a word already on the board and
 // never the same hint twice. Picked at random among the few best fits so repeated hints vary.
-function useHint() {
+function suggestHint() {
   if (game.status !== "live") return;
 
   let candidates = getWordsForDifficulty(ANSWER_WORDS, difficultyIndex, game.wordLength, game.difficulty);
@@ -517,6 +550,50 @@ function useHint() {
   game.hintSuggestions.push(suggestion);
   game.hintsUsed += 1;
   broadcastState();
+}
+
+// update 58: three hint types (Word idea / Reveal a letter / Rule out letters) + the host's hint settings
+const HINT_GAME_ID = "codedle";
+let hintAutoBusy = false;
+function useHint(payload, isAuto = false) {
+  if (game.status !== "live") return;
+  const now = Date.now();
+  const chk = HC.checkHint(HINT_GAME_ID, payload && payload.type, game.hintsUsed, game.hintLastAt, now, isAuto);
+  if (!chk.ok) { game.hintNote = { text: chk.reason, at: now }; broadcastState(); return; }
+  game.hintNote = null;
+  let hint = null;
+  if (chk.type === "suggest") {
+    const before = game.hintSuggestions.length;
+    suggestHint();
+    if (game.hintSuggestions.length > before) {
+      const word = game.hintSuggestions[game.hintSuggestions.length - 1];
+      hint = { type: "suggest", word, text: "Try: " + word.toUpperCase() };
+    }
+  } else if (chk.type === "letter") {
+    hint = WH.letterHint(game.secretWord, game.hints);
+    if (hint) game.hintsUsed += 1;
+  } else if (chk.type === "rule") {
+    hint = WH.ruleHint(game.secretWord, game.hints, []);
+    if (hint) game.hintsUsed += 1;
+  }
+  if (!hint) { game.hintNote = { text: "Nothing more to reveal with that hint - try another type.", at: now }; broadcastState(); return; }
+  game.hints.push({ ...hint, at: now, auto: Boolean(isAuto) });
+  game.hintLastAt = now;
+  broadcastState();
+}
+// automatic hint: after every N guesses the host chose in Settings -> Hints (0 = off)
+function maybeAutoHint() {
+  if (hintAutoBusy || game.status !== "live") return;
+  const n = HC.getHintConfig(HINT_GAME_ID).autoAfterGuesses;
+  if (!n) return;
+  const made = game.guesses.filter((g) => !g.isStarter).length;
+  if (made < game.hintAutoAt + n) return;
+  game.hintAutoAt = made;
+  hintAutoBusy = true;
+  try {
+    const t = HC.pickAutoType(HINT_GAME_ID, game.hints.map((h) => h.type));
+    if (t) useHint({ type: t }, true);
+  } finally { hintAutoBusy = false; }
 }
 
 function getLeaderboard(map) {
@@ -785,8 +862,14 @@ function buildStatePayload() {
       streak: game.streak,
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,
+      hints: game.hints,
+      hintConfig: HC.publicHintInfo("codedle", game.hintsUsed, game.hintLastAt),
+      hintNote: game.hintNote,
       lastRejection: game.lastRejection,
       strictFit: game.strictFit,
+      wordLanguage,
+      wordLanguages: WL.languageOptionsForClient(),
+      wordLanguageInfo: WL.describeLanguage(wordLanguage),
       keyAutoColor: game.keyAutoColor,
       starterWord: game.starterWord,
       lastWinInfo: game.lastWinInfo,
@@ -812,6 +895,7 @@ function buildStatePayload() {
 
 let broadcastPending = false;
 function broadcastState(lightweight = false) {
+  maybeAutoHint();
   if (!nsp) return; // not mounted yet - nothing to broadcast to
   if (broadcastPending) return;
   broadcastPending = true;
@@ -872,7 +956,11 @@ function handleClientAction(ws, msg) {
       endGame();
       break;
     case "use_hint":
-      useHint();
+      useHint(payload);
+      break;
+    case "set_hint_config":
+      HC.setHintConfig("codedle", payload);
+      broadcastState();
       break;
     case "set_secret_word": {
       const result = setSecretWord(String((payload && payload.word) || ""));
@@ -901,6 +989,16 @@ function handleClientAction(ws, msg) {
       game.starterWord = setStarterWord("codedle", Boolean(payload && payload.on));
       broadcastState();
       break;
+    case "set_word_language": {
+      const prevLanguage = wordLanguage;
+      const nextLanguage = WL.setLanguage(WORD_GAME_ID, payload && payload.mode);
+      if (nextLanguage !== prevLanguage) {
+        applyWordLanguage(nextLanguage);
+        if (game.status === "live") playAgain(); // the running round's word is in the old language
+      }
+      broadcastState();
+      break;
+    }
     case "set_strict_fit":
       game.strictFit = setStrictFit("codedle", Boolean(payload && payload.on));
       broadcastState();

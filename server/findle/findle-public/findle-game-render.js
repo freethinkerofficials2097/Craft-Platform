@@ -41,6 +41,20 @@ const FindleRender = (() => {
     return `<span class="avatarChip avatarChipFallback" style="width:${sizePx}px;height:${sizePx}px;background:${color};" title="${title}">${initial}</span>`;
   }
 
+  // update 58: "Highlight a word" hint - make the cells of one hidden word glow for a few seconds.
+  var lastPulseId = null;
+  function applyPulse(gridEl, pulse) {
+    if (!pulse || !pulse.cells || pulse.id === lastPulseId) return;
+    lastPulseId = pulse.id;
+    if (Date.now() - pulse.id > (pulse.ms || 4500)) return; // stale pulse from before a reload
+    pulse.cells.forEach(function (rc) {
+      var cell = gridEl.querySelector('.cell[data-r="' + rc[0] + '"][data-c="' + rc[1] + '"]');
+      if (!cell) return;
+      cell.classList.add('hintPulse');
+      setTimeout(function () { cell.classList.remove('hintPulse'); }, pulse.ms || 4500);
+    });
+  }
+
   function renderGrid(gridEl, gridSize, letters, words, clearedGrid) {
     gridEl.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
     gridEl.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
@@ -193,5 +207,5 @@ const FindleRender = (() => {
     ).join('') + '</div>';
   }
 
-  return { escapeHtml, renderGrid, renderAnswers, renderProgress, renderLeaderboard, renderFeed, resetTrackingIfNewPuzzle, celebrate, renderTicker, medalFor, buildRecapRows };
+  return { applyPulse, escapeHtml, renderGrid, renderAnswers, renderProgress, renderLeaderboard, renderFeed, resetTrackingIfNewPuzzle, celebrate, renderTicker, medalFor, buildRecapRows };
 })();

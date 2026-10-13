@@ -209,6 +209,7 @@
     if (s.game.grid) {
       R.resetTrackingIfNewPuzzle(s.game.theme);
       R.renderGrid(document.getElementById('grid'), s.game.gridSize, s.game.grid, s.game.words, s.game.clearedGrid);
+      R.applyPulse(document.getElementById('grid'), s.game.pulse);
       R.renderAnswers(document.getElementById('answers'), s.game.words);
       R.renderProgress(document.getElementById('progressDots'), s.game.wordsFound, s.game.wordsTotal);
     }

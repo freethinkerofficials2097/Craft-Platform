@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 import { TikTokLiveConnection, SignConfig } from "tiktok-live-connector";
 import { explainTikTokError } from "./shared/tiktok-errors.js";
 import { Engagement } from "./engagement/engagement-hub.js";
+import * as HC from "./shared/hint-config-store.js"; // update 58
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -199,6 +200,7 @@ function startRound(session) {
   const { roundSeconds, revealHoldSeconds, maxBlurPx } = session.settings;
   session.round = { country, guessesUsed: 0, hintsGiven: 0, startedAt: Date.now() };
   session.roundActive = true;
+  if (session.sendHintInfo) session.sendHintInfo();
 
   session.socket.emit("round-start", {
     code: country.code,
@@ -454,15 +456,33 @@ export function registerFlagle(io) {
       socket.emit("leaderboard-update", leaderboard(session));
     });
 
-    socket.on("request-hint", () => {
+    // update 58: three hint types (continent / first letter / letter count) the host can pick from, plus the host's hint
+    // settings (on/off per type, limit per round, wait between hints). See server/shared/hint-config-store.js.
+    const sendHintInfo = (note) => {
+      const r = session.round;
+      const info = HC.publicHintInfo("flagle", r ? r.hintsGiven || 0 : 0, r ? r.hintLastAt || 0 : 0);
+      session.socket.emit("hint:config", { ...info, note: note || null });
+    };
+    session.sendHintInfo = sendHintInfo;
+    socket.on("host:hintConfig", (patch) => {
+      if (patch && typeof patch === "object") HC.setHintConfig("flagle", patch);
+      sendHintInfo();
+    });
+    socket.on("request-hint", (payload) => {
       if (!session.roundActive || !session.round) return;
-      session.round.hintsGiven = (session.round.hintsGiven || 0) + 1;
-      const c = session.round.country;
+      const r = session.round;
+      const now = Date.now();
+      const chk = HC.checkHint("flagle", payload && payload.type, r.hintsGiven || 0, r.hintLastAt || 0, now);
+      if (!chk.ok) return sendHintInfo(chk.reason);
+      const c = r.country;
       let message;
-      if (session.round.hintsGiven === 1) message = `Hint: this flag belongs to a country in ${c.continent}.`;
-      else if (session.round.hintsGiven === 2) message = `Hint: the name starts with "${c.name[0].toUpperCase()}".`;
+      if (chk.type === "continent") message = `Hint: this flag belongs to a country in ${c.continent}.`;
+      else if (chk.type === "initial") message = `Hint: the name starts with "${c.name[0].toUpperCase()}".`;
       else message = `Hint: the name has ${c.name.replace(/[^A-Za-z]/g, "").length} letters.`;
-      session.socket.emit("host-hint", { message });
+      r.hintsGiven = (r.hintsGiven || 0) + 1;
+      r.hintLastAt = now;
+      session.socket.emit("host-hint", { message, type: chk.type });
+      sendHintInfo();
     });
 
     socket.on("disconnect", () => {

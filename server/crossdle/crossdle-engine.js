@@ -8,10 +8,36 @@
 // ============================================================================
 
 import { WORD_LENGTH_OPTIONS, MIN_WORD_LENGTH, MAX_WORD_LENGTH, randomWord, isKnownWord } from './crossdle-dictionary.js';
-import { ANSWER_WORDS } from './crossdle-answers.js';
+import { ANSWER_WORDS as EN_ANSWER_WORDS } from './crossdle-answers.js';
+import * as WL from '../shared/word-language.js'; // update 48: word language
+
+// ---- WORD LANGUAGE (update 48) ---------------------------------------------------------------
+// The host picks the word language in Settings. The secret word, the decoy word and the pool the
+// strict-fit check judges against all come from the chosen language bank.
+const WORD_GAME_ID = 'crossdle';
+let wordLanguage = WL.getLanguage(WORD_GAME_ID);
+let ANSWER_WORDS = WL.getBank(wordLanguage, EN_ANSWER_WORDS).answers;
+
+export function getWordLanguage() {
+  return wordLanguage;
+}
+/** Switches the language bank used by every future round (call GameEngine.setWordLanguage from the host layer). */
+function applyWordLanguageBank(mode) {
+  const bank = WL.getBank(mode, EN_ANSWER_WORDS);
+  wordLanguage = bank.mode;
+  ANSWER_WORDS = bank.answers;
+  return bank;
+}
+/** Every secret-word candidate of a length in the current language (for Test Mode's fake chat). */
+export function getAnswerPool(length) {
+  return ANSWER_WORDS[length] || [];
+}
 import { getStrictFit, setStrictFit } from '../shared/strict-fit-store.js';
 import { getKeyAutoColor, setKeyAutoColor } from '../shared/key-autocolor-store.js';
 import { getStarterWord, setStarterWord } from '../shared/starter-word-store.js';
+
+import * as HC from '../shared/hint-config-store.js';
+import * as WH from '../shared/word-hints.js';
 
 export { WORD_LENGTH_OPTIONS };
 
@@ -20,7 +46,7 @@ const DEFAULT_WORD_LENGTH = 5;
 // A single, fixed pace for hints - word length is the only thing the host
 // tunes (no more separate "difficulty" levels). There is no round timer:
 // a round runs until it's solved, or the host skips/reveals it.
-const HINT_EVERY = 4;
+// update 58: the automatic hint pace is now a host setting (Settings -> Hints, default every 4 guesses).
 
 // How long after a round ends before the next one auto-starts. Defaults to
 // 3 seconds; adjustable live via setNextRoundDelay() / the host panel.
@@ -202,7 +228,9 @@ function pickWord(length, exclude = []) {
   const curatedPool = ANSWER_WORDS[length];
   if (curatedPool && curatedPool.length > 0) {
     const ex = new Set(exclude);
-    const available = curatedPool.filter((w) => !ex.has(w));
+    // mixed language modes: every language gets a fair share (see shared/word-language.js)
+    const weighted = WL.getWordsForDifficulty(ANSWER_WORDS, null, length, 'random');
+    const available = weighted.filter((w) => !ex.has(w));
     const pool = available.length > 0 ? available : curatedPool;
     return pool[Math.floor(Math.random() * pool.length)];
   }
@@ -244,7 +272,14 @@ export function extractGuessWord(text, wordLength) {
  * and added to the board. Random keyboard-mash never becomes a row.
  */
 export function isAcceptableGuess(word, wordLength) {
-  return isKnownWord(word, wordLength);
+  for (const part of WL.modeInfo(wordLanguage).parts) {
+    if (part === 'en') {
+      if (isKnownWord(word, wordLength)) return true;
+    } else if (WL.isValidGuess(part, word)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function scoreForSolve(attemptCountIncludingSolve, hintsUsedCount, quickSolve) {
@@ -300,10 +335,29 @@ export class GameEngine {
     this.onChange('settings');
   }
 
+  /** Longest word length that has words in the current language. */
+  getMaxWordLength() {
+    return WL.getBank(wordLanguage, EN_ANSWER_WORDS).maxLength;
+  }
+
+  /** Host switch (update 48): the word language. Takes effect from the next round (a running round is restarted). */
+  setWordLanguage(mode) {
+    const prev = wordLanguage;
+    const next = WL.setLanguage(WORD_GAME_ID, mode);
+    if (next === prev) {
+      this.onChange('settings');
+      return false;
+    }
+    const bank = applyWordLanguageBank(next);
+    if (this.wordLength > bank.maxLength) this.wordLength = bank.maxLength;
+    this.onChange('settings');
+    return true;
+  }
+
   /** Host-adjustable word length (4-20 letters) used for future rounds. */
   setWordLength(n) {
     const len = Number(n);
-    if (!Number.isInteger(len) || len < MIN_WORD_LENGTH || len > MAX_WORD_LENGTH) return;
+    if (!Number.isInteger(len) || len < MIN_WORD_LENGTH || len > Math.min(MAX_WORD_LENGTH, this.getMaxWordLength())) return;
     if (curatedAnswerPoolSize(len) < 2) return; // guard against an empty/near-empty answer bank
     this.wordLength = len;
     this.onChange('settings');
@@ -329,6 +383,9 @@ export class GameEngine {
       answer,
       attempts: [], // { username, guess, colors, decoy, ts } - unlimited length
       hints: [], // revealed positions, e.g. [{ index, letter }]
+      hintLog: [], // update 58: every hint given this round, [{ type, text, at, auto }]
+      hintLastAt: 0,
+      hintNote: null,
       solved: false,
       solvedBy: null,
       startedAt: Date.now(),
@@ -381,10 +438,45 @@ export class GameEngine {
     this._endRound('revealed');
   }
 
-  /** Force-reveals the next hint letter (host action, independent of the timer). */
-  giveHint() {
-    if (!this.round || this.round.status !== 'active') return;
-    this._revealNextHint();
+  /**
+   * update 58: three hint types (host-customisable in Settings -> Hints):
+   *   letter - one more letter of the answer in its place
+   *   rule   - three letters that are NOT in the answer
+   *   start  - the first and last letter of the answer
+   */
+  giveHint(type, isAuto = false) {
+    const r = this.round;
+    if (!r || r.status !== 'active') return;
+    const now = Date.now();
+    const chk = HC.checkHint('crossdle', type, r.hintLog.length, r.hintLastAt, now, isAuto);
+    if (!chk.ok) {
+      if (!isAuto) { r.hintNote = { text: chk.reason, at: now }; this.onChange('hint'); }
+      return;
+    }
+    let entry = null;
+    if (chk.type === 'letter') {
+      const h = this._revealNextHint();
+      if (h) entry = { type: 'letter', text: `Letter ${h.index + 1} is “${h.letter.toUpperCase()}”` };
+    } else if (chk.type === 'rule') {
+      const h = WH.ruleHint(r.answer.toLowerCase(), r.hintLog, r.attempts.flatMap((a) => a.guess.toLowerCase().split('').filter((c) => !r.answer.toLowerCase().includes(c))));
+      if (h) entry = { type: 'rule', letters: h.letters, text: h.text };
+    } else if (chk.type === 'start') {
+      const last = r.answer.length - 1;
+      const have = new Set(r.hints.map((x) => x.index));
+      const want = [0, last].filter((i) => !have.has(i));
+      if (want.length && have.size + want.length < r.answer.length) {
+        want.forEach((i) => r.hints.push({ index: i, letter: r.answer[i] }));
+        entry = { type: 'start', text: `Starts with “${r.answer[0].toUpperCase()}” and ends with “${r.answer[last].toUpperCase()}”` };
+      }
+    }
+    if (!entry) {
+      if (!isAuto) r.hintNote = { text: 'That hint has nothing new to add this round - try another type.', at: now };
+      this.onChange('hint');
+      return;
+    }
+    r.hintLog.push({ ...entry, at: now, auto: !!isAuto });
+    r.hintLastAt = now;
+    r.hintNote = null;
     this.onChange('hint');
   }
 
@@ -395,9 +487,11 @@ export class GameEngine {
     for (let i = 0; i < answer.length; i++) {
       if (!revealedIdx.has(i)) candidates.push(i);
     }
-    if (candidates.length <= 1) return; // never give away the whole word
+    if (candidates.length <= 1) return null; // never give away the whole word
     const idx = candidates[Math.floor(Math.random() * candidates.length)];
-    hints.push({ index: idx, letter: answer[idx] });
+    const h = { index: idx, letter: answer[idx] };
+    hints.push(h);
+    return h;
   }
 
   // NOTE: rounds no longer have a time limit - viewers can guess for as
@@ -505,7 +599,7 @@ export class GameEngine {
 
     if (isCorrect) {
       const quickSolve = this.round.attempts.length <= QUICK_SOLVE_MAX_ATTEMPTS;
-      const bonus = scoreForSolve(this.round.attempts.length, this.round.hints.length, quickSolve);
+      const bonus = scoreForSolve(this.round.attempts.length, this.round.hintLog.length, quickSolve);
       this._bumpScore(username, bonus, avatarUrl);
       const entry = this.leaderboard.get(key);
       if (entry) entry.solves = (entry.solves || 0) + 1;
@@ -519,10 +613,12 @@ export class GameEngine {
       return { recognized: true, correct: true, bonus };
     }
 
-    // Reveal a hint every N attempts (unlimited guessing means this is the
-    // only thing that paces the round besides the clock).
-    if (this.round.attempts.length % HINT_EVERY === 0) {
-      this._revealNextHint();
+    // update 58: automatic hint after every N audience guesses (host setting, 0 = never).
+    const every = HC.getHintConfig('crossdle').autoAfterGuesses;
+    const audienceGuesses = this.round.attempts.filter((a) => !a.isStarter).length;
+    if (every > 0 && audienceGuesses % every === 0) {
+      const type = HC.pickAutoType('crossdle', this.round.hintLog.map((h) => h.type));
+      if (type) this.giveHint(type, true);
     }
 
     this.onChange('attempt');
@@ -538,15 +634,22 @@ export class GameEngine {
       wordLength: this.wordLength,
       nextRoundDelayMs: this.nextRoundDelayMs,
       strictFit: this.strictFit,
+      wordLanguage,
+      wordLanguages: WL.languageOptionsForClient(),
+      wordLanguageInfo: WL.describeLanguage(wordLanguage),
+      maxWordLength: WL.getBank(wordLanguage, EN_ANSWER_WORDS).maxLength,
       keyAutoColor: this.keyAutoColor,
       starterWord: this.starterWord,
       leaderboard: this.getLeaderboardTop(10),
+      hintConfig: HC.publicHintInfo('crossdle', r ? r.hintLog.length : 0, r ? r.hintLastAt : 0),
       round: r && {
         number: r.number,
         wordLength: r.wordLength,
         // The automatic starter word shows the LIVE host's profile picture.
         attempts: r.attempts.map((a) => (a.isStarter ? { ...a, avatarUrl: this.hostAvatarUrl || null } : a)),
         hints: r.hints,
+        hintLog: r.hintLog,
+        hintNote: r.hintNote,
         solved: r.solved,
         solvedBy: r.solvedBy,
         solvedByAvatar: r.solvedByAvatar || null,

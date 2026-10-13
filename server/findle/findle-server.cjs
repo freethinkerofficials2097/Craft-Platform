@@ -14,8 +14,15 @@
 
 const path = require("path");
 const tiktokLib = require("tiktok-live-connector");
-const PUZZLES = require("./findle-puzzles.cjs");
+const PUZZLES_EN = require("./findle-puzzles.cjs");
+const PUZZLES_ID = require("./findle-puzzles-id.cjs"); // update 48: Indonesian puzzles
+const PUZZLES_MS = require("./findle-puzzles-ms.cjs"); // update 48: Bahasa Melayu (Malaysia) puzzles
+const PUZZLES_BY_LANG = { en: PUZZLES_EN, id: PUZZLES_ID, ms: PUZZLES_MS };
+const wordLang = require("./findle-language.cjs"); // update 48: word language (7 modes)
 const { generatePuzzleGrid } = require("./findle-grid-generator.cjs");
+// update 58: shared 3-type hint settings store (ESM) - loaded once, cached.
+let HC = null;
+const hcReady = import("../shared/hint-config-store.js").then((m) => { HC = m; }).catch((e) => console.error("[findle] hint store failed to load:", e && e.message));
 
 // The tiktok-live-connector library has renamed its main class before
 // (WebcastPushConnection -> TikTokLiveConnection) and may do so again.
@@ -69,6 +76,10 @@ function registerFindle(app, rootIO) {
       grid: null,
       words: [],
       hintsUsed: 0,
+      hints: [],
+      hintLastAt: 0,
+      hintNote: null,
+      pulse: null,
       roundStartedAt: null,
       pauseStartedAt: null,
       usedThemes: [],
@@ -81,6 +92,7 @@ function registerFindle(app, rootIO) {
     settings: {
       autoAdvanceDelaySeconds: 3,
       leaderboardDisplaySeconds: 3,
+      wordLanguage: wordLang.load(), // update 48
     },
   };
 
@@ -152,7 +164,9 @@ function registerFindle(app, rootIO) {
     return {
       connection: state.connection,
       settings: state.settings,
+      wordLanguages: wordLang.options(), // update 48
       game: {
+        puzzleLanguage: g.puzzleLanguage || null, // update 48: language of the current puzzle
         status: g.status,
         difficulty: g.difficulty,
         theme: g.theme,
@@ -171,6 +185,10 @@ function registerFindle(app, rootIO) {
         wordsTotal: g.words.length,
         clearedGrid: g.grid ? computeClearedGrid(g.gridSize, g.words) : null,
         combo: { count: g.comboCount, multiplier: comboMultiplier(g.comboCount) },
+        hints: g.hints || [],
+        hintNote: g.hintNote || null,
+        pulse: g.pulse || null,
+        hintConfig: HC ? HC.publicHintInfo("findle", g.hintsUsed, g.hintLastAt) : null,
       },
       leaderboard: getTopN(10),
       feed: state.feed.slice(0, 30),
@@ -199,7 +217,13 @@ function registerFindle(app, rootIO) {
   }
 
   function pickPuzzle(difficulty) {
-    const bank = PUZZLES[difficulty] || PUZZLES.easy;
+    // update 48: the host's word language decides which puzzle list is used. Mixed modes pick one of
+    // the chosen languages at random for every puzzle, so each language gets an equal share.
+    const langParts = wordLang.parts(state.settings.wordLanguage);
+    const lang = langParts[Math.floor(Math.random() * langParts.length)];
+    state.game.puzzleLanguage = lang;
+    const langPuzzles = PUZZLES_BY_LANG[lang] || PUZZLES_EN;
+    const bank = langPuzzles[difficulty] || langPuzzles.easy;
     const unused = bank.filter((p) => !state.game.usedThemes.includes(p.theme));
     const pool = unused.length ? unused : bank;
     if (!unused.length) state.game.usedThemes = [];
@@ -220,6 +244,10 @@ function registerFindle(app, rootIO) {
     state.game.gridSize = size;
     state.game.grid = grid;
     state.game.hintsUsed = 0;
+    state.game.hints = [];
+    state.game.hintLastAt = 0;
+    state.game.hintNote = null;
+    state.game.pulse = null;
     state.game.roundStartedAt = Date.now();
     state.game.comboCount = 0;
     state.game.lastFindAt = 0;
@@ -282,22 +310,40 @@ function registerFindle(app, rootIO) {
     broadcastState();
   }
 
-  function revealOneHintLetter() {
+  // update 58: three hint types - "letter" (one more letter of a hidden word), "first" (first letter of every
+  // hidden word) and "pulse" (one hidden word glows on the grid). The host controls them in Settings -> Hints.
+  function useHint(payload) {
     const g = state.game;
-    if (g.status !== "playing") return;
-    const candidates = g.words.filter((w) => {
-      if (w.found) return false;
-      const hiddenCount = w.hintMask.filter((h) => !h).length;
-      return hiddenCount > 1;
-    });
-    if (!candidates.length) return;
-    const target = candidates[Math.floor(Math.random() * candidates.length)];
-    const hiddenIdx = target.hintMask
-      .map((revealed, i) => (revealed ? -1 : i))
-      .filter((i) => i !== -1);
-    const idx = hiddenIdx[Math.floor(Math.random() * hiddenIdx.length)];
-    target.hintMask[idx] = true;
+    if (g.status !== "playing" || !HC) return;
+    const type = payload && payload.type;
+    const now = Date.now();
+    const chk = HC.checkHint("findle", type, g.hintsUsed, g.hintLastAt, now, false);
+    if (!chk.ok) { g.hintNote = { text: chk.reason, at: now }; return; }
+    const open = g.words.filter((w) => !w.found);
+    let text = "";
+    if (type === "letter") {
+      const candidates = open.filter((w) => w.hintMask.filter((h) => !h).length > 1);
+      if (!candidates.length) { g.hintNote = { text: "Every hidden word already shows almost all its letters.", at: now }; return; }
+      const target = candidates[Math.floor(Math.random() * candidates.length)];
+      const hiddenIdx = target.hintMask.map((r, i) => (r ? -1 : i)).filter((i) => i !== -1);
+      const idx = hiddenIdx[Math.floor(Math.random() * hiddenIdx.length)];
+      target.hintMask[idx] = true;
+      text = "A letter of a hidden word was revealed";
+    } else if (type === "first") {
+      const todo = open.filter((w) => !w.hintMask[0] && w.hintMask.filter((h) => !h).length > 1);
+      if (!todo.length) { g.hintNote = { text: "First letters are already showing.", at: now }; return; }
+      todo.forEach((w) => { w.hintMask[0] = true; });
+      text = "First letters of the hidden words are showing";
+    } else if (type === "pulse") {
+      if (!open.length) return;
+      const target = open[Math.floor(Math.random() * open.length)];
+      g.pulse = { id: now, cells: target.cells, ms: 4500 };
+      text = "A hidden word is glowing on the grid";
+    } else return;
     g.hintsUsed++;
+    g.hintLastAt = now;
+    g.hintNote = null;
+    g.hints.push({ type, text, at: now, auto: false });
   }
 
   function endRound(reason) {
@@ -620,14 +666,34 @@ function registerFindle(app, rootIO) {
       }
     });
 
+    socket.on("host:setWordLanguage", (payload) => {
+      // update 48: English / Indonesian / Bahasa Melayu / 4 mixes. A puzzle in progress restarts in the new language.
+      const next = wordLang.normalize(payload && payload.mode);
+      if (next === state.settings.wordLanguage) return broadcastState();
+      state.settings.wordLanguage = next;
+      wordLang.save(next);
+      if (state.game.status === "playing" || state.game.status === "paused") startRound();
+      else broadcastState();
+    });
+
     socket.on("host:startGame", () => startRound());
     socket.on("host:nextWord", () => startRound());
     socket.on("host:pauseGame", () => pauseRound());
     socket.on("host:resumeGame", () => resumeRound());
     socket.on("host:stopGame", () => stopRound());
 
-    socket.on("host:revealHint", () => {
-      revealOneHintLetter();
+    socket.on("host:useHint", async (payload) => {
+      await hcReady;
+      useHint(payload);
+      broadcastState();
+    });
+    socket.on("host:revealHint", () => { // old clients: behaves like the "letter" hint
+      useHint({ type: "letter" });
+      broadcastState();
+    });
+    socket.on("host:setHintConfig", async (patch) => {
+      await hcReady;
+      if (HC && patch && typeof patch === "object") HC.setHintConfig("findle", patch);
       broadcastState();
     });
 

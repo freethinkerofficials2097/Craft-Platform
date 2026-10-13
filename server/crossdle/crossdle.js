@@ -12,8 +12,9 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
-import { GameEngine, WORD_LENGTH_OPTIONS, NEXT_ROUND_DELAY_OPTIONS } from './crossdle-engine.js';
+import { GameEngine, WORD_LENGTH_OPTIONS, NEXT_ROUND_DELAY_OPTIONS, getWordLanguage, getAnswerPool } from './crossdle-engine.js';
 import { loadDictionary, getLoadInfo, getWordList } from './crossdle-dictionary.js';
+import * as HC from '../shared/hint-config-store.js';
 import { Diagnostics } from './crossdle-diagnostics.js';
 import { TikTokManager } from './crossdle-tiktok.js';
 import { TestModeSimulator } from './crossdle-testMode.js';
@@ -68,7 +69,10 @@ export async function registerCrossdle(app, rootIo, options = {}) {
     console.log(`[crossdle:dictionary] Active source: ${info.source} (${info.totalWords.toLocaleString()} words)`);
   }
 
-  const testMode = new TestModeSimulator(handleIncomingComment, () => getWordList(engine.round ? engine.round.wordLength : engine.wordLength));
+  const testMode = new TestModeSimulator(handleIncomingComment, () => {
+    const len = engine.round ? engine.round.wordLength : engine.wordLength;
+    return getWordLanguage() === 'en' ? getWordList(len) : getAnswerPool(len); // update 48: follow the word language
+  });
   let testModeActive = false;
 
   function handleIncomingComment(username, text, source, avatarUrl) {
@@ -107,7 +111,7 @@ export async function registerCrossdle(app, rootIo, options = {}) {
       diagnostics: diagnostics.getPublicState(),
       tiktokStatus: diagnostics.connection,
       testModeActive,
-      wordLengthOptions: WORD_LENGTH_OPTIONS,
+      wordLengthOptions: WORD_LENGTH_OPTIONS.filter((n) => n <= engine.getMaxWordLength()),
       nextRoundDelayOptions: NEXT_ROUND_DELAY_OPTIONS,
       signKeyConfigured: !!SIGN_API_KEY,
       dictionary: getLoadInfo(),
@@ -218,11 +222,20 @@ export async function registerCrossdle(app, rootIo, options = {}) {
       }
     });
 
-    socket.on('host:giveHint', () => {
+    socket.on('host:giveHint', (payload) => {
       try {
-        engine.giveHint();
+        engine.giveHint(payload && payload.type);
       } catch (err) {
         diagnostics.logError('socket.host:giveHint', err);
+      }
+    });
+
+    socket.on('host:setHintConfig', (patch) => {
+      try {
+        HC.setHintConfig('crossdle', patch);
+        io.emit('game:update', engine.getPublicState());
+      } catch (err) {
+        diagnostics.logError('socket.host:setHintConfig', err);
       }
     });
 
@@ -257,6 +270,15 @@ export async function registerCrossdle(app, rootIo, options = {}) {
         engine.setKeyAutoColor(Boolean(payload && payload.on));
       } catch (err) {
         diagnostics.logError('socket.host:setKeyAutoColor', err);
+      }
+    });
+
+    socket.on('host:setWordLanguage', (payload) => {
+      try {
+        const changed = engine.setWordLanguage(payload && payload.mode);
+        if (changed && engine.round && engine.round.status === 'active') engine.startRound(); // running word is in the old language
+      } catch (err) {
+        diagnostics.logError('socket.host:setWordLanguage', err);
       }
     });
 

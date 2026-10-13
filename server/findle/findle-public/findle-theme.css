@@ -290,3 +290,7 @@ button:disabled{ opacity:.45; cursor:default; transform:none; }
 
 /* letter cells sit above the panel */
 .grid-square > .grid > *{ position:relative; z-index:2; }
+
+/* update 58: hint pulse */
+.cell.hintPulse{ animation:hintPulse 1s ease-in-out infinite; position:relative; z-index:2; }
+@keyframes hintPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(255,200,40,0); } 50%{ box-shadow:0 0 0 3px rgba(255,200,40,.95), 0 0 14px 4px rgba(255,200,40,.7); background:rgba(255,210,70,.35); } }

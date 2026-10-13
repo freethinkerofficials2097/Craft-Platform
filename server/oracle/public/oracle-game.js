@@ -493,7 +493,7 @@ if (el.starterWordToggle) el.starterWordToggle.addEventListener("change", () => 
 
 el.playAgainBtn.addEventListener("click", () => send("play_again", {}));
 el.giveUpBtn.addEventListener("click", () => send("give_up", {}));
-el.hintBtn.addEventListener("click", () => send("use_hint", {}));
+CraftHints.attach({ button: el.hintBtn, chips: el.hintChips, explainer: el.hintExplainer, send: (type) => send("use_hint", { type }), sendConfig: (patch) => send("set_hint_config", patch) });
 
 el.resetRoundBtn.addEventListener("click", () => send("reset_round_leaderboard", {}));
 el.resetTotalBtn.addEventListener("click", () => send("reset_total_leaderboard", {}));
@@ -677,6 +677,7 @@ let revealedColors = null;
 function render(state) {
   lastState = state;
   if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
+  if (window.WordLanguage) window.WordLanguage.update(state.game, (mode) => send("set_word_language", { mode })); // update 48: word language
   const newColors = state.game.columnColors || null;
   if (JSON.stringify(newColors) !== JSON.stringify(revealedColors)) lastTilesSignature = "";
   revealedColors = newColors;
@@ -989,15 +990,8 @@ function renderTiles(g) {
 }
 
 function renderHintChips(g) {
-  const hasHints = g.hintSuggestions && g.hintSuggestions.length > 0;
-  el.hintExplainer.hidden = !hasHints;
-  if (!hasHints) {
-    el.hintChips.innerHTML = "";
-    return;
-  }
-  el.hintChips.innerHTML = g.hintSuggestions
-    .map((word) => '<span class="hintChip">Try: ' + escapeHtml(word.toUpperCase()) + "</span>")
-    .join("");
+  // update 58: the shared hint system draws the chips, the 3-type menu and the Hints settings (public/shared/hints.js)
+  if (window.CraftHints) CraftHints.render(g);
 }
 
 function renderModeNotes(g) {
