@@ -23,6 +23,12 @@ const el = {
   lengthBadge: document.getElementById("lengthBadge"),
   hintBtn: document.getElementById("hintBtn"),
   helpBtn: document.getElementById("helpBtn"),
+  languageBtn: document.getElementById("languageBtn"),
+  languageOverlay: document.getElementById("languageOverlay"),
+  closeLanguage: document.getElementById("closeLanguage"),
+  applyLanguageBtn: document.getElementById("applyLanguageBtn"),
+  languageInfo: document.getElementById("languageInfo"),
+  languageWarn: document.getElementById("languageWarn"),
   leaderboardBtn: document.getElementById("leaderboardBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
   fullscreenBtn: document.getElementById("fullscreenBtn"),
@@ -302,7 +308,7 @@ function syncStagedSettingsFromState(g) {
   if (el.starterWordToggle) el.starterWordToggle.checked = g.starterWord !== false; // ON unless the host switched it off
   if (el.keyAutoColorToggle) el.keyAutoColorToggle.checked = g.keyAutoColor !== false; // ON unless the host switched it off
   if (el.legendShowToggle) el.legendShowToggle.checked = g.legendShow !== false;
-  if (el.legendRevealToggle) el.legendRevealToggle.checked = g.legendReveal !== false;
+  if (el.legendRevealToggle) el.legendRevealToggle.checked = g.legendReveal === true; // update 64: OFF unless the host switched it on
   updateModePickerLabel();
 }
 
@@ -342,6 +348,56 @@ el.closeLeaderboard.addEventListener("click", () => closeDrawer(el.leaderboardOv
 el.leaderboardOverlay.addEventListener("click", (e) => { if (e.target === el.leaderboardOverlay) closeDrawer(el.leaderboardOverlay); });
 
 el.helpBtn.addEventListener("click", () => { el.howToOverlay.hidden = false; });
+
+// ------------------------------------------------------------
+// Languages popup (update 64) - 3 tick boxes -> one of the 7 word-language modes
+// ------------------------------------------------------------
+const LANG_BOXES = [
+  { part: "en", box: document.getElementById("langEn") },
+  { part: "id", box: document.getElementById("langId") },
+  { part: "ms", box: document.getElementById("langMs") }
+];
+function langPartsOfMode(mode) {
+  const m = String(mode || "en");
+  return m === "all" ? ["en", "id", "ms"] : m.split("-");
+}
+function langModeFromParts(parts) {
+  const has = (p) => parts.includes(p);
+  const n = parts.length;
+  if (n === 3) return "all";
+  if (n === 1) return parts[0];
+  if (has("en") && has("id")) return "en-id";
+  if (has("en") && has("ms")) return "en-ms";
+  return "ms-id";
+}
+function pickedLangParts() { return LANG_BOXES.filter((b) => b.box && b.box.checked).map((b) => b.part); }
+function syncLanguageBoxes(g) {
+  if (!g || !g.wordLanguage) return;
+  const parts = langPartsOfMode(g.wordLanguage);
+  LANG_BOXES.forEach((b) => { if (b.box) b.box.checked = parts.includes(b.part); });
+  if (el.languageWarn) el.languageWarn.hidden = true;
+  const info = g.wordLanguageInfo;
+  if (el.languageInfo) {
+    el.languageInfo.textContent = info
+      ? "Now playing: " + info.label + " — " + info.secretWords.toLocaleString() + " secret words, up to " + info.maxLength + " letters."
+      : "";
+  }
+  if (el.languageBtn) el.languageBtn.title = "Languages: " + (info ? info.short : g.wordLanguage);
+}
+function openLanguagePopup() {
+  if (lastState && lastState.game) syncLanguageBoxes(lastState.game);
+  el.languageOverlay.hidden = false;
+}
+el.languageBtn.addEventListener("click", openLanguagePopup);
+el.closeLanguage.addEventListener("click", () => { el.languageOverlay.hidden = true; });
+el.languageOverlay.addEventListener("click", (e) => { if (e.target === el.languageOverlay) el.languageOverlay.hidden = true; });
+LANG_BOXES.forEach((b) => { if (b.box) b.box.addEventListener("change", () => { el.languageWarn.hidden = pickedLangParts().length > 0; }); });
+el.applyLanguageBtn.addEventListener("click", () => {
+  const parts = pickedLangParts();
+  if (!parts.length) { el.languageWarn.hidden = false; return; }
+  send("set_word_language", { mode: langModeFromParts(parts) });
+  el.languageOverlay.hidden = true;
+});
 el.closeHowTo.addEventListener("click", () => { el.howToOverlay.hidden = true; });
 el.closeHowTo2.addEventListener("click", () => { el.howToOverlay.hidden = true; });
 el.howToOverlay.addEventListener("click", (e) => { if (e.target === el.howToOverlay) el.howToOverlay.hidden = true; });
@@ -641,6 +697,7 @@ function render(state) {
   lastState = state;
   if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
   if (window.WordLanguage) window.WordLanguage.update(state.game, (mode) => send("set_word_language", { mode })); // update 48: word language
+  if (el.languageOverlay && el.languageOverlay.hidden) syncLanguageBoxes(state.game); // update 64: languages popup mirrors the server (not while it is open, so ticks are not overwritten)
   detectWinTransition(state.game);
   renderHeader(state);
   renderModeUI(state.game);

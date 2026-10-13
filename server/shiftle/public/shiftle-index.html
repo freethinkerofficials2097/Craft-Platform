@@ -53,6 +53,7 @@
         <span class="modeBadge" id="modeBadge">TEST</span>
         <span class="lengthBadge" id="lengthBadge">— letters</span>
         <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint">💡</button>
+        <button class="iconBtn" id="languageBtn" type="button" aria-label="Choose game languages" title="Languages">🌏</button>
         <button class="iconBtn" id="helpBtn" type="button" aria-label="How to play">❓</button>
         <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
         <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">⚙️</button>
@@ -267,11 +268,11 @@
           <span class="switchLabel">Show the color legend above the board</span>
         </label>
         <label class="switchRow">
-          <input type="checkbox" id="legendRevealToggle" checked />
+          <input type="checkbox" id="legendRevealToggle" />
           <span class="switchTrack"><span class="switchThumb"></span></span>
           <span class="switchLabel">Legend tells this round's meanings</span>
         </label>
-        <p class="sectionNote">The legend sits under the floating message window and above the keyboard and the guess board. With the second switch ON (default) it says what white, pink and blue mean in the current round, so chat can read the clues at once. Switch it OFF for the original Shuffl-O challenge: the legend only shows the three colors with a "?" and chat has to work the meanings out from the clues (they are always shown once the round has ended). Applies right away on every connected screen and is remembered.</p>
+        <p class="sectionNote">The legend sits under the floating message window and above the keyboard and the guess board. The second switch is OFF by default: the legend only shows the three colors with a "?" and chat has to work the meanings out from the clues, like the original Shuffl-O (they are always shown once the round has ended). Switch it ON if you want the legend to say what white, pink and blue mean in the current round. Applies right away on every connected screen and is remembered.</p>
       </div>
 
       <div class="drawerSection">
@@ -404,6 +405,36 @@
     </div>
   </div>
 
+  <!-- Languages popup (update 64): choose which languages to play -->
+  <div class="modalOverlay" id="languageOverlay" hidden>
+    <div class="modal" role="dialog" aria-labelledby="languageTitle">
+      <div class="modalHead">
+        <h3 id="languageTitle">Languages to play</h3>
+        <button class="iconBtn" id="closeLanguage" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="sectionNote">Tick one language, or several to mix them. Secret words AND accepted guesses use the languages you pick; mixed rounds give every ticked language a fair share.</p>
+      <label class="switchRow langRow">
+        <input type="checkbox" id="langEn" value="en" />
+        <span class="switchTrack"><span class="switchThumb"></span></span>
+        <span class="switchLabel">🇬🇧 English</span>
+      </label>
+      <label class="switchRow langRow">
+        <input type="checkbox" id="langId" value="id" />
+        <span class="switchTrack"><span class="switchThumb"></span></span>
+        <span class="switchLabel">🇮🇩 Bahasa Indonesia</span>
+      </label>
+      <label class="switchRow langRow">
+        <input type="checkbox" id="langMs" value="ms" />
+        <span class="switchTrack"><span class="switchThumb"></span></span>
+        <span class="switchLabel">🇲🇾 Bahasa Melayu (Malaysia)</span>
+      </label>
+      <p class="sectionNote" id="languageInfo"></p>
+      <p class="sectionNote langWarn" id="languageWarn" hidden>Pick at least one language.</p>
+      <button class="btn btnGold btnFull" id="applyLanguageBtn" type="button">Apply language</button>
+      <p class="sectionNote">A round that is already running restarts in the new language. Your choice is remembered.</p>
+    </div>
+  </div>
+
   <!-- How-to-play modal -->
   <div class="modalOverlay" id="howToOverlay" hidden>
     <div class="modal">
@@ -415,7 +446,7 @@
         <li>Guess the hidden word — any length you like, chosen in Settings. <strong>Unlimited guesses</strong>, anyone can play, anytime.</li>
         <li>After every guess each letter turns <span class="legendTile sf0">White</span> <span class="legendTile sf1">Pink</span> or <span class="legendTile sf2">Blue</span>. The three colors stand for three clues: <strong>right spot</strong>, <strong>in the word but the wrong spot</strong>, and <strong>not in the word</strong>.</li>
         <li><strong>But watch out — the meaning of the colors is shuffled every round!</strong> In one round blue may mean "right spot"; in the next, blue may mean "not in the word" and pink "right spot". Keep guessing and use the shifting colors to uncover the secret word.</li>
-        <li>The <strong>legend</strong> above the board tells you what each color means in the current round (the host can hide it for a harder game — then you work the meanings out from the clues).</li>
+        <li>The <strong>legend</strong> above the board shows the three colors and, when the host turns it on, what each color means in the current round (by default it only shows the three colors with a "?" and you work the meanings out from the clues; the host can switch on "Legend tells this round's meanings" to make it easier).</li>
         <li>The keyboard colors itself to match the tiles — white, pink or blue — so there is nothing to mark by hand. Everything resets each new round.</li>
         <li>A word already on the board is skipped. <em>Strict fit</em> is on by default, so only guesses that still fit every earlier color are accepted; the host can switch it off in Settings.</li>
         <li><strong>Scoring (Live):</strong> 1 point for every guess that fits the board, 5 points for solving the round.</li>
