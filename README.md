@@ -1,3 +1,5 @@
+> **Update 67:** 🌏 Languages button + popup added to every word game; BETWEENDLE board simplified (gold circles = letters still possible, 2-item legend, out-of-range message). See `CHANGES_UPDATE_67.md`.
+
 > **Update 66:** new game BETWEENDLE (List-O style: every guess shows its alphabetical distance from the secret word and moves the lower / upper bound; legend above the board; 1 point for finding the word) at `/betweendle/`. See `CHANGES_UPDATE_66.md`.
 
 > **Update 65:** new game WORDLE (classic Word-O colors: every letter turns green / yellow / grey; self-coloring keyboard + legend above the board; 1 point per guess, 5 for solving) at `/wordle/` - see `CHANGES_UPDATE_65.md`.
