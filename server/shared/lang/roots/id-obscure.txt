@@ -1,0 +1,152 @@
+# update 55: SECRET-WORD QUALITY FILTER - Bahasa Indonesia.
+# Real words, but too rare / archaic / regional / technical / slang / mostly-Malaysian for a general audience to be a fair SECRET word.
+# Still ACCEPTED as guesses (they stay in the dictionary). Affixed forms of these words (di-, me-, ber-, ter-, pe-an ...) are never a secret either.
+# Format: lowercase words separated by spaces. Edit freely, then: npm run build:lexicon && npm run audit:lexicon
+absolut adang administratif afektif afiat agih agihkan ajang ajuk akhbar akik akordeon alamiah alang alap alfabet aljabar alpa alun ambin ambung amit 
+ampai ampang ampu ampuh anam andong angkara angklung anglo aniaya antariksa antri antuk anyar apatis aram arloji armadillo artifisial asma asteroid 
+atraktif ayahanda ayak babat babit bacul badik bagan bahari bahtera bajaj bajang baji bajing bakpia bakwan baling balsam bambang bandel bandeng 
+bandul bandung bang bangsal banjar bantai bantat banteng banting barbar barengan barong barter barut batagor batin batok baur bawal bawel bayu bebal 
+bebersama bebersih bedug begal bejana bekam bekap bekel bekicot bekuk belanga belati belenggu belerang belian beliung beludru belukar bembam bemo 
+benalu bendahara bendi bengis bengkung bentak bentang bentara bentur berang berangus berapat berayah berbadai berbangun berbarengan berbarisan 
+berbukti bercepat bercincin bercontoh berdansa berduduk berekor beresepsi bergotong berhala berhidung berhujan berikhtiar beringin berisik 
+beristirahat beristri berkalung berkas berkebangsaan berkemampuan berkepentingan berkesempatan berkhemah berlagu berlahir berlama berlambat bermuka 
+bermulut bermurid bermusik bernyala berpetir bersaf bersaksi bersaran bersebelahan berseberangan berselamat bersembang bersepatu bersimpul bersisi 
+bersuami bertanduk bertanggungjawab bertangis bertaqwa bertari bertawa berteladan bertelinga bertiba bertidur bertunas berugi berumah betah beterbang 
+betik betok biak biawak bibit bidik biduk bikin biksu bilah bilas bilur bimbit binaan binar bingkis bintik birahi biri bius blak bobol bobot bobrok 
+boga bohlam bohongi boikot bolak bolong bolos bolu bonang boncengan bongkah borgol borong botani botok brangkas brosur brutal bubuh bubuk bubungan 
+bubut bugar bugil buhul bujang bujur bulir bumbu buncit bunda bundar bungkal bungkam bunglon bungsu buntal bunting burai burit buruan cabik cacah 
+cacak cacar cadar cadas cagak cagar cakera cakram cakup calak camar camat cambuk camca campak candi cangkang cangkir cangkok cantas capek caplok 
+capuk capung carik caruk catu catut cebol cebur cecap cekak celak celoteh cemara cemari cemeti cemooh cemuk cenayang cencaluk cendana cendekia 
+cenderawasih cengang cengkam cengkeram cengkung centang ceper cerca cerek cerobong cerucuk cerukan cetuskan cewek chalet cicil cicip cilok 
+cinderamata cingkeh cireng cirit citah cloud cokol colok colokan compang congkak congkel conto copot coret cowok cuek culas culun cumbu cungkil 
+cungkup cuping cuplik curah curiga dadah dadak dadih dagang dahaga dahak daif dajal dalang damak damar damba dambus dandan dandang dangau dapati 
+darab darma daster datuk dawai dawet dayung dedak dedaun defensif dekaden dekan dekil delik delima delman denai dendang dendeng dengki dengung dengus 
+dentang dentum denyar denyut depa derajat deret dering dermaga desas desing desir desis detak diadu diaduk diagih dialas dialih dialir diami dian 
+dianut diapit diarak diasah diasuh diawet dibegal dibiak dibikin dibius dibual dibutuh dicatu dicela didera didongkrak diduga diedar diedit dieja 
+diejek dielak dielus dieram dihela dihias dihidu dijala dijamu dikail dikait dikit dikte dikuak dilaju dilobi diluap dimantul dipacu dipadu dipaku 
+dipalu dipan dipicu diraba diraih diraup dirias disaji disauk disehatkan diseka disiar disiku disita dituai diuber diubur diulas diulur diupah diurai 
+diurut diusap dobrak dogmatis dokar dolak dongak dongkel dongkrak dorongan drastis dukacita dulang dumpal dupa dusta duyung ebat edarkan edip egrang 
+ekonomis eksotis ekstrem elus emban embara embun embus empang empas empatik empedu emping empuk encer endah endap endus engah enggang engklek engkol 
+ensiklopedia entak enteng entri epilog eram erang esensial estet estetik estetis fabel faedah fakir falak fardhu fardu fasal fasik feminin fiktif 
+firasat fitri fosfor frasa frontal fundamental futuristik gaba gabah gabus gada gading gado gagak gagang gagas gagasan gaham gahar gairah galah galak 
+galang galas galau galian galungan galur gamang gamat gamblang gambus gambut gamelan gamit gandeng gandrung ganja ganjal ganjar ganjil ganyang gapura 
+garansi garing gasak gatra gaul gaung gawai gawang gawat gayung gebrak gebuk gedor gedung gegabah gegas gelagat geledah gelendong gelepar geliat 
+gelincir gelitik gelora gelugur gelung gemala gembok gemilang gempur gemuruh genang gendong genggam genjang genjot gentar gerabah gerah gerayang 
+geriak gerigi gerimis gertak gerus gerutu gesek gesit getir getok gigil gilang gilap giling girang giring gisik golok goncang gondong gonggong 
+gonjang gontai gopoh gorden gorok gosong gotong goyang grosir gubah gubris gubuk gudeg gugah gugat gugus guling gulir gulita gumam gumpal guncang 
+gundah gundukan gundul gunjing gurame gurami gurat gurindam gurita guruh gurun guyur hadang hajar hajat hajatan hakiki halang halwa hambar hambat 
+hambur hampar handal hanggar hanjuang hanyut harakat harmonika harmonis hartawan haruan harung hasta hasut hayat hela hembus hempas hentak herdik 
+heroik hiba hidu higienis hikayat hilal himbau himpit hipotetis hirarki hirau hiris hirup hisap histeris holistik honorarium hortikultura hujat 
+hulubalang humanis humoris hunian hunjam hunus hurai huru ibadat ibukota ideologis iduladha ijazah ijmak ijuk ikhtiar ikhtisar ikrar ilalang ilmuwan 
+ilusi imajinatif imajiner imbang imbau imbuh imbuhan impi impit impulsif inang incar indung infak infus injil inklusif inkubasi insang insidental 
+instansi intim intip intisari intuitif invalid irigasi ironis isak isbat isolasi istiadat jagal jagat jahil jaja jajak jajal jajar jajaran jalak 
+jalar jalinan jamah jambak jamban jampi jamu jamuan jangat janggal jangkau jangkit jangkiti jangkrik jangkung jarah jasad jebak jejal jelaga jelai 
+jelajahi jelata jelma jeluk jempol jenaka jenggot jengkal jengkol jenguk jenjang jentera jenuh jepret jerami jerangkap jerih jeruji jerumus jingga 
+jinjing jintan jiplak jirat jitu jolok jomblo jongkok jongkong joran juadah jujukan jukung juling juluk juluki julung julur juluran jumput jumputan 
+jungkat jungkir jungkit junjung jurus kabari kabung kabus kadang kader kades kadet kafan kakap kakus kalajengking kalbu kaldu kalem kaleng kalimah 
+kalkun kalor kaluk kalungkan kamboja kambus kampak kamper kampil kampret kampungan kancah kandas kandil kangen kangkang kangkangi kanopi kanun kapar 
+kapcai kapitan kapolsek kapulaga karam karbohidrat karbon kardus karpet karung kasa kasat kasi kasidah kaskus kasta kasual kasuar katedral katolik 
+katup kawah kawanan kayumanis keanekaragaman kebaruan kebasahan keberangkatan keberlangsungan keberlanjutan keberuntungan kebiri kebut kecapi 
+kecemerlangan kecut kedap kedip kedisiplinan keduk kedutaan keharmonisan keilmuan kejora kekang kekecilan kekerabatan kekotoran kelabui keladi kelahi 
+kelai kelamaan kelambu kelana kelebaran keledek kelek kelepai kelim kelit kelitik kelola kelopak kelor keluasan kelubung kelupas kemah kemahasiswaan 
+kemal kemala kemandirian kemangi kemasyarakatan kemenakan kemenyan kemiri kemitraan kemoceng kempis kemudaan kemuning kenan kenanga kenari kencana 
+kencur kendang kendi kendur kenong kenop kepak kepal kepalai kepegawaian kepelbagaian kependudukan kepengurusan kepit kerabu keramik kerangka 
+kerapian kerapu keraton kerawang kerdil kerek kerok kerongkong kerongkongan keroyok kertak keruk kerupuk kesantunan kesatria kesederhanaan kesemek 
+kesepahaman kesetaraan kesturi kesumba kesusasteraan kesusu ketakwaan ketan ketapang ketatanegaraan ketel keterikatan ketersediaan ketertarikan 
+ketertiban ketiak ketidakadilan ketidakhadiran ketik ketipisan ketoprak ketuaan ketumbar kewarganegaraan kewibawaan khatulistiwa khayal khayalan 
+khazanah khusyuk kiai kias kibas kidung kijang kikik kikir kikis kikuk kilap kilas kiloan kinasih kincir kinclong kisi kisut klepon koalisi kobar 
+kobong kobra kocak kocok kodok kodrat kokang kokoh kokok kolak kolek kolektif kolibri kolintang kolonel komandan komat komodo kompang komplek kompres 
+komunal kondangan kondominium konkret kontan kontrakan kontras konyol kooperatif kopek koperal kopling kopong kopra koreksi korma kornea korps 
+kosakata kosmik kosmopolitan kosok kost kotoran koyan kremasi kromosom kuak kuantitatif kuap kuburan kucai kucup kudapan kudus kuetiau kulai kuliti 
+kulkas kulum kumandang kumis kumuh kuncir kuncup kuningan kunjung kuno kuntul kuntum kupak kuping kura kurap kuras kurban kurun kurung kurva kusen 
+kutilang kuyup labah labil labirin labuh ladeni lafal lahap lahar lajur lakar lakaran lakon laksamana lalap lambung lamin lampias lampir lamunan 
+lancang lancung landa landasan langsing langsir lansia lanskap lantang lantik lanting lantun lanyau lapik lara laras larik laris larut larva lasykar 
+laur layangan layar lazuardi lebaran lebay lecehkan lecet lecut legendaris legiun lekang lekas leksikon lekuk lelah lelang lelap leluhur lembam 
+lembayung lembing lempang lempeng lemper lempung lempuyang lengang lenggang lenggok lengket lengkung lentera lentur lepat lepuh lerai lereng lesat 
+lesung leter liang libas libat libatan lidi ligar lihai liliput lilit limas limbah limpa limun linear lingkar linglung linimasa lintang lintasan 
+linting lipur lisan liturgi lobi lodeh lokakarya lolong lolongan lolos lonceng longsor lonjong lontong losmen loteng lowong loyo luap lubuk lucut 
+lucuti ludruk lugas lugu luhur lulur lumat lumba lumbung lumpang lumrah lumur lunas lungguh lunglai lupis luput lurah lurik luring luruh lurut lusin 
+lusuh luwak luwes macan madah magis magister magrib mahar mahluk mahoni majelis majemuk majikan makalah makro mamah mampus mandala mandau mandor 
+mangkir manifestasi manik manset mantera mantri mantul manusiawi mapan marak marga margasatwa marginal maritim markas markisa marmer mashur masif 
+masinis maskulin materi matra matrik matrikulasi maulid mazhab mbak medok melaju melarat melati meleleh melepas melicin melinjo melobi meluap melupa 
+melur memacu memadu memagut memalak memalu memamah memasuk membegal membual membutuh memicu mempelai memperistri mencong mendongkrak mentari menung 
+meranti mercu merias mesum metode metodis mikro mikrob militer mimbar miring misa misal mistar mistis mitis moderasi moderat molek monarki monorel 
+muara mubaligh mubazir mudi mufakat muhibah mujair mukim mukmin mulas multi muluk mulus mumpung mumpuni munajat munsyi murai murung musafir musala 
+musang muslihat mustahak mustika musyawarah mutakhir mutar mutlak nabati nafi nafiri nahas nakhoda naluri nanar narasi narsis nasab naskah naskhah 
+nata natal naungan nazar nenda neraca ngarai ngilu nikel nila nilam nipah nirmala nirwana nisan nisbah niskala noktah nonformal norak nurani nuri 
+nusa nyali nyaring nyepi nyiru nyiur obor obral obrol oktaf omong omset onar oncom onde onta oportunis optimis orak orisinal orkes otentik otomatis 
+otonom otonomi oyak pacar pacuan pagoda pagut pahami pakis palak palem palka palma palu pamer pampang pamrih panahan pancaindera pancang pancaran 
+pancaroba pancung panggul pangkas panglima pangsa panji pantul panu papah papar parabola parak paria paribasa parsial partikel paruh pasak paser 
+paskah pasok pasrah pastel pasturi pasung patok patri paus pautan pawai pawana pawang payau payudara pecel pedagang pedati pegas pekarangan pekasam 
+pekerti peladang peladen pelana pelari pelekat pelepah pelet pelikan pelintir pelipis pelopor pelor peluit pelupa pelupuk pemasukan pembaris 
+pembenahan pembuluh pemda pemerkasaan pemilu pemimpi pemindai pemuliharaan penabung penagihan penanggulangan penataan pencak pencetak penciuman 
+pendar pendeta pendiri pendopo penegakan penentang pengampunan pengangguran penganjuran pengasingan penggal penggolongan penghijauan penghimpunan 
+penghulu pengisar pengobat pengrajin penguasa pengungsi penjumlahan pentingkan penuntut penyaman penyelenggaraan penyelidikan penyewaan penyuluhan 
+pepes perah perairan perampok perangko peras perasuransian perawakan perbandaran perca percikan perda perdana perdaya perdesaan perdu perencanaan 
+pergelangan perhotelan perih perindustrian perintis periodik perjamuan perkemahan perkhidmatan perkutut permadani permanen perpajakan persekitaran 
+persneling persyaratan pertambangan pertanggungjawaban pertentangan pertiwi pertokoan perundangan perunggu perwira perwujudan pesat pesenam pesiar 
+pesisir petualang petugas pewarta piat piatu picik pidana pigura pijat pikul pilah pilin pilu pindai pingpong pinta pinus pipit pirau pitam piutang 
+plafon pledoi plester plin pojok poles politis polong polos pomelo populer porak poros porselen portal pragmatis prahara prajurit prakarsa prasangka 
+prasasti preman prestisius pribumi prima primer prinsipil prisma privat problem proklamasi proporsional prosa prosais pualam pudak pugar puitis 
+pujangga pukat pukau pulas pulut punah punai pundak pundi punggah punggawa pungguk pungut puntung pupu pupuk pupur pupus pura purnama pusar puskesmas 
+pustaka pustakawan putik racik radang ragam rahang rahib rajah rajam rajawali rajungan raksa rama ramas rambu ramping ranah rancak rancu randai randu 
+rangkai rangkap rangkong rangkul rangsang ranjang ranjau ransang rasi rasuk ratap ratna raup rawan rawon rayap reaktif rebab rebung redaksi redaktur 
+redam redup refleksi regangan regu rekan relief religius relung remas rembes rembulan remeh rempeyek rempuh rencong renda renggang renggut rengkuh 
+rentan rentang rentetan reog repertoar repih resah resam resap resapi resensi resepsi reseptif reses residen resin restu restui retas retorika 
+retoris revolusioner rimbun rinci rindang rintang rintih rintik rintis risalah risoles ritme ritsleting riwayat robek rodi rodok rogoh rokok roman 
+rombak rompi ronda rongga ronggeng rongrong ronta rontgen rotan royal royong ruam rubah rubrik rujak ruji rujuk rumbia rumpun runut rusuk ruwet 
+sabana sabda sabit sadap sadel sadur saga sahaya sahut saing saingan sakar sakelar sakral salak salamander salep salib salip saluang samak samar 
+sambar sambit sampir samudera sanak sanca sandang sandi sanding sangga sanggah sanggar sanggul sangkut sangrai sanjung santap santapan santri santun 
+sapaan sapih sarana saringan sarkas saron sasando sasar sasis sastra satpam satria satwa saudagar sauh sauk savana sawit sawo sayat sedak sedan 
+sedekah sedotan segel sehubungan seka sekam sekap sekarat sekop sekretariat sekrup sekuler sekunder selak selaput selar selasih selektif selempang 
+selendang seleweng selip selokan selongsong semarak semat sembako sembelit sembilu semboyan sembur semenanjung semesta semir semprit semur senandung 
+senar senat senggang sengit sengon sentak senter sentil sentimental sentosa sentra sentral sepat seperempat sepertiga sepoi seprai sepuh serabi 
+serakah serap serasi serat serbet seret serikat serobot serombong serong serpihan sersan serunai serundeng serunding serut sesap sesawang setumpuk 
+siaga siamang sibak siber sidat sidik sigap siluet simak simbolis simetris simfoni singkap singkir sinis siomay sipil sipir sirap sirna sirsak sisih 
+sisip sisir siswa sita sitar skeptis skirt sobat sobek sodok sodor solar solek sonar songsong sorga sorot sosok sosor spesial spion spontan sprei 
+srikaya stadion statis steker stoking stratis substansial sugul sujud sukarelawan sukma sukun sulang sulap sulbi suling sulit sulut sumbang sumbat 
+sumbu sumpit sumsum sunah sunat sundut sunting supel superior supranatural surai surel surung susila susup suteri sutra swasta syahadat syahdu 
+syariat taati tabib tabir tabu tadah tafsir tagar tagih tagihan tahana tahta taji takaran takluk taksir takwa takwim talam talang talapia talas 
+talempong talenta tamasya tambo tamborin tameng tampah tampal tampik tampung tamsil tanak tandang tandas tanding tang tangguh tanggul tangkai tangkal 
+tangkis tanjak tanjung tantang tanur tapa taqwa tarung tasawuf tatah tatar taufik tauge tauhid taut tautan tawaf tawon tayangan tebar tebas tebing 
+tedung tegangan teknisi tekuk telaah telapak telungkup telusuri tembikar tempa tempayan tempel temporal tempoyak temulawak tenar tenggak tenggiri 
+tenggorokan tengkalang tengkar tengkuk tenteng tenung teoretis tepak terasi teratai terdorong terhimpun terik terka terompah tersedikit tersier tesis 
+testimoni tetas tetes tetikus tiarap tifus tikungan tilap tilik timang timba timpa timpal timpuk tindih tingkah tipologi tiris toak toga tokek tokok 
+tombol tongkang tonjok tonjol topan topang toples toreh torehkan trampil trapesium trem trembesi trenggiling tribun tuah tuai tuding tugal tulen 
+tumpas tumpeng tunda tungau tunggul tungku tunjang tuntas tuntun tupang turbin tuyul uber ubun ubur uduk ufuk ukulele ulin ulos ulung umbar umbul 
+umpat umpet universe unjuk untai urai uraian urap urbanisasi urgen usap usil usung utas utopis utusan valuta vegetasi vertikal vihara volatil wacana 
+wadah wadi wafat wahana wahyu waisak wajan wajik walet walikota warasat warkah wawasan wazir wibawa wijen wiraswasta wisel wisma yakinkan yakut 
+yayasan yong yuridis zahir zamrud zapin ziarah zirah 
+sadis sadistis
+
+# update 56: second quality pass (rare / archaic / regional / other-language / jargon roots)
+abon acah acuh ahad ajal alim alur anti anut apik apit arca aren arit asak asri asuh awam awet ayem
+bapa bros buai bual cela cepu ciut daki dara daur dera dobi duit duku ecer edan enau epik esak etis fana feri 
+gips haru huni iris isap jati jemu juru kait kala keji kosa kris kubu kupu kutu laga lele liat liku liur ludo 
+lusa mara mumi nadi olok omel opor padu papa pari pasu paya picu pori raba rayu reka riak riuh sagu siar teri 
+tong tuas ulet ulur umbi undi usik
+bajak bakau bakul balut barak basmi basuh becak becek belia belit benam beruk bomoh budak buluh bursa calar 
+canai cakap cawan cecah cekal celup cetek cetus cicit cucuk cukur curam
+dadar dakap dakwa dalil dedah degup dodol fatwa fikih fikir garap gegar genta gigih gilas gurau habuk hafaz 
+halau hilir hulur imbas insaf intai iring iuran jajah jerat jilid jimat juzuk
+kanak kayuh kebas kerat keris kisar kolot kopor korek kuala kuali kudis lafaz lagak laman lanun lasak latah 
+lawat lazat lebuh lembu letup limau lipan lipas lobak lorek
+nafas nenas padan patin pelik pujuk rabun rebah risau saman sarat semai sepit silam suguh umrah waduk wakaf
+tawan tepis tutur usang warta waras zikir
+anjak anjur
+almari angker anjung bahagi bahang bakpao bancuh bupati cadang cantum cekung cendol cergas coklat daring 
+engkau granit hantar hutang kalang khabar kongsi kopiah kronik kudrat kudung lawang lembap papaya perigi 
+periuk petang pintal piston piting plasma putera puteri rentak retina sokong sonata sorban sorong subang 
+tabiat taifun takraw tambak tambat tandan taufan terkam timbun titian tudung tumbuk umpama unggah unggas 
+ungkit uterus vanili vulgar zaitun
+adaptif apabila auditor belalai bendang bendung cekatan cengkih elastis energik geladak genetik geraham 
+gersang habitat hakikat imbalan imitasi isyarat kabilah kalsium kantung kembara khidmat lagenda langsat 
+liberal mangkuk mashyur masyhur mekanik mekanis muncung perkara pinggan ringgit senarai serambi songket 
+songkok sungkan terjang tongkol uniform ustazah apoteker
+antropologi sosiologi paradigma parameter metropolis kualitatif kaligrafi manuskrip kelenteng sayembara 
+sandiwara dirgahayu idulfitri kedondong kerjasama ketiadaan koordinat dermawan dihakkan dinihari elektrik 
+hospital cendawan
+# update 56: passive di- forms are never secret words
+diketahui dilaksanakan diselenggarakan
+# update 56: leftovers found in the second skim (non-standard, Malay-flavoured or rare)
+bersenyum mengehakkan citarasa peribadi sempadan berkenaan cempedak pindang pengucilan pembaharuan perangai kelabu

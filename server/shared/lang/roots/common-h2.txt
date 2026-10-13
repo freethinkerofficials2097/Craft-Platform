@@ -1,0 +1,18 @@
+# More formal / longer words (identical in Indonesian and Malay).
+berdasarkan bersamaan berhubungan berkaitan berkenaan bertepatan berdekatan berturut berlainan berlawanan berseberangan
+bersebelahan berpegang bergantung berpihak berlaku berlangsung berkembang bertambah berkurang berubah berlanjut bertahan
+berpindah bergerak bergaul bergabung bergembira bergotong bergulir berhak berharga berhati berjasa berkat berkeras
+bermanfaat bermartabat bermutu bernilai berpotensi berprestasi bersejarah bersifat bertahun bertaruh bertebaran bertemu
+pertanyaan pertahanan pertanggungjawaban perwakilan perwujudan perundangan peraturan perpustakaan perumahan perkantoran
+perkebunan pertokoan perhotelan perbankan perpajakan perasuransian pergerakan pergantian pergaulan perbuatan perjanjian
+perhatian perasaan persoalan persyaratan persetujuan perselisihan pertikaian pertentangan persaingan perniagaan
+pembangunan pembukaan penutupan pembayaran pembelian penjualan penagihan penyewaan peminjaman pengembalian pengambilan
+pendaftaran pencatatan pemeriksaan pengujian pengesahan pengakuan pembuktian penyaluran pembagian pengelompokan penggolongan
+penyusunan penataan penyatuan pemisahan penggabungan pengumpulan penghimpunan penyimpanan pengamanan pengawalan perlindungan
+penyelamatan pemulihan pembenahan penertiban penegakan penindakan penahanan pembebasan pengampunan pengasingan pengucilan
+kemanusiaan kebangsaan kenegaraan kemasyarakatan kekeluargaan kekerabatan kepemimpinan kepengurusan keanggotaan kewarganegaraan
+kepemilikan kepegawaian ketenagakerjaan ketatanegaraan kependudukan keagamaan kerohanian keilmuan kesenian kebudayaan
+keberhasilan keberlanjutan keberagaman keberlangsungan keberuntungan kebijaksanaan kecemerlangan kedaulatan kedewasaan
+keharmonisan kehangatan kehati kehormatan kelestarian kelincahan kemandirian kemajuan kemakmuran kemurnian kenyamanan
+keramahan keseimbangan kesempurnaan kesetaraan kesungguhan ketangguhan ketekunan ketelitian keterampilan keterbukaan
+keterlibatan ketersediaan ketertarikan keterikatan keunggulan keuntungan kewajaran
