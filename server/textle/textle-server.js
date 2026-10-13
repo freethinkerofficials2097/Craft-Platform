@@ -281,7 +281,7 @@ const game = {
   mode: "test",
   status: "idle",
   wordLength: 5,
-  difficulty: "normal",
+  difficulty: "random",
   // "fixed" plays game.wordLength every round (as before); "random"
   // picks a new random length inside [lengthMin, lengthMax] (still
   // filtered by `difficulty`) at the start of every round.
@@ -313,7 +313,7 @@ const game = {
   usedWords: new Set(),
   roundScores: new Map(),
   totalScores: new Map(),
-  autoContinue: false,
+  autoContinue: true,
   autoContinueDelaySeconds: DEFAULT_AUTO_CONTINUE_DELAY,
   autoContinueAt: null,
   leaderboardShowSeconds: DEFAULT_LEADERBOARD_SHOW_SECONDS,

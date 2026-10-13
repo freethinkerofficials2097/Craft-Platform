@@ -212,7 +212,7 @@ for (let n = 4; n <= 20; n++) {
   const optMax = document.createElement("option");
   optMax.value = String(n);
   optMax.textContent = String(n);
-  if (n === 8) optMax.selected = true;
+  if (n === 12) optMax.selected = true;
   el.lengthMaxSelect.appendChild(optMax);
 }
 
@@ -243,7 +243,7 @@ function syncStagedSettingsFromState(g) {
   el.difficultySelect.value = g.difficulty;
   el.randomLengthToggle.checked = g.lengthMode === "random";
   el.lengthMinSelect.value = String(g.lengthMin || 4);
-  el.lengthMaxSelect.value = String(g.lengthMax || 8);
+  el.lengthMaxSelect.value = String(g.lengthMax || 12);
   updateLengthModeUI();
   el.autoContinueToggle.checked = g.autoContinue;
   el.delayInput.value = g.autoContinueDelaySeconds;

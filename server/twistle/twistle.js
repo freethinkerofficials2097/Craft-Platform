@@ -113,7 +113,7 @@ export async function registerTwistle(app, rootIo, options = {}) {
     status: 'idle', // idle | live | won | lost
     roundNumber: 0,
     wordLength: 5,
-    difficulty: 'normal',
+    difficulty: 'random',
     // "fixed" plays wordLength every round; "random" picks a new random length
     // inside [lengthMin, lengthMax] at the start of every round.
     lengthMode: 'fixed',
@@ -143,7 +143,7 @@ export async function registerTwistle(app, rootIo, options = {}) {
     usedWords: new Set(),
     roundScores: new Map(),
     totalScores: new Map(),
-    autoContinue: false,
+    autoContinue: true,
     autoContinueDelaySeconds: DEFAULT_AUTO_CONTINUE_DELAY,
     autoContinueAt: null,
     leaderboardShowSeconds: DEFAULT_LEADERBOARD_SHOW_SECONDS,
