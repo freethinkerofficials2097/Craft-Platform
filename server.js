@@ -25,6 +25,7 @@
 //   /wordle/   - WORDLE    (Socket.IO namespace /wordle)
 //   /betweendle/ - BETWEENDLE (Socket.IO namespace /betweendle)
 //   /comparable/ - COMPARABLE (Socket.IO namespace /comparable)
+//   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -57,6 +58,7 @@ import { mountShiftle } from "./server/shiftle/shiftle-server.js";
 import { mountWordle } from "./server/wordle/wordle-server.js";
 import { mountBetweendle } from "./server/betweendle/betweendle-server.js";
 import { mountComparable } from "./server/comparable/comparable-server.js";
+import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -249,6 +251,14 @@ await mountBetweendle(app, io, { mountPath: "/betweendle" });
 // and a legend explains the symbols and colors. Scoring: 1 point per guess on the board, 5 for solving the round.
 // Own Socket.IO namespace /comparable; reuses BLINDLE's word bank + dictionary (loaded once).
 await mountComparable(app, io, { mountPath: "/comparable" });
+
+// FIXLE is a BLINDLE copy built on the EDGE-O idea: every guess is scored with MATCHING PREFIX + MATCHING SUFFIX against the
+// secret word (letters that match from the start + letters that match from the end). The board lists the guesses from the
+// highest score to the lowest and repeats the newest guess in a darker top row. A score of twice the word length means the exact
+// word was found and the round is won. A legend above the board explains the score and every part of the screen.
+// Scoring: the guess that finds the secret word wins exactly that word's score (2 x its length). Own Socket.IO namespace /fixle;
+// reuses BLINDLE's word bank + dictionary (loaded once).
+await mountFixle(app, io, { mountPath: "/fixle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

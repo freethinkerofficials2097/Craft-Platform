@@ -1,3 +1,5 @@
+> **Update 72:** new game FIXLE (Edge-O style: every guess is scored with matching prefix + matching suffix against the secret word; guesses are listed from the highest score to the lowest; a score of twice the word length wins and the winner earns exactly that many points; legend above the board) at `/fixle/`. See `CHANGES_UPDATE_72.md`.
+>
 > **Update 71:** fixed the top toolbar / ribbon being squashed into a thin strip after a round ends (the header parts can no longer shrink; the page scrolls instead). See `CHANGES_UPDATE_71.md`.
 >
 > **Update 70:** the highly customizable LEGENDS SETTINGS panel (position, size, grid of rows x columns, fonts, chip shape, order, texts, colors, extra entries, presets) now also works in WORDLE, BETWEENDLE and COMPARABLE. See `CHANGES_UPDATE_70.md`.

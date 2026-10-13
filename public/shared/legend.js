@@ -162,6 +162,19 @@
         { id: "range", glyph: "!", label: "Outside range — a guess not between the lower and upper bound is skipped, and a short message pops up in the floating window.", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
+    fixle: {
+      title: "How the score works",
+      items: [
+        { id: "score", glyph: "12", label: "Score — matching prefix + matching suffix", c: V("--fx-latest", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "prefix", glyph: "S…", label: "Prefix — letters matching from the START", c: V("--fx-row", "#8A8A92", "#121214", "#6A6A72") },
+        { id: "suffix", glyph: "…T", label: "Suffix — letters matching from the END", c: V("--fx-row", "#8A8A92", "#121214", "#6A6A72") },
+        { id: "win", glyph: "2×", label: "Win — score of twice the word length (top row turns green)", c: V("--fx-found", "#4CAF50", "#FFFFFF", "#357A38") },
+        { id: "latest", glyph: "NEW", label: "Dark top row — the newest guess", c: V("--fx-latest", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "list", glyph: "↓", label: "Grey rows — all guesses, highest score first", c: V("--fx-row", "#8A8A92", "#121214", "#6A6A72") },
+        { id: "starter", glyph: "🎲", label: "Starter word — free first guess, no points", c: { bg: "transparent", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+      ]
+    },
     comparable: {
       title: "What the symbols and colors mean",
       items: [

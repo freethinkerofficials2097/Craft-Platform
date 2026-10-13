@@ -22,6 +22,7 @@ body[data-game="rangedle"]     { --hero-font: "Righteous", "Fredoka", sans-serif
 body[data-game="shapedle"]     { --hero-font: "Baloo 2", "Fredoka", sans-serif;         --hero-accent: #F2799F; --hero-spacing: .04em; }
 body[data-game="shiftle"]      { --hero-font: "Baloo 2", "Fredoka", sans-serif;         --hero-accent: #F5A3D0; --hero-spacing: .05em; }
 body[data-game="betweendle"]   { --hero-font: "Righteous", "Fredoka", sans-serif;       --hero-accent: #8F7413; --hero-spacing: .05em; }
+body[data-game="fixle"]        { --hero-font: "Righteous", "Fredoka", sans-serif;       --hero-accent: #4E8F5A; --hero-spacing: .07em; }
 body[data-game="comparable"]   { --hero-font: "Righteous", "Fredoka", sans-serif;       --hero-accent: #4A9FD6; --hero-spacing: .05em; }
 body[data-game="wordle"]       { --hero-font: "Righteous", "Fredoka", sans-serif;       --hero-accent: #2E7D32; --hero-spacing: .07em; }
 body[data-game="forbackle"]    { --hero-font: "Baloo 2", "Fredoka", sans-serif;         --hero-accent: #AE8BFF; --hero-spacing: .05em; }
