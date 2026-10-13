@@ -105,6 +105,11 @@
       { id: "pink", label: "Pink", hint: "one of the three shuffled clues (tiles, legend & keyboard keys)", std: "#F5A3D0", stdDark: "#D474A8", vars: ["--sf-pink"], darkVars: ["--sf-pink-dark"], inkVars: ["--sf-pink-ink"] },
       { id: "blue", label: "Blue", hint: "one of the three shuffled clues (tiles, legend & keyboard keys)", std: "#A9D6FB", stdDark: "#6BA9DC", vars: ["--sf-blue"], darkVars: ["--sf-blue-dark"], inkVars: ["--sf-blue-ink"] }
     ],
+    wordle: [
+      { id: "green", label: "Green", hint: "right letter, right spot (tiles, legend & keyboard keys)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--wd-green"], darkVars: ["--wd-green-dark"], inkVars: ["--wd-green-ink"] },
+      { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (tiles, legend & keyboard keys)", std: "#D9A700", stdDark: "#A98200", vars: ["--wd-yellow"], darkVars: ["--wd-yellow-dark"], inkVars: ["--wd-yellow-ink"] },
+      { id: "gray", label: "Grey", hint: "not in the word (tiles, legend & keyboard keys)", std: "#858589", stdDark: "#606064", vars: ["--wd-gray"], darkVars: ["--wd-gray-dark"], inkVars: ["--wd-gray-ink"] }
+    ],
     shapedle: [
       { id: "green", label: "Green", hint: "right letter, right spot (tiles, legend & keys)", std: "#0E9F45", stdDark: "#087A32", vars: ["--sp-green"], darkVars: ["--sp-green-dark"], inkVars: ["--sp-green-ink"] },
       { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (tiles, legend & keys)", std: "#E5B400", stdDark: "#B38C00", vars: ["--sp-yellow"], darkVars: ["--sp-yellow-dark"], inkVars: ["--sp-yellow-ink"] },

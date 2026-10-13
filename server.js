@@ -22,6 +22,7 @@
 //   /shapedle/ - SHAPEDLE  (Socket.IO namespace /shapedle)
 //   /forbackle/ - FORBACKLE (Socket.IO namespace /forbackle)
 //   /shiftle/  - SHIFTLE   (Socket.IO namespace /shiftle)
+//   /wordle/   - WORDLE    (Socket.IO namespace /wordle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -51,6 +52,7 @@ import { mountCodedle } from "./server/codedle/codedle-server.js";
 import { mountShapedle } from "./server/shapedle/shapedle-server.js";
 import { mountForbackle } from "./server/forbackle/forbackle-server.js";
 import { mountShiftle } from "./server/shiftle/shiftle-server.js";
+import { mountWordle } from "./server/wordle/wordle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -223,6 +225,12 @@ await mountForbackle(app, io, { mountPath: "/forbackle" });
 // per guess on the board, 5 for solving the round. Own Socket.IO namespace /shiftle; reuses BLINDLE's word bank + dictionary
 // (loaded once).
 await mountShiftle(app, io, { mountPath: "/shiftle" });
+
+// WORDLE is a BLINDLE copy with the classic Word-O clue colors: every letter of a guess turns green (right spot), yellow
+// (wrong spot) or grey (not in the word). The keyboard colors itself with the same colors and a legend sits under the
+// floating message window, above the guess board. Scoring: 1 point per guess on the board, 5 for solving the round.
+// Own Socket.IO namespace /wordle; reuses BLINDLE's word bank + dictionary (loaded once).
+await mountWordle(app, io, { mountPath: "/wordle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
