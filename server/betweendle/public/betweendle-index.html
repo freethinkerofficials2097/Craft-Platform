@@ -23,6 +23,8 @@
 <link rel="stylesheet" href="/shared/game-colors.css" />
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="betweendle"></script>
+<link rel="stylesheet" href="/shared/legend.css" />
+<script src="/shared/legend.js" data-game="betweendle"></script>
 <script src="/shared/title-font.js" defer></script>
 <script src="/shared/score-ticker.js"></script>
 <script src="/shared/word-language.js"></script>
@@ -64,14 +66,6 @@
 
     <main class="stage" id="stage">
       <section class="round-card">
-
-        <!-- Legend: a normal block of the page flow, directly under the floating message window (.toastSlot above)
-             and above the guess board, so nothing can ever overlap. Filled in by betweendle-game.js. -->
-        <section class="bdLegend" id="legendSection" aria-label="Legend" hidden>
-          <div class="bdLegendTitle" id="legendTitle">Legend</div>
-          <ul class="bdLegendList" id="legendList"></ul>
-          <p class="bdLegendNote" id="legendNote"></p>
-        </section>
 
         <!-- The guess board (like List-O): lower bound, the hidden word "?", upper bound, then the alphabet circles. -->
         <section class="bdBoard" id="bdBoard" aria-label="Guess board" hidden>
@@ -258,16 +252,6 @@
         <h4>Color shades</h4>
         <p class="sectionNote">Choose how strong each board color (grey window rows, green found-word row, gold alphabet circles) looks. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
         <div id="shadePicker"></div>
-      </div>
-
-      <div class="drawerSection">
-        <h4>Legend</h4>
-        <label class="switchRow">
-          <input type="checkbox" id="legendShowToggle" checked />
-          <span class="switchTrack"><span class="switchThumb"></span></span>
-          <span class="switchLabel">Show the legend above the board</span>
-        </label>
-        <p class="sectionNote">A short legend (the gold alphabet circles and the "outside the range" message) sits under the floating message window and above the guess board. Applies right away on every connected screen and is remembered.</p>
       </div>
 
       <div class="drawerSection">

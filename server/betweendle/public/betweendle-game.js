@@ -956,6 +956,7 @@ let lastLegendRound = -1;
 let lastLegendSignature = "";
 
 function renderLegend(g) {
+  return; // update 70: the legend is now built (and fully customizable) by /shared/legend.js
   const lg = g.legend || {};
   const visible = g.status !== "idle" && lg.show !== false;
   el.legendSection.hidden = !visible;
