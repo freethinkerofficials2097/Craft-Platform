@@ -1,3 +1,5 @@
+> **Update 71:** fixed the top toolbar / ribbon being squashed into a thin strip after a round ends (the header parts can no longer shrink; the page scrolls instead). See `CHANGES_UPDATE_71.md`.
+>
 > **Update 70:** the highly customizable LEGENDS SETTINGS panel (position, size, grid of rows x columns, fonts, chip shape, order, texts, colors, extra entries, presets) now also works in WORDLE, BETWEENDLE and COMPARABLE. See `CHANGES_UPDATE_70.md`.
 >
 > **Update 69:** new game COMPARABLE (COMPAR-O style: blue consonant / orange vowel round tiles with comparison symbols; guesses must match the symbol row; green / grey clues; 1 point per fitting guess, 5 for solving) at `/comparable/`, added to the platform that already has BETWEENDLE. See `CHANGES_UPDATE_69.md`.
