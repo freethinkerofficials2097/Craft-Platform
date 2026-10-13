@@ -4,7 +4,7 @@ This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
 covers all sixteen games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
-CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle, Shapedle, Forbackle, Shiftle, Wordle, Betweendle).
+CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle, Shapedle, Forbackle, Shiftle, Wordle, Betweendle, Comparable).
 
 ---
 
@@ -50,7 +50,7 @@ CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, R
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
    `public/travle/`, `public/crossdle/`, `public/twistle/`,
-   `server/blindle/`, `server/oracle/`, `server/colorblindle/`, `server/colordle/`, `server/structle/`, `server/textle/`, `server/rangedle/`, `server/forbackle/`, `server/shiftle/`, `server/betweendle/`, `server/wordle/`, `server/findle/`, and `server/twistle/` as real
+   `server/blindle/`, `server/oracle/`, `server/colorblindle/`, `server/colordle/`, `server/structle/`, `server/textle/`, `server/rangedle/`, `server/forbackle/`, `server/shiftle/`, `server/betweendle/`, `server/comparable/`, `server/wordle/`, `server/findle/`, and `server/twistle/` as real
    folders — if anything landed flat with slashes
    in the filename instead, open it and rename it with the full path to
    move it into place.
@@ -97,6 +97,7 @@ CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, R
    - Shiftle → `/shiftle/`
    - Wordle → `/wordle/`
    - Betweendle → `/betweendle/`
+   - Comparable → `/comparable/`
 3. Inside a game, everything works as documented for that game — Live /
    Test / Offline modes, TikTok connect, host controls, etc. Every game
    also has a **🎨 theme picker** in its header — pick a color once and it

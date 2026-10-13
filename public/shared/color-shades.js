@@ -110,6 +110,12 @@
       { id: "found", label: "Green", hint: "the secret word once it is found (distance 0)", std: "#4F8E4F", stdDark: "#376B37", vars: ["--bd-found"], darkVars: ["--bd-found-dark"], inkVars: ["--bd-found-ink"] },
       { id: "key", label: "Gold", hint: "alphabet circles for the letters still possible", std: "#B8A038", stdDark: "#8C7A22", vars: ["--bd-key"], darkVars: ["--bd-key-dark"], inkVars: ["--bd-key-ink"] }
     ],
+    comparable: [
+      { id: "green", label: "Green", hint: "right letter, right spot (tiles, legend & keyboard keys)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--cm-green"], darkVars: ["--cm-green-dark"], inkVars: ["--cm-green-ink"] },
+      { id: "gray", label: "Grey", hint: "incorrect letter (tiles, legend & keyboard keys)", std: "#858589", stdDark: "#606064", vars: ["--cm-gray"], darkVars: ["--cm-gray-dark"], inkVars: ["--cm-gray-ink"] },
+      { id: "blue", label: "Blue", hint: "consonant round tiles in the symbol row (and legend)", std: "#A9D6FB", vars: ["--cm-blue"], inkVars: ["--cm-blue-ink"] },
+      { id: "orange", label: "Orange", hint: "vowel round tiles in the symbol row (and legend)", std: "#FFB871", vars: ["--cm-orange"], inkVars: ["--cm-orange-ink"] }
+    ],
     wordle: [
       { id: "green", label: "Green", hint: "right letter, right spot (tiles, legend & keyboard keys)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--wd-green"], darkVars: ["--wd-green-dark"], inkVars: ["--wd-green-ink"] },
       { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (tiles, legend & keyboard keys)", std: "#D9A700", stdDark: "#A98200", vars: ["--wd-yellow"], darkVars: ["--wd-yellow-dark"], inkVars: ["--wd-yellow-ink"] },

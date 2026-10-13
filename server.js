@@ -24,6 +24,7 @@
 //   /shiftle/  - SHIFTLE   (Socket.IO namespace /shiftle)
 //   /wordle/   - WORDLE    (Socket.IO namespace /wordle)
 //   /betweendle/ - BETWEENDLE (Socket.IO namespace /betweendle)
+//   /comparable/ - COMPARABLE (Socket.IO namespace /comparable)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -55,6 +56,7 @@ import { mountForbackle } from "./server/forbackle/forbackle-server.js";
 import { mountShiftle } from "./server/shiftle/shiftle-server.js";
 import { mountWordle } from "./server/wordle/wordle-server.js";
 import { mountBetweendle } from "./server/betweendle/betweendle-server.js";
+import { mountComparable } from "./server/comparable/comparable-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -240,6 +242,13 @@ await mountWordle(app, io, { mountPath: "/wordle" });
 // Scoring: 1 point for the guess that finds the secret word. Own Socket.IO namespace /betweendle; reuses BLINDLE's word bank
 // + dictionary (loaded once).
 await mountBetweendle(app, io, { mountPath: "/betweendle" });
+
+// COMPARABLE is a BLINDLE copy built on the COMPAR-O idea: the board opens with a row of round tiles (blue = consonant,
+// orange = vowel) with comparison signs between them and arrows inside the blue ones; every guess must match that symbol row
+// and its letters turn green (right letter, right spot) or grey (incorrect). The keyboard colors itself with the same colors
+// and a legend explains the symbols and colors. Scoring: 1 point per guess on the board, 5 for solving the round.
+// Own Socket.IO namespace /comparable; reuses BLINDLE's word bank + dictionary (loaded once).
+await mountComparable(app, io, { mountPath: "/comparable" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
