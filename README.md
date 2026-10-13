@@ -1,3 +1,5 @@
+> **Update 70:** the highly customizable LEGENDS SETTINGS panel (position, size, grid of rows x columns, fonts, chip shape, order, texts, colors, extra entries, presets) now also works in WORDLE, BETWEENDLE and COMPARABLE. See `CHANGES_UPDATE_70.md`.
+>
 > **Update 69:** new game COMPARABLE (COMPAR-O style: blue consonant / orange vowel round tiles with comparison symbols; guesses must match the symbol row; green / grey clues; 1 point per fitting guess, 5 for solving) at `/comparable/`, added to the platform that already has BETWEENDLE. See `CHANGES_UPDATE_69.md`.
 >
 > **Update 67:** 🌏 Languages button + popup added to every word game; BETWEENDLE board simplified (gold circles = letters still possible, 2-item legend, out-of-range message). See `CHANGES_UPDATE_67.md`.

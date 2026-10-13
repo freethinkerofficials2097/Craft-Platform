@@ -147,6 +147,36 @@
         { id: "hidden", glyph: "?", label: "Meanings are revealed when the round ends", c: { bg: "rgba(127,127,160,.25)", fg: "var(--text, #fff)", bd: "rgba(127,127,160,.5)" } }
       ]
     },
+    wordle: {
+      title: "What the colors mean",
+      items: [
+        { id: "green", glyph: "A", label: "Green — right letter, right spot", c: V("--wd-green", "#2E7D32", "#F3F1E6", "#1F5E24") },
+        { id: "yellow", glyph: "A", label: "Yellow — in the word, wrong spot", c: V("--wd-yellow", "#D9A700", "#1B1B1F", "#A98200") },
+        { id: "gray", glyph: "A", label: "Grey — not in the word", c: V("--wd-gray", "#858589", "#1B1B1F", "#606064") }
+      ]
+    },
+    betweendle: {
+      title: "Legend",
+      items: [
+        { id: "key", glyph: "a", label: "Gold circles — the letters a guess can still start with, between the lower and upper bound. Dimmed letters are out of range.", c: V("--bd-key", "#B8A038", "#1B1B1F", "#8C7A22") },
+        { id: "range", glyph: "!", label: "Outside range — a guess not between the lower and upper bound is skipped, and a short message pops up in the floating window.", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+      ]
+    },
+    comparable: {
+      title: "What the symbols and colors mean",
+      items: [
+        { id: "green", glyph: "A", label: "Green — correct letter, right spot", c: V("--cm-green", "#2E7D32", "#F3F1E6", "#1F5E24") },
+        { id: "gray", glyph: "A", label: "Grey — incorrect letter", c: V("--cm-gray", "#858589", "#1B1B1F", "#606064") },
+        { id: "blue", glyph: "B", label: "Blue round tile — a consonant", c: V("--cm-blue", "#A9D6FB", "#1B1B1F", "#5B9BD0") },
+        { id: "orange", glyph: "A", label: "Orange round tile — a vowel", c: V("--cm-orange", "#FFB871", "#1B1B1F", "#D98A3A") },
+        { id: "lt", glyph: "<", label: "Between two letters — the right letter is larger (A is smallest, Z is largest)", c: { bg: "rgba(60,40,20,.12)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "gt", glyph: ">", label: "Between two letters — the right letter is smaller", c: { bg: "rgba(60,40,20,.12)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "eq", glyph: "=", label: "Between two letters — both letters are equal", c: { bg: "rgba(60,40,20,.12)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "up", glyph: "\u25B2", label: "Inside a blue tile — the next consonant is larger", c: V("--cm-blue", "#A9D6FB", "#1B1B1F", "#5B9BD0") },
+        { id: "down", glyph: "\u25BC", label: "Inside a blue tile — the next consonant is smaller", c: V("--cm-blue", "#A9D6FB", "#1B1B1F", "#5B9BD0") },
+        { id: "same", glyph: "\u2014", label: "Inside a blue tile — the next consonant is the same", c: V("--cm-blue", "#A9D6FB", "#1B1B1F", "#5B9BD0") }
+      ]
+    },
     crossdle: {
       title: "What the colors mean",
       items: [
