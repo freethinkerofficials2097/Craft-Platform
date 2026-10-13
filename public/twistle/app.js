@@ -451,7 +451,7 @@ el.rejectionToastShowInput.addEventListener("change", () => {
 
 el.playAgainBtn.addEventListener("click", () => socket.emit("host:playAgain"));
 el.revealBtn.addEventListener("click", () => socket.emit("host:revealAnswer"));
-el.hintBtn.addEventListener("click", () => socket.emit("host:useHint"));
+CraftHints.attach({ button: el.hintBtn, chips: el.hintChips, explainer: el.hintExplainer, send: (type) => socket.emit("host:useHint", { type }), sendConfig: (patch) => socket.emit("host:setHintConfig", patch) });
 
 el.resetRoundBtn.addEventListener("click", () => socket.emit("host:resetRoundLeaderboard"));
 el.resetTotalBtn.addEventListener("click", () => socket.emit("host:resetTotalLeaderboard"));
@@ -820,11 +820,8 @@ function renderGrid(g) {
 }
 
 function renderHintChips(g) {
-  const hasHints = g.hintSuggestions && g.hintSuggestions.length > 0;
-  el.hintExplainer.hidden = !hasHints;
-  el.hintChips.innerHTML = hasHints
-    ? g.hintSuggestions.map((word) => '<span class="hintChip">Try: ' + escapeHtml(word.toUpperCase()) + "</span>").join("")
-    : "";
+  // update 58: the shared hint system draws the chips, the 3-type menu and the Hints settings (public/shared/hints.js)
+  if (window.CraftHints) CraftHints.render(g);
 }
 
 function renderHintLine(g) {
@@ -997,6 +994,7 @@ function escapeHtml(str) {
 function render(state) {
   lastState = state;
   if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
+  if (window.WordLanguage) window.WordLanguage.update(state.game, (mode) => socket.emit("host:setWordLanguage", { mode })); // update 48: word language
   detectWinTransition(state.game);
   detectFreshRound(state.game);
   renderHeader(state);

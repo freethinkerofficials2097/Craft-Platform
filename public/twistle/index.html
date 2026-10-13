@@ -19,6 +19,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="/shared/game-chrome.css" />
+<link rel="stylesheet" href="/shared/hints.css" />
+<link rel="stylesheet" href="/shared/settings-shell.css" />
 <link rel="stylesheet" href="/shared/game-colors.css" />
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="twistle"></script>
@@ -26,6 +28,9 @@
 <script src="/shared/legend.js" data-game="twistle"></script>
 <script src="/shared/title-font.js" defer></script>
 <script src="/shared/score-ticker.js"></script>
+<script src="/shared/word-language.js"></script>
+<script src="/shared/hints.js"></script>
+<script src="/shared/settings-shell.js"></script>
 </head>
 <body data-game="twistle">
   <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
@@ -298,6 +303,8 @@
         </h4>
         <div class="diagGrid" id="diagGrid"></div>
       </div>
+
+      <div class="drawerSection" id="hintSettingsSection" data-hint-settings></div>
 
       <div class="drawerSection">
         <h4>Scores</h4>

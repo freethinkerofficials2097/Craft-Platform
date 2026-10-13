@@ -13,6 +13,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="/shared/game-chrome.css" />
+<link rel="stylesheet" href="/shared/hints.css" />
+<link rel="stylesheet" href="/shared/settings-shell.css" />
 <link rel="stylesheet" href="/shared/game-colors.css" />
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="crossdle"></script>
@@ -20,6 +22,7 @@
 <script src="/shared/legend.js" data-game="crossdle"></script>
 <script src="/shared/title-font.js" defer></script>
 <script src="/shared/score-ticker.js"></script>
+<script src="/shared/word-language.js"></script>
 </head>
 <body data-game="crossdle">
 <div id="app">
@@ -126,6 +129,7 @@
 
       <div class="board-legend"><span class="legend-note">Unlimited guesses — only real words (matching this round's length) are tested &amp; added to the board.</span></div>
 
+      <div id="hintChips" class="hintChips"></div>
       <div id="hintsRow" class="hints-row hidden">
         <span class="hints-label">💡 Hints revealed:</span>
         <div id="hintsTiles" class="hints-tiles"></div>
@@ -231,6 +235,8 @@
             <button id="resetLeaderboardBtn" class="btn btn-danger-ghost">Reset Leaderboard</button>
           </div>
         </div>
+
+        <div class="host-card" id="hintSettingsSection" data-hint-settings></div>
 
         <div class="host-card">
           <div class="host-card-title">🎲 Starter word</div>
@@ -341,7 +347,7 @@
           <li><b>Unlimited guesses, no clock</b> - a round runs until someone solves it (or the host skips/reveals it). Take your time.</li>
           <li>Only guesses that are <b>real words at this round's length</b> get tested and shown on the board - anything else shows a quick on-screen note explaining why, then gets out of the way.</li>
           <li>With <b>Strict fit</b> on (the default), a guess must also still be a <b>possible answer</b> given the rows already on the board - because of the decoy, a row can be explained by the real answer plus some decoy word. A guess that no decoy could explain flashes a quick reason and is skipped. The host can switch Strict fit off in the host panel to accept any real word.</li>
-          <li>The host can drop a free <b>hint letter</b> any time, and one also appears automatically every few guesses.</li>
+          <li>Three kinds of hint: a <b>letter</b> in its place, <b>letters that are not in the word</b>, or the first and last letter. The host can give one any time, and one also appears automatically every few guesses (adjustable or off in Settings → Hints).</li>
           <li>If nobody solves it before time runs out, the answer is revealed and a new round begins.</li>
         </ul>
       </div>
@@ -389,6 +395,8 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/shared/engagement.js"></script>
+<script src="/shared/hints.js"></script>
+<script src="/shared/settings-shell.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -14,6 +14,8 @@
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="travle"></script>
 <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="/shared/hints.css" />
+<link rel="stylesheet" href="/shared/settings-shell.css" />
 <script src="/shared/score-ticker.js"></script>
 </head>
 <body>
@@ -88,6 +90,7 @@
 
       <p class="route-hint">Guess any country that could sit on the trail between the two ends. You can build inward from either side. No guess limit — go for it.</p>
       <p class="hint-display" id="hintDisplay"></p>
+      <div class="hintChips" id="hintChips"></div>
     </section>
 
     <section class="feed-card" id="feedCard">
@@ -119,6 +122,7 @@
         <button id="newRoundBtn" class="ghost-btn">New round</button>
         <button id="hintOutlineBtn" class="ghost-btn">Hint: outline</button>
         <button id="hintLettersBtn" class="ghost-btn">Hint: initials</button>
+        <button id="hintNeighbourBtn" class="ghost-btn">Hint: neighbour</button>
         <button id="revealBtn" class="ghost-btn">Reveal</button>
       </div>
     </div>
@@ -151,6 +155,10 @@
         <option value="honey">Honey Gold</option>
       </select>
     </label>
+
+    <hr class="divider" />
+
+    <div class="drawerSection" id="hintSettingsSection" data-hint-settings></div>
 
     <hr class="divider" />
 
@@ -264,7 +272,7 @@
       <li><b>3 points</b> — the guess is on the shortest possible path, whether or not it's connected to the trail yet</li>
       <li><b>1 point</b> — the guess is valid and connects, just not the optimal route</li>
       <li><b>0 points</b> — the guess is neither on the optimal path nor connected yet</li>
-      <li>Both hints (outline shape, and initials) are free — use them as often as you like.</li>
+      <li>Three hint types — country shape, name outline and a neighbour clue. Choose which are allowed, a per-round limit and a wait time in Settings → Hints.</li>
     </ul>
   </div>
 </aside>
@@ -288,6 +296,8 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/shared/engagement.js"></script>
+<script src="/shared/hints.js"></script>
+<script src="/shared/settings-shell.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="data.js"></script>

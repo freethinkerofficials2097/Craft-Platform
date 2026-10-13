@@ -20,6 +20,7 @@
 //   /rangedle/ - RANGEDLE  (Socket.IO namespace /rangedle)
 //   /codedle/  - CODEDLE   (Socket.IO namespace /codedle)
 //   /shapedle/ - SHAPEDLE  (Socket.IO namespace /shapedle)
+//   /forbackle/ - FORBACKLE (Socket.IO namespace /forbackle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -47,6 +48,7 @@ import { mountBlindle } from "./server/blindle/blindle-server.js";
 import { mountRangedle } from "./server/rangedle/rangedle-server.js";
 import { mountCodedle } from "./server/codedle/codedle-server.js";
 import { mountShapedle } from "./server/shapedle/shapedle-server.js";
+import { mountForbackle } from "./server/forbackle/forbackle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -205,6 +207,13 @@ await mountCodedle(app, io, { mountPath: "/codedle" });
 // 5 for solving the round. The host picks the symbol style. Own Socket.IO namespace /shapedle; reuses
 // BLINDLE's word bank + dictionary (loaded once).
 await mountShapedle(app, io, { mountPath: "/shapedle" });
+
+// FORBACKLE is a BLINDLE copy built on the BETWEEN-O idea: every letter of a guess is colored green (correct),
+// purple (go FORWARD - the hidden letter comes later in the alphabet) or pink (go BACKWARD - it comes earlier), and
+// neighbouring tiles of one color form a segment. The keyboard colors itself and a legend explains the colors.
+// Scoring: 1 point per guess on the board, 5 for solving the round. Own Socket.IO namespace /forbackle; reuses
+// BLINDLE's word bank + dictionary (loaded once).
+await mountForbackle(app, io, { mountPath: "/forbackle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

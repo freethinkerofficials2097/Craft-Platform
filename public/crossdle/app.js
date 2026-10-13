@@ -436,6 +436,7 @@
 
   function renderGame(game) {
     if (!game) return;
+    if (window.WordLanguage) window.WordLanguage.update(game, (mode) => socket.emit('host:setWordLanguage', { mode })); // update 48: word language
     if (strictFitToggle) strictFitToggle.checked = game.strictFit !== false; // Strict fit is ON unless the host switched it off
     if (keyAutoColorToggle) keyAutoColorToggle.checked = game.keyAutoColor !== false; // ON unless the host switched it off
     if (starterWordToggle) starterWordToggle.checked = game.starterWord !== false; // ON unless the host switched it off
@@ -452,6 +453,7 @@
       board.querySelectorAll('.attempt-row').forEach((n) => n.remove());
       roundBanner.classList.add('hidden');
       hintsRow.classList.add('hidden');
+      renderHintUi(game, null);
       resetKeyboard();
       lastRenderedRoundNumber = null;
       lastRenderedAttemptCount = 0;
@@ -483,6 +485,7 @@
     if (keyAutoColorChanged) renderKeyboard(round.attempts);
 
     renderHints(round);
+    renderHintUi(game, round);
     renderBanner(round, game.leaderboard || []);
   }
 
@@ -533,6 +536,17 @@
     row.appendChild(decoySet);
 
     return row;
+  }
+
+  // update 58: 3 hint types + host settings via the shared CraftHints module.
+  function renderHintUi(game, round) {
+    if (!window.CraftHints) return;
+    CraftHints.render({
+      status: round && round.status === 'active' ? 'live' : 'idle',
+      hints: round ? round.hintLog || [] : [],
+      hintNote: round ? round.hintNote : null,
+      hintConfig: game.hintConfig,
+    });
   }
 
   function renderHints(round) {
@@ -704,7 +718,16 @@
 
   startRoundBtn.addEventListener('click', () => socket.emit('host:startRound'));
   skipRoundBtn.addEventListener('click', () => socket.emit('host:skipRound'));
-  hintBtn.addEventListener('click', () => socket.emit('host:giveHint'));
+  if (window.CraftHints) {
+    CraftHints.attach({
+      button: hintBtn,
+      chips: document.getElementById('hintChips'),
+      send: (type) => socket.emit('host:giveHint', { type }),
+      sendConfig: (patch) => socket.emit('host:setHintConfig', patch),
+    });
+  } else {
+    hintBtn.addEventListener('click', () => socket.emit('host:giveHint'));
+  }
   revealBtn.addEventListener('click', () => socket.emit('host:revealAnswer'));
   resetLeaderboardBtn.addEventListener('click', () => {
     if (confirm('Reset the leaderboard for everyone? This cannot be undone.')) {

@@ -95,6 +95,11 @@
       { id: "d4", label: "Blue", hint: "16-20 letters away", std: "#1E73E8", stdDark: "#1456B0", vars: ["--rg-d4"], darkVars: ["--rg-d4-dark"], inkVars: ["--rg-d4-ink"] },
       { id: "d5", label: "Purple", hint: "21-25 letters away", std: "#7B3FE4", stdDark: "#5A25B8", vars: ["--rg-d5"], darkVars: ["--rg-d5-dark"], inkVars: ["--rg-d5-ink"] }
     ],
+    forbackle: [
+      { id: "hit", label: "Green", hint: "correct letter (tiles, legend & keyboard keys)", std: "#5FBF78", stdDark: "#3E9A57", vars: ["--fb-hit"], darkVars: ["--fb-hit-dark"], inkVars: ["--fb-hit-ink"] },
+      { id: "fwd", label: "Purple", hint: "go forward - the hidden letter comes later (tiles, legend & keys)", std: "#AE8BFF", stdDark: "#8A63E0", vars: ["--fb-fwd"], darkVars: ["--fb-fwd-dark"], inkVars: ["--fb-fwd-ink"] },
+      { id: "back", label: "Pink", hint: "go backward - the hidden letter comes earlier (tiles, legend & keys)", std: "#FF9CCB", stdDark: "#E06FA6", vars: ["--fb-back"], darkVars: ["--fb-back-dark"], inkVars: ["--fb-back-ink"] }
+    ],
     shapedle: [
       { id: "green", label: "Green", hint: "right letter, right spot (tiles, legend & keys)", std: "#0E9F45", stdDark: "#087A32", vars: ["--sp-green"], darkVars: ["--sp-green-dark"], inkVars: ["--sp-green-ink"] },
       { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (tiles, legend & keys)", std: "#E5B400", stdDark: "#B38C00", vars: ["--sp-yellow"], darkVars: ["--sp-yellow-dark"], inkVars: ["--sp-yellow-ink"] },

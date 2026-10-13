@@ -513,7 +513,18 @@ hostForm.addEventListener("submit", (e) => {
 });
 
 skipBtn.addEventListener("click", () => socket.emit("skip-round"));
-hintBtn.addEventListener("click", () => socket.emit("request-hint"));
+// update 58: the hint button opens a menu of 3 hint types; host hint settings live in Settings -> Hints
+CraftHints.attach({
+  button: hintBtn,
+  send: (type) => socket.emit("request-hint", { type }),
+  sendConfig: (patch) => socket.emit("host:hintConfig", patch),
+});
+socket.on("hint:config", (cfg) => {
+  const { note, ...rest } = cfg || {};
+  CraftHints.render({ status: "live", hintConfig: rest, hints: [], hintNote: note ? { text: note, at: Date.now() } : null });
+  if (note) { hintTextEl.textContent = note; hintTextEl.classList.add("flash"); }
+});
+socket.on("connect", () => socket.emit("host:hintConfig", {}));
 
 // ---------- Helpers ----------
 function setBlur(px) {

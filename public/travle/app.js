@@ -225,6 +225,7 @@
   const hintOutlineBtn = $("hintOutlineBtn");
   const hintLettersBtn = $("hintLettersBtn");
   const topHintBtn = $("topHintBtn");
+  const hintNeighbourBtn = $("hintNeighbourBtn");
   const hostMsg = $("hostMsg");
 
   const dockToggle = $("dockToggle");
@@ -397,6 +398,8 @@
       hintedLetters: false,
       roundScores: {},
     };
+    hintsUsedCount = 0; hintLastAt = 0; hintList = []; hintNote = null;
+    publishHints();
     feedList.innerHTML = "";
     addFeed(`New trail: <span class="viewer">${picked.start}</span> → <span class="viewer">${picked.end}</span>`);
     hostMsg.textContent = "";
@@ -838,30 +841,114 @@
     return pool[(Math.random() * pool.length) | 0];
   }
 
-  // Both hints are free — they cost nothing and never end the round.
-  function useHintOutline() {
-    if (!round || !round.active) return;
-    const next = pickHintCandidate(round.hintedOutline);
-    if (!next) { hostMsg.textContent = "No hint available right now."; return; }
-    round.hintedOutline = next;
-    round.hintedLetters = false;
-    addFeed(`Outline hint shown on the globe.`);
-    hostMsg.textContent = "";
-    renderRound();
-  }
+  /* ---- Hints (update 58): three types, host-customisable, config kept in this browser ---- */
+  const TRAVLE_HINT_TYPES = [
+    { id: "outline", icon: "🗺️", label: "Country shape", desc: "Shows the outline of a valid next country on the globe." },
+    { id: "letters", icon: "🔤", label: "Name outline", desc: "Shows that country's name with only some letters visible." },
+    { id: "neighbour", icon: "🧭", label: "Neighbour clue", desc: "Says how many neighbours a valid next country has and names one of them." },
+  ];
+  const HINT_CFG_KEY = "travle.hintConfig.v1";
+  let hintCfg = (() => {
+    const d = { enabled: true, types: { outline: true, letters: true, neighbour: true }, limitPerRound: 0, cooldownSeconds: 0 };
+    try {
+      const r = JSON.parse(localStorage.getItem(HINT_CFG_KEY) || "null");
+      if (r && typeof r === "object") {
+        if (typeof r.enabled === "boolean") d.enabled = r.enabled;
+        TRAVLE_HINT_TYPES.forEach((t) => { if (r.types && typeof r.types[t.id] === "boolean") d.types[t.id] = r.types[t.id]; });
+        d.limitPerRound = Math.max(0, Math.min(50, Number(r.limitPerRound) || 0));
+        d.cooldownSeconds = Math.max(0, Math.min(600, Number(r.cooldownSeconds) || 0));
+      }
+    } catch (_) {}
+    return d;
+  })();
+  let hintsUsedCount = 0;
+  let hintLastAt = 0;
+  let hintList = [];
+  let hintNote = null;
 
-  function useHintLetters() {
-    if (!round || !round.active) return;
+  function publishHints() {
+    if (!window.CraftHints) return;
+    const now = Date.now();
+    const cd = hintCfg.cooldownSeconds ? Math.max(0, Math.ceil((hintLastAt + hintCfg.cooldownSeconds * 1000 - now) / 1000)) : 0;
+    window.CraftHints.render({
+      status: round && round.active ? "live" : "idle",
+      hints: hintList,
+      hintNote,
+      hintConfig: {
+        enabled: hintCfg.enabled,
+        types: hintCfg.types,
+        limitPerRound: hintCfg.limitPerRound,
+        cooldownSeconds: hintCfg.cooldownSeconds,
+        autoAfterGuesses: 0,
+        supportsAuto: false,
+        used: hintsUsedCount,
+        remaining: hintCfg.limitPerRound ? Math.max(0, hintCfg.limitPerRound - hintsUsedCount) : null,
+        cooldownLeft: cd,
+        catalog: TRAVLE_HINT_TYPES.map((t) => ({ ...t, enabled: !!hintCfg.types[t.id] })),
+      },
+    });
+  }
+  function setHintConfig(patch) {
+    if (!patch || typeof patch !== "object") return;
+    if (typeof patch.enabled === "boolean") hintCfg.enabled = patch.enabled;
+    if (patch.types) Object.keys(patch.types).forEach((k) => { if (k in hintCfg.types) hintCfg.types[k] = !!patch.types[k]; });
+    if ("limitPerRound" in patch) hintCfg.limitPerRound = Math.max(0, Math.min(50, Number(patch.limitPerRound) || 0));
+    if ("cooldownSeconds" in patch) hintCfg.cooldownSeconds = Math.max(0, Math.min(600, Number(patch.cooldownSeconds) || 0));
+    try { localStorage.setItem(HINT_CFG_KEY, JSON.stringify(hintCfg)); } catch (_) {}
+    publishHints();
+  }
+  function hintBlocked(type) {
+    if (!round || !round.active) return "There is no round in progress.";
+    if (!hintCfg.enabled) return "Hints are switched off in Settings → Hints.";
+    if (!hintCfg.types[type]) return "That hint type is switched off in Settings → Hints.";
+    if (hintCfg.limitPerRound && hintsUsedCount >= hintCfg.limitPerRound) return "No hints left this round.";
+    const wait = hintCfg.cooldownSeconds ? Math.ceil((hintLastAt + hintCfg.cooldownSeconds * 1000 - Date.now()) / 1000) : 0;
+    if (wait > 0) return `Wait ${wait}s before the next hint.`;
+    return "";
+  }
+  function ensureHintTarget() {
     if (!round.hintedOutline) {
       const next = pickHintCandidate(null);
+      if (!next) return false;
+      round.hintedOutline = next;
+      round.hintedLetters = false;
+    }
+    return true;
+  }
+  function useHint(type) {
+    const why = hintBlocked(type);
+    if (why) { hintNote = { text: why, at: Date.now() }; hostMsg.textContent = why; publishHints(); return; }
+    let text = "";
+    if (type === "outline") {
+      const next = pickHintCandidate(round.hintedOutline);
       if (!next) { hostMsg.textContent = "No hint available right now."; return; }
       round.hintedOutline = next;
-    }
-    round.hintedLetters = true;
-    addFeed(`Initials hint: <b>${maskCountryName(round.hintedOutline)}</b>`);
+      round.hintedLetters = false;
+      text = "Shape of a valid next country is on the globe";
+      addFeed("Outline hint shown on the globe.");
+    } else if (type === "letters") {
+      if (!ensureHintTarget()) { hostMsg.textContent = "No hint available right now."; return; }
+      round.hintedLetters = true;
+      text = `Name: ${maskCountryName(round.hintedOutline)}`;
+      addFeed(`Initials hint: <b>${maskCountryName(round.hintedOutline)}</b>`);
+    } else if (type === "neighbour") {
+      if (!ensureHintTarget()) { hostMsg.textContent = "No hint available right now."; return; }
+      const target = round.hintedOutline;
+      const nbrs = [...(GRAPH.get(target) || [])];
+      const other = nbrs.filter((c) => !round.used.has(c));
+      const named = (other.length ? other : nbrs)[(Math.random() * (other.length ? other.length : nbrs.length)) | 0];
+      text = `A valid next country has ${nbrs.length} neighbour${nbrs.length === 1 ? "" : "s"}${named ? `, one is ${named}` : ""}`;
+      addFeed(`Neighbour clue: ${text.replace("A valid next country", "it")}`);
+    } else return;
+    hintsUsedCount++;
+    hintLastAt = Date.now();
+    hintList.push({ type, text, at: hintLastAt });
+    hintNote = null;
     hostMsg.textContent = "";
     renderRound();
+    publishHints();
   }
+  setInterval(() => { if (hintCfg.cooldownSeconds) publishHints(); }, 1000);
 
   function finishRound(solved) {
     stopBots();
@@ -869,6 +956,7 @@
     round.active = false;
     round.hintedOutline = null;
     round.hintedLetters = false;
+    publishHints();
     const finalChain = [...round.startChain, ...[...round.endChain].reverse()];
     const canonicalOptimal = shortestPath(round.start, round.end) || [];
     const rows = Math.max(finalChain.length, canonicalOptimal.length);
@@ -1220,9 +1308,20 @@
 
   newRoundBtn.addEventListener("click", startNewRound);
   revealBtn.addEventListener("click", revealRound);
-  hintOutlineBtn.addEventListener("click", useHintOutline);
-  hintLettersBtn.addEventListener("click", useHintLetters);
-  topHintBtn.addEventListener("click", useHintOutline);
+  hintOutlineBtn.addEventListener("click", () => useHint("outline"));
+  hintLettersBtn.addEventListener("click", () => useHint("letters"));
+  if (hintNeighbourBtn) hintNeighbourBtn.addEventListener("click", () => useHint("neighbour"));
+  if (window.CraftHints) {
+    CraftHints.attach({
+      button: topHintBtn,
+      chips: document.getElementById("hintChips"),
+      send: (type) => useHint(type),
+      sendConfig: (patch) => setHintConfig(patch),
+    });
+    publishHints();
+  } else {
+    topHintBtn.addEventListener("click", () => useHint("outline"));
+  }
   modalNextBtn.addEventListener("click", startNewRound);
 
   feedToggle.addEventListener("click", () => {

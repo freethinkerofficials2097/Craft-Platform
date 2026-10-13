@@ -113,6 +113,14 @@
         { id: "hit", glyph: "✓", label: "Green — correct letter", c: V("--rg-hit", "#0E9F45", "#fff", "#087A32") }
       ]
     },
+    forbackle: {
+      title: "What the colors mean",
+      items: [
+        { id: "hit", glyph: "A", label: "Green — correct letter", c: V("--fb-hit", "#5FBF78", "#101510", "#3E9A57") },
+        { id: "fwd", glyph: "A", label: "Purple — go forward (later letter)", c: V("--fb-fwd", "#AE8BFF", "#14092e", "#8A63E0") },
+        { id: "back", glyph: "A", label: "Pink — go backward (earlier letter)", c: V("--fb-back", "#FF9CCB", "#35081f", "#E06FA6") }
+      ]
+    },
     shapedle: {
       title: "What the colors mean",
       items: [

@@ -5,7 +5,7 @@
   if (!hub || !footer) return;
   document.body.classList.add("hv-on");
   var DEFAULT_VIEW = "cards"; // <- first layout new visitors see (any id below)
-  var NEW_GAMES = ["shapedle"]; // ids that show a NEW tag
+  var NEW_GAMES = ["forbackle"]; // ids that show a NEW tag
   var VIEWS = [["cards","🃏","Cards"],["grid","▦","Grid"],["list","☰","List"],["icons","🔳","Icons"],["swipe","👉","Swipe"],["mosaic","🧩","Mosaic"],["hero","⭐","Hero"],["pills","💊","Pills"],["fold","📂","Fold"],["bubbles","🫧","Bubbles"],["arcade","🕹️","Arcade"],["sections","🗂️","Sections"],["bands","🎽","Bands"],
     ["trio","3️⃣","Trio"],["quad","4️⃣","Quad"],["posters","🎬","Posters"],["wide","🛣️","Wide"],["masonry","🧱","Masonry"],["stripes","🦓","Stripes"],["minimal","✨","Minimal"],["stickers","🏷️","Stickers"],["glass","🪟","Glass"],["night","🌙","Night"],["terminal","💻","Terminal"],["cartridge","👾","Cartridge"],["ticket","🎟️","Ticket"],["polaroid","📷","Polaroid"],["gradient","🌈","Gradient"],["zigzag","↯","Zigzag"],["ranked","🏅","Ranked"],["table","📊","Table"],["stories","🔵","Stories"],["tabs","🗃️","Tabs"],["spotlight","🔦","Spotlight"],["folders","📁","Folders"]];
   var STAGE = { swipe:1, hero:1, sections:1, masonry:1, stories:1, tabs:1, spotlight:1, folders:1 };
