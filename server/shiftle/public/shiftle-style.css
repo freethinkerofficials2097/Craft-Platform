@@ -904,7 +904,7 @@ button { cursor: pointer; }
    help, leaderboard, settings, fullscreen), so the icons are a touch smaller and
    the badges are allowed to shrink; nothing wraps, scrolls or hides.
    ============================================================ */
-body[data-game="shiftle"] .topbar { overflow: hidden; flex-wrap: nowrap; }
+body[data-game="shiftle"] .topbar { overflow: hidden; flex-wrap: nowrap; flex: 0 0 auto; } /* update 71: never squeezed when the page gets taller (round end) */
 body[data-game="shiftle"] .toolbarRow { flex-wrap: nowrap; gap: 3px; min-width: 0; overflow: hidden; }
 body[data-game="shiftle"] .toolbarRow .iconBtn {
   width: clamp(22px, 7.4vw, 38px); height: clamp(22px, 7.4vw, 38px);
