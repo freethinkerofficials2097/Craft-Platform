@@ -48,8 +48,6 @@ const el = {
   bdBoard: document.getElementById("bdBoard"),
   alphabet: document.getElementById("alphabet"),
   boardStatus: document.getElementById("boardStatus"),
-  guessCount: document.getElementById("guessCount"),
-  boardGiveUpBtn: document.getElementById("boardGiveUpBtn"),
   legendSection: document.getElementById("legendSection"),
   legendTitle: document.getElementById("legendTitle"),
   legendList: document.getElementById("legendList"),
@@ -170,8 +168,7 @@ el.fullscreenBtn.addEventListener("click", () => {
 });
 
 // ------------------------------------------------------------
-// Alphabet circles (like List-O): A-Z in two rows of 13. They are not clickable - they light up (gold) with the letters
-// of the latest accepted guess.
+// Alphabet circles (like List-O): A-Z in two rows of 13. They are not clickable - gold marks the letters still possible.
 // ------------------------------------------------------------
 const ALPHABET_ROWS = ["abcdefghijklm", "nopqrstuvwxyz"];
 for (const rowLetters of ALPHABET_ROWS) {
@@ -186,10 +183,15 @@ for (const rowLetters of ALPHABET_ROWS) {
   }
   el.alphabet.appendChild(rowEl);
 }
+// Gold = the letters a guess can still START with: every letter from the lower bound's first letter to the upper bound's
+// first letter (all 26 before the first guess and once the round is over). Everything else is dimmed.
 function paintAlphabet(g) {
-  const lit = new Set(g.lastGuess && g.status !== "idle" ? g.lastGuess.word.split("") : []);
+  const over = g.status === "won" || g.status === "lost" || g.status === "idle";
+  const lo = (g.lower ? g.lower.word : g.startLower || "aaa")[0];
+  const hi = (g.upper ? g.upper.word : g.startUpper || "zzz")[0];
   el.alphabet.querySelectorAll(".bdLetter").forEach((dot) => {
-    dot.classList.toggle("on", lit.has(dot.dataset.letter));
+    const l = dot.dataset.letter;
+    dot.classList.toggle("on", over || (l >= lo && l <= hi));
   });
 }
 
@@ -442,7 +444,6 @@ if (el.legendShowToggle) el.legendShowToggle.addEventListener("change", () => {
 
 el.playAgainBtn.addEventListener("click", () => send("play_again", {}));
 el.giveUpBtn.addEventListener("click", () => send("give_up", {}));
-el.boardGiveUpBtn.addEventListener("click", () => send("give_up", {}));
 CraftHints.attach({ button: el.hintBtn, chips: el.hintChips, explainer: el.hintExplainer, send: (type) => send("use_hint", { type }), sendConfig: (patch) => send("set_hint_config", patch) });
 
 el.resetRoundBtn.addEventListener("click", () => send("reset_round_leaderboard", {}));
@@ -798,8 +799,6 @@ function renderTiles(g) {
     up ? up.word + up.distance + (up.avatarUrl || "") : "-",
     g.secretWord || ""
   ].join("|");
-  el.guessCount.textContent = "Guesses: " + g.guessesMade;
-  el.boardGiveUpBtn.hidden = g.status !== "live";
   renderBoardStatus(g);
   if (signature === lastBoardSignature) return;
   lastBoardSignature = signature;
@@ -950,13 +949,8 @@ function renderLeaderboardTab() {
 // (see betweendle-index.html) and can be hidden by the host in Settings.
 // ------------------------------------------------------------
 const LEGEND_ITEMS = [
-  { chip: "lo", mark: "A", name: "Lower bound", text: "closest word found BEFORE the secret word (top row)." },
-  { chip: "q", mark: "?", name: "Secret word", text: "hidden between the bounds; turns green when found." },
-  { chip: "up", mark: "Z", name: "Upper bound", text: "closest word found AFTER the secret word (bottom row)." },
-  { chip: "num", mark: "120", name: "Distance", text: "steps from the secret word: 120 = 119 words between. Smaller = closer, 0 = found." },
-  { chip: "start", mark: "AAA", name: "AAA / ZZZ", text: "opening limits, no distance yet." },
-  { chip: "dot", mark: "a", name: "Alphabet circles", text: "light up with the letters of the latest guess." },
-  { chip: "msg", mark: "!", name: "Outside range", text: "a guess not between the bounds is skipped." }
+  { chip: "dot", mark: "a", name: "Gold circles", text: "the letters a guess can still start with, between the lower and upper bound. Dimmed letters are out of range." },
+  { chip: "msg", mark: "!", name: "Outside range", text: "a guess not between the lower and upper bound is skipped, and a short message pops up in the floating window." }
 ];
 let lastLegendRound = -1;
 let lastLegendSignature = "";
@@ -971,7 +965,7 @@ function renderLegend(g) {
   if (signature === lastLegendSignature) return;
   lastLegendSignature = signature;
 
-  el.legendTitle.textContent = "Legend — what each part of the board means";
+  el.legendTitle.textContent = "Legend";
   el.legendList.innerHTML = LEGEND_ITEMS.map((it) =>
     '<li class="bdLegendItem"><span class="bdChip bdChip-' + it.chip + '">' + escapeHtml(it.mark) + '</span><span class="bdLegendText"><b>' +
     escapeHtml(it.name) + "</b> — " + escapeHtml(it.text) + "</span></li>"

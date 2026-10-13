@@ -68,17 +68,13 @@
         <!-- Legend: a normal block of the page flow, directly under the floating message window (.toastSlot above)
              and above the guess board, so nothing can ever overlap. Filled in by betweendle-game.js. -->
         <section class="bdLegend" id="legendSection" aria-label="Legend" hidden>
-          <div class="bdLegendTitle" id="legendTitle">Legend — what each part of the board means</div>
+          <div class="bdLegendTitle" id="legendTitle">Legend</div>
           <ul class="bdLegendList" id="legendList"></ul>
           <p class="bdLegendNote" id="legendNote"></p>
         </section>
 
         <!-- The guess board (like List-O): lower bound, the hidden word "?", upper bound, then the alphabet circles. -->
         <section class="bdBoard" id="bdBoard" aria-label="Guess board" hidden>
-          <div class="bdBoardHead">
-            <button class="bdGiveUp" id="boardGiveUpBtn" type="button">Give Up</button>
-            <span class="bdGuessCount" id="guessCount">Guesses: 0</span>
-          </div>
         <div class="tilesWrap" id="tilesWrap"></div>
           <div class="bdAlphabet" id="alphabet" aria-label="Letters of the latest guess"></div>
           <p class="bdStatus" id="boardStatus" aria-live="polite"></p>
@@ -271,7 +267,7 @@
           <span class="switchTrack"><span class="switchThumb"></span></span>
           <span class="switchLabel">Show the legend above the board</span>
         </label>
-        <p class="sectionNote">A short legend (lower bound, upper bound, the ? row, distance, alphabet circles, guess counter) sits under the floating message window and above the guess board. Applies right away on every connected screen and is remembered.</p>
+        <p class="sectionNote">A short legend (the gold alphabet circles and the "outside the range" message) sits under the floating message window and above the guess board. Applies right away on every connected screen and is remembered.</p>
       </div>
 
       <div class="drawerSection">
@@ -426,8 +422,8 @@
         <li>After each guess you see its <strong>distance</strong> from the secret word in alphabetical order. Example: if the distance is <strong>120</strong>, there are <strong>119 words</strong> between your guess and the secret word.</li>
         <li>Your guess updates the <strong>lower bound</strong> (top row, a word that comes <em>before</em> the secret word) or the <strong>upper bound</strong> (bottom row, a word that comes <em>after</em> it), narrowing down the search. The secret word is always hidden in the <strong>?</strong> row between them.</li>
         <li>The <strong>smaller the distance, the closer</strong> you are. If the distance is <strong>0</strong>, you found the secret word and the ? row turns green.</li>
-        <li>A guess that falls outside the two bounds is skipped with <em>"Word outside the allowed range"</em>. A word already on the board is skipped too.</li>
-        <li>The <strong>legend</strong> above the board explains every part of the board (the host can hide it in Settings). The alphabet circles light up with the letters of the latest guess.</li>
+        <li>A guess that falls outside the two bounds is skipped, and a short <em>"Word outside the allowed range"</em> message pops up in the floating window. A word already on the board is skipped too.</li>
+        <li>The <strong>gold alphabet circles</strong> show the letters a guess can still start with (the letters from the lower bound to the upper bound); the rest are dimmed. The legend above the board explains them (the host can hide it in Settings).</li>
         <li><strong>Scoring (Live):</strong> 1 point for the guess that finds the secret word.</li>
         <li>💡 unlimited hints: suggest a word from the middle of the window, reveal a letter, or rule out letters. Difficulty (Normal/Medium/Hard/Random) sets how tricky the secret word is.</li>
         <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = just you, type guesses directly.</li>

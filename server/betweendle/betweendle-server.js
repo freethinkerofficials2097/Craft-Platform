@@ -311,7 +311,7 @@ function attemptGuess(word, caller) {
   const lowWord = game.lower ? game.lower.word : START_LOWER;
   const highWord = game.upper ? game.upper.word : START_UPPER;
   if (!(word > lowWord && word < highWord)) {
-    const reason = "Word outside the allowed range";
+    const reason = `Word outside the allowed range (${lowWord.toUpperCase()} – ${highWord.toUpperCase()})`;
     game.lastRejection = { word, reason, at: Date.now() };
     return { ok: false, error: reason, rejected: true };
   }
