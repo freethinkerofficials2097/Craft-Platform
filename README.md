@@ -1,4 +1,6 @@
 # TikTok LIVE Game Platform
+> **Update 63:** new game SHIFTLE (every letter turns white, pink or blue - and what the colors mean is SHUFFLED every round; self-coloring keyboard + legend; 1 point per guess, 5 for solving) at `/shiftle/` - see `CHANGES_UPDATE_63.md`.
+>
 > **Update 58:** every game now has 3 hint types with host customisation (Settings -> Hints) and a redesigned Settings workspace - see `CHANGES_UPDATE_58.md`.
 >
 > **Update 57:** Indonesian / Malay cross-language clean-up - see `CHANGES_UPDATE_57.md`.

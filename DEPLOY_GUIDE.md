@@ -3,8 +3,8 @@
 This guide assumes you have never written code and will never touch code
 directly. You will do three things: (1) get one free key, (2) upload a
 folder to GitHub, (3) click some buttons on Render. That's it — one setup
-covers all fifteen games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
-CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle, Shapedle).
+covers all sixteen games (Flagle Live, TRAVLE Live, Blindle, Findle Live,
+CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle, Shapedle, Forbackle, Shiftle).
 
 ---
 
@@ -28,7 +28,7 @@ CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, R
 1. Go to **https://www.eulerstream.com** and sign up for a free account.
 2. Find the **API Keys** section of their dashboard and create a new key.
 3. Copy the key somewhere safe — you'll paste it into Render in Part 3.
-   One key powers all fifteen games.
+   One key powers all sixteen games.
 
 ---
 
@@ -50,7 +50,7 @@ CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, R
    **Commit changes** button.
 6. Double check the repo shows `server/`, `public/`, `public/flagle/`,
    `public/travle/`, `public/crossdle/`, `public/twistle/`,
-   `server/blindle/`, `server/oracle/`, `server/colorblindle/`, `server/colordle/`, `server/structle/`, `server/textle/`, `server/rangedle/`, `server/findle/`, and `server/twistle/` as real
+   `server/blindle/`, `server/oracle/`, `server/colorblindle/`, `server/colordle/`, `server/structle/`, `server/textle/`, `server/rangedle/`, `server/forbackle/`, `server/shiftle/`, `server/findle/`, and `server/twistle/` as real
    folders — if anything landed flat with slashes
    in the filename instead, open it and rename it with the full path to
    move it into place.
@@ -64,7 +64,7 @@ CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, R
    Command:** `npm start`.
 3. Before creating it, add one environment variable: **Key**
    `EULERSTREAM_API_KEY`, **Value** = the key from Part 1. (This one key
-   works for all fifteen games — the server automatically shares it with
+   works for all sixteen games — the server automatically shares it with
    whichever internal name each game expects.)
 4. **Create Web Service.** Wait for the first build (a couple of minutes).
    Your address will look like `https://your-app.onrender.com`.
@@ -93,6 +93,8 @@ CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, R
    - Colordle → `/colordle/`
    - Structle → `/structle/`
    - Textle → `/textle/`
+   - Forbackle → `/forbackle/`
+   - Shiftle → `/shiftle/`
 3. Inside a game, everything works as documented for that game — Live /
    Test / Offline modes, TikTok connect, host controls, etc. Every game
    also has a **🎨 theme picker** in its header — pick a color once and it

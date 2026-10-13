@@ -21,6 +21,7 @@
 //   /codedle/  - CODEDLE   (Socket.IO namespace /codedle)
 //   /shapedle/ - SHAPEDLE  (Socket.IO namespace /shapedle)
 //   /forbackle/ - FORBACKLE (Socket.IO namespace /forbackle)
+//   /shiftle/  - SHIFTLE   (Socket.IO namespace /shiftle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -49,6 +50,7 @@ import { mountRangedle } from "./server/rangedle/rangedle-server.js";
 import { mountCodedle } from "./server/codedle/codedle-server.js";
 import { mountShapedle } from "./server/shapedle/shapedle-server.js";
 import { mountForbackle } from "./server/forbackle/forbackle-server.js";
+import { mountShiftle } from "./server/shiftle/shiftle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -214,6 +216,13 @@ await mountShapedle(app, io, { mountPath: "/shapedle" });
 // Scoring: 1 point per guess on the board, 5 for solving the round. Own Socket.IO namespace /forbackle; reuses
 // BLINDLE's word bank + dictionary (loaded once).
 await mountForbackle(app, io, { mountPath: "/forbackle" });
+
+// SHIFTLE is a BLINDLE copy built on the SHUFFL-O idea: every letter of a guess is colored white, pink or blue, and what the
+// three colors MEAN (correct spot / wrong spot / not in the word) is shuffled again at the start of every round. The keyboard
+// colors itself with the same colors and a legend explains the current round's meanings (host can hide them). Scoring: 1 point
+// per guess on the board, 5 for solving the round. Own Socket.IO namespace /shiftle; reuses BLINDLE's word bank + dictionary
+// (loaded once).
+await mountShiftle(app, io, { mountPath: "/shiftle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
