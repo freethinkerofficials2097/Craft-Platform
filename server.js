@@ -23,6 +23,7 @@
 //   /forbackle/ - FORBACKLE (Socket.IO namespace /forbackle)
 //   /shiftle/  - SHIFTLE   (Socket.IO namespace /shiftle)
 //   /wordle/   - WORDLE    (Socket.IO namespace /wordle)
+//   /betweendle/ - BETWEENDLE (Socket.IO namespace /betweendle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -53,6 +54,7 @@ import { mountShapedle } from "./server/shapedle/shapedle-server.js";
 import { mountForbackle } from "./server/forbackle/forbackle-server.js";
 import { mountShiftle } from "./server/shiftle/shiftle-server.js";
 import { mountWordle } from "./server/wordle/wordle-server.js";
+import { mountBetweendle } from "./server/betweendle/betweendle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -231,6 +233,13 @@ await mountShiftle(app, io, { mountPath: "/shiftle" });
 // floating message window, above the guess board. Scoring: 1 point per guess on the board, 5 for solving the round.
 // Own Socket.IO namespace /wordle; reuses BLINDLE's word bank + dictionary (loaded once).
 await mountWordle(app, io, { mountPath: "/wordle" });
+
+// BETWEENDLE is a BLINDLE copy built on the LIST-O idea: the secret word hides in one big alphabetical word list and every
+// guess shows its DISTANCE from the secret (distance 120 = 119 words between). A guess before the secret becomes the new
+// lower bound, a guess after it the new upper bound; distance 0 = found. A legend above the board explains every part.
+// Scoring: 1 point for the guess that finds the secret word. Own Socket.IO namespace /betweendle; reuses BLINDLE's word bank
+// + dictionary (loaded once).
+await mountBetweendle(app, io, { mountPath: "/betweendle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

@@ -1,3 +1,5 @@
+> **Update 66:** new game BETWEENDLE (List-O style: every guess shows its alphabetical distance from the secret word and moves the lower / upper bound; legend above the board; 1 point for finding the word) at `/betweendle/`. See `CHANGES_UPDATE_66.md`.
+
 > **Update 65:** new game WORDLE (classic Word-O colors: every letter turns green / yellow / grey; self-coloring keyboard + legend above the board; 1 point per guess, 5 for solving) at `/wordle/` - see `CHANGES_UPDATE_65.md`.
 # TikTok LIVE Game Platform
 > **Update 63:** new game SHIFTLE (every letter turns white, pink or blue - and what the colors mean is SHUFFLED every round; self-coloring keyboard + legend; 1 point per guess, 5 for solving) at `/shiftle/` - see `CHANGES_UPDATE_63.md`.
