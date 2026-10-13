@@ -4,7 +4,7 @@
 //
 //   * show    - is the color legend visible on the board at all?            (default ON)
 //   * reveal  - does the legend tell the audience what each color means in
-//               the CURRENT round? (default ON). When OFF the legend only
+//               the CURRENT round? (default OFF since update 64 - the host turns it on himself). When OFF the legend only
 //               shows the three colors with a "?" and the audience has to
 //               work the meanings out from the clues themselves - exactly
 //               like the original Shuffl-O. The meanings are always shown
@@ -22,7 +22,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.resolve(__dirname, "../../data");
 const DATA_FILE = path.join(DATA_DIR, "shiftle-settings.json");
 
-const settings = { show: true, reveal: true };
+const settings = { show: true, reveal: false }; // update 64: reveal is OFF unless the host switches it on
 let saveTimer = null;
 
 function load() {
