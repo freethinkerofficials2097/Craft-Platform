@@ -277,7 +277,8 @@
       shape: "rounded", scale: 100, chipScale: 100, rowGap: 6, colGap: 10, maxWidth: 640,
       columns: 0, rows: 0, flow: "row", overflow: "grow", itemLayout: "side", cellFit: "equal", cellAlign: "auto",
       font: "default",
-      items: DEF.items.map(function (d) { return { id: d.id, enabled: true, label: d.label, glyph: d.glyph }; })
+      items: DEF.items.map(function (d) { return { id: d.id, enabled: true, label: d.label, glyph: d.glyph }; }),
+      removed: [] // ids of built-in entries the host deleted (they are not re-added until restored)
     };
   }
   function inList(list, v, fb) {
@@ -289,6 +290,7 @@
     return isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : fb;
   }
   // Turns whatever was stored/received into a complete valid settings object.
+  function dm0() { return defMap(); }
   function normalize(raw) {
     var d = defaultSettings();
     if (!raw || typeof raw !== "object") return d;
@@ -315,12 +317,17 @@
       cellFit: inList(CELL_FITS, raw.cellFit, "equal"),
       cellAlign: inList(CELL_ALIGNS, raw.cellAlign, "auto"),
       font: inList(FONTS.map(function (f) { return f.id; }), raw.font, "default"),
-      items: []
+      items: [],
+      removed: []
     };
     var dm = defMap(), seen = {};
+    (Array.isArray(raw.removed) ? raw.removed : []).forEach(function (id) {
+      if (typeof id === "string" && dm0()[id] && o.removed.indexOf(id) < 0) o.removed.push(id);
+    });
     (Array.isArray(raw.items) ? raw.items : []).forEach(function (it) {
       if (!it || typeof it.id !== "string" || seen[it.id] || o.items.length >= MAX_ITEMS) return;
       var isDefault = !!dm[it.id];
+      if (isDefault && o.removed.indexOf(it.id) >= 0) return; // deleted by the host
       if (!isDefault && !/^x[a-z0-9]{1,10}$/.test(it.id)) return; // unknown ids from an old version are dropped
       seen[it.id] = 1;
       var n = {
@@ -334,7 +341,7 @@
     });
     // Entries the game has but the saved settings don't know about yet are appended.
     DEF.items.forEach(function (x) {
-      if (!seen[x.id]) o.items.push({ id: x.id, enabled: true, label: x.label, glyph: x.glyph });
+      if (!seen[x.id] && o.removed.indexOf(x.id) < 0) o.items.push({ id: x.id, enabled: true, label: x.label, glyph: x.glyph });
     });
     return o;
   }
@@ -680,6 +687,7 @@
       '<h5>Entries (order, text, colors)</h5>' +
       '<ul class="lgItems" id="lgItems"></ul>' +
       '<div class="lgRow"><button type="button" class="lgBtn" id="lgAdd">+ Add an entry</button>' +
+      '<button type="button" class="lgBtn" id="lgRestore">Restore removed entries</button>' +
       '<button type="button" class="lgBtn" id="lgReset">Reset legend to default</button></div>';
   }
 
@@ -748,9 +756,8 @@
         '<input type="text" class="lgGlyph" maxlength="6" title="Text inside the colored chip" placeholder="chip" value="' + esc(it.glyph) + '">' +
         '<input type="text" class="lgLabel" maxlength="80" title="Text next to the chip" placeholder="Meaning" value="' + esc(it.label) + '">' +
         '<input type="color" class="lgColor" title="Chip color" value="' + colorValue + '">' +
-        (d
-          ? '<button type="button" class="lgMini lgRst" title="Back to the game\'s own color"' + (it.color ? "" : " disabled") + ">↺</button>"
-          : '<button type="button" class="lgMini lgDel" title="Delete this entry">✕</button>');
+        (d ? '<button type="button" class="lgMini lgRst" title="Back to the game\'s own color"' + (it.color ? "" : " disabled") + ">↺</button>" : "") +
+        '<button type="button" class="lgMini lgDel" title="Delete this entry">✕</button>';
       ul.appendChild(li);
 
       // Always edit the CURRENT entry (looked up by id), never a captured object: if the settings object is
@@ -778,11 +785,14 @@
       var del = li.querySelector(".lgDel");
       if (del) del.addEventListener("click", function () {
         for (var k = 0; k < S.items.length; k++) if (S.items[k].id === it.id) { S.items.splice(k, 1); break; }
+        if (dm[it.id] && S.removed.indexOf(it.id) < 0) S.removed.push(it.id); // remember a deleted built-in entry
         commit(true);
       });
     });
     var add = panelRoot.querySelector("#lgAdd");
     if (add) add.disabled = S.items.length >= MAX_ITEMS;
+    var rs = panelRoot.querySelector("#lgRestore");
+    if (rs) { rs.disabled = !(S.removed && S.removed.length); rs.textContent = "Restore removed entries" + (S.removed && S.removed.length ? " (" + S.removed.length + ")" : ""); }
   }
 
   function wirePanel() {
@@ -825,6 +835,14 @@
       if (S.items.length >= MAX_ITEMS) return;
       var id = "x" + Math.random().toString(36).slice(2, 8);
       S.items.push({ id: id, enabled: true, label: "New meaning", glyph: "A", color: "#7B3FE4" });
+      commit(true);
+    });
+    on("lgRestore", "click", function () {
+      var dm = defMap();
+      (S.removed || []).forEach(function (id) {
+        if (dm[id] && S.items.length < MAX_ITEMS) S.items.push({ id: id, enabled: true, label: dm[id].label, glyph: dm[id].glyph });
+      });
+      S.removed = [];
       commit(true);
     });
     on("lgReset", "click", function () { resetAll(); });

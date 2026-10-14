@@ -166,7 +166,7 @@
 .lgPanelUI button.lgBtn:disabled { opacity: 0.35; cursor: default; }
 .lgItems { list-style: none; margin: 0 0 8px; padding: 0; }
 .lgEdit {
-  display: grid; grid-template-columns: auto auto auto 54px 1fr auto auto; gap: 6px; align-items: center;
+  display: grid; grid-template-columns: auto auto auto 54px 1fr auto auto auto; gap: 6px; align-items: center;
   padding: 6px; margin: 0 0 6px; border: 1px solid rgba(127, 127, 150, 0.3); border-radius: 10px;
   background: rgba(127, 127, 150, 0.07);
 }
@@ -180,5 +180,6 @@
 .lgEdit .lgMini:disabled { opacity: 0.3; cursor: default; }
 @media (max-width: 460px) {
   .lgEdit { grid-template-columns: auto auto auto 48px 1fr; }
+  .lgEdit .lgRst { justify-self: start; }
   .lgEdit input[type="color"], .lgEdit .lgDel { justify-self: start; }
 }
