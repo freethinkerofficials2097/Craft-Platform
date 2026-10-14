@@ -31,7 +31,7 @@ import { Records } from "../shared/records-store.js";
 import { PlatformHub } from "../shared/platform-hub.js";
 
 // Games whose pages live on their own Socket.IO namespace (used only to label WHICH game is on screen in Records).
-const NAMESPACE_GAMES = ["flagle", "travle", "findle", "crossdle", "twistle", "oracle", "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable"];
+const NAMESPACE_GAMES = ["flagle", "travle", "findle", "crossdle", "twistle", "oracle", "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable", "fixle"];
 
 // TikTok event names we listen for, with plain-string fallbacks in case a
 // particular library version doesn't export a given WebcastEvent constant
