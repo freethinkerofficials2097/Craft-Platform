@@ -296,8 +296,11 @@ function attemptGuess(word, caller) {
   if (game.status !== "live") return { ok: false, error: "No round in progress." };
 
   // A word already on the board is never accepted twice. Silent for chat; offline shows the message.
-  if (game.guesses.some((g) => g.word === word)) {
-    return { ok: false, error: "That word is already on the board.", duplicate: true };
+  const already = game.guesses.find((g) => g.word === word);
+  if (already) {
+    // announce it in the floating message window: "Already guessed" + the word's score
+    game.lastEvent = { id: ++game.eventSeq, kind: "duplicate", word, score: already.score, caller, at: Date.now() };
+    return { ok: false, error: `Already guessed: ${word.toUpperCase()} — score ${already.score}`, duplicate: true };
   }
 
   processGuess(word, caller);

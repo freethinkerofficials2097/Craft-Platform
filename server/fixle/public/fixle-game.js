@@ -486,6 +486,10 @@ function maybeShowRejection(g) {
   if (g.roundNumber !== lastShownEventRound) { lastShownEventRound = g.roundNumber; lastShownEventId = ev ? ev.id : -1; return; }
   if (ev && ev.id > lastShownEventId) {
     lastShownEventId = ev.id;
+    if (ev.kind === "duplicate") {
+      showToast("🔁 <b>" + escapeHtml(ev.caller) + "</b> — <b>Already guessed</b>: <b>" + escapeHtml(ev.word.toUpperCase()) + "</b> — score <b>" + ev.score + "</b>", "info", Math.min(seconds, 3));
+      return;
+    }
     const won = g.status === "won" && g.lastWinInfo && g.lastWinInfo.word === ev.word;
     showToast(
       (won ? "🎉 " : "🎯 ") + "<b>" + escapeHtml(ev.caller) + "</b> guessed <b>" + escapeHtml(ev.word.toUpperCase()) + "</b> — score <b>" + ev.score + "</b>" + (won ? " · exact word!" : ""),
