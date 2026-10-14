@@ -38,6 +38,7 @@ import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-a
 import * as HC from "../shared/hint-config-store.js"; // update 58: three hint types + host hint settings
 import * as WH from "../shared/word-hints.js";
 import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
+import { isValidShortWord } from "./short-words.js";
 import { dictionaryState, loadDictionary } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex } from "../blindle/blindle-difficulty.js";
 import * as WL from "../shared/word-language.js"; // update 48: word language
@@ -165,6 +166,8 @@ let difficultyIndex = buildDifficultyIndex(ANSWER_WORDS);
 buildWordList(ANSWER_WORDS);
 const getWordsForDifficulty = WL.getWordsForDifficulty;
 function isValidGuessWord(word) {
+  // FIXLE only: 3-letter guesses are checked against the small short-word lists (the shared dictionaries start at 4 letters).
+  if (word.length === 3) return isValidShortWord(WL.modeInfo(wordLanguage).parts, word) || WL.isValidGuess(wordLanguage, word);
   return WL.isValidGuess(wordLanguage, word);
 }
 function applyWordLanguage(mode) {
