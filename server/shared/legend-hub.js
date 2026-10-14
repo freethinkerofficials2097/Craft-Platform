@@ -79,7 +79,11 @@ export function sanitizeLegend(raw) {
     cellFit: pick(raw.cellFit, CELL_FITS, "equal"),
     cellAlign: pick(raw.cellAlign, CELL_ALIGNS, "auto"),
     font: str(raw.font, 24).replace(/[^a-z0-9_-]/gi, ""),
-    items: []
+    items: [],
+    // built-in entries the host deleted (ids only), so they are not re-added when the legend loads
+    removed: Array.isArray(raw.removed)
+      ? [...new Set(raw.removed.filter((id) => typeof id === "string" && ID_RE.test(id)))].slice(0, MAX_ITEMS)
+      : []
   };
   if (Array.isArray(raw.items)) {
     for (const it of raw.items.slice(0, MAX_ITEMS)) {
