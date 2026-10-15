@@ -281,14 +281,34 @@ function awardPoints(caller, points) {
   game.totalScores.set(caller, (game.totalScores.get(caller) || 0) + points);
 }
 
+// SHIFTLE strict-fit rule (update 81, ORACLE style).
+// The audience is not told which color wears which meaning this round (and different viewers hold different
+// theories), so a guess is NOT required to line up with this round's real deal. For EACH earlier guess it only has
+// to be possible that the shown colors come from SOME arrangement of the three meanings over the three colors
+// (3 colors x 3 meanings = 6 arrangements). The arrangement may differ from clue to clue. The real secret word
+// always passes (its true arrangement fits every clue) and accepting / rejecting reveals nothing about the real deal.
+const ALL_PALETTES = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+
+// Would `word`, scored against this earlier guess, give the colors that are on the board - under ANY arrangement?
+function fitsClueUnderSomePalette(word, past) {
+  const hypothetical = scoreShift(past.word, word); // meanings, if `word` were the secret
+  const shown = toColors(past.clue);                // colors the audience actually sees for that guess
+  return ALL_PALETTES.some((pal) => hypothetical.every((m, i) => pal[m] === shown[i]));
+}
+
 function checkConsistency(word) {
   for (let i = 0; i < game.guesses.length; i++) {
     const past = game.guesses[i];
-    if (!cluesEqual(scoreShift(past.word, word), past.clue)) {
+    if (!fitsClueUnderSomePalette(word, past)) {
       return { ok: false, conflictIndex: i, conflictWord: past.word, conflictClue: past.clue };
     }
   }
   return { ok: true };
+}
+
+// Exact check (uses this round's real deal) - only for hints, so a suggested word is a genuine candidate.
+function fitsRealClues(word) {
+  return game.guesses.every((past) => cluesEqual(scoreShift(past.word, word), past.clue));
 }
 
 function processGuess(word, caller) {
@@ -328,7 +348,7 @@ function attemptGuess(word, caller) {
 
   const consistency = game.strictFit ? checkConsistency(word) : { ok: true };
   if (!consistency.ok) {
-    const reason = `Doesn't fit the colors of guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClue(consistency.conflictClue)})`;
+    const reason = `Doesn't fit the colors of guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClue(consistency.conflictClue)}) under any color meaning`;
     game.lastRejection = { word, reason, at: Date.now() };
     return { ok: false, error: reason, rejected: true };
   }
@@ -470,6 +490,9 @@ function suggestHint() {
   );
   if (candidates.length === 0) return;
 
+  // Words that fit every clue under this round's real deal are always accepted by Strict fit, so they come first.
+  const exact = candidates.filter(fitsRealClues);
+  if (exact.length > 0) candidates = exact;
   const scored = candidates.map((w) => {
     let fit = 0;
     for (const g of game.guesses) {

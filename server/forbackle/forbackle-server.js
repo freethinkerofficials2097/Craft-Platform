@@ -437,6 +437,10 @@ function suggestHint() {
   );
   if (candidates.length === 0) return;
 
+  // Words that fit every color on the board are always accepted by Strict fit, so a suggestion comes from those first
+  // (before this, a "Try: WORD" hint could be a word that Strict fit then rejected).
+  const exact = candidates.filter((w) => checkConsistency(w).ok);
+  if (exact.length > 0) candidates = exact;
   const scored = candidates.map((w) => {
     let fit = 0;
     for (const g of game.guesses) {
@@ -750,10 +754,12 @@ function buildStatePayload() {
       lengthMax: game.lengthMax,
       secretWord: game.status === "lost" ? game.secretWord : null,
       // The automatic starter word shows the LIVE host's profile picture.
-      guesses: game.guesses.slice(-12).map((g) => (g.isStarter ? { ...g, avatarUrl: hostAvatarUrl } : g)),
+      guesses: game.guesses.slice(-300).map((g) => (g.isStarter ? { ...g, avatarUrl: hostAvatarUrl } : g)),
       guessesMade: game.guesses.length,
       roundNumber: game.roundNumber,
-      // The color every keyboard key should wear, worked out from EVERY guess this round (not only the last 12
+      // update 81: the board now receives (up to) the last 300 guesses instead of 12 - Strict fit checks EVERY guess of
+      // the round, so a guess could be refused because of an older row the audience could no longer see.
+      // The color every keyboard key should wear, worked out from EVERY guess this round (not only the ones
       // sent in `guesses`): { letter: 0 green | 1 purple | 2 pink }. A letter matched in the right spot even once
       // stays green; otherwise it takes the color it had in the most recent guess that used it.
       keyColors: game.status === "idle" ? {} : computeKeyColors(),
