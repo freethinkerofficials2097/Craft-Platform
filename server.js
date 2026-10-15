@@ -131,7 +131,12 @@ Records.setViewerCountSource(() => PlatformHub.viewers);
 const sendRecordsPage = (req, res) => res.sendFile(path.join(__dirname, "public", "records.html"));
 app.get(["/records", "/records/", "/Records", "/record", "/records.htm"], sendRecordsPage);
 
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public"), {
+  // update 78: always revalidate pages / styles / scripts, so a new deploy shows up immediately (no stale cached CSS or JS)
+  setHeaders(res, filePath) {
+    if (/\.(html|css|js|mjs)$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+  }
+}));
 
 // Platform-wide Gift/Like/Share alerts + diagnostics + host Test Event
 // panel — one shared module every game's TikTok connection reports into

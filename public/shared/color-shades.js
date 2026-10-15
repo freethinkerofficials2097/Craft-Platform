@@ -106,7 +106,7 @@
       { id: "blue", label: "Blue", hint: "one of the three shuffled clues (tiles, legend & keyboard keys)", std: "#A9D6FB", stdDark: "#6BA9DC", vars: ["--sf-blue"], darkVars: ["--sf-blue-dark"], inkVars: ["--sf-blue-ink"] }
     ],
     betweendle: [
-      { id: "bound", label: "Grey", hint: "lower bound, upper bound and ? rows (the search window)", std: "#8F8F8F", stdDark: "#6E6E6E", vars: ["--bd-bound"], darkVars: ["--bd-bound-dark"], inkVars: ["--bd-bound-ink"] },
+      { id: "bound", label: "Card", hint: "lower bound and upper bound boxes (the search window)", std: "#E2D6B8", stdDark: "#BFAF8B", vars: ["--bd-bound"], darkVars: ["--bd-bound-dark"], inkVars: ["--bd-bound-ink"] },
       { id: "found", label: "Green", hint: "the secret word once it is found (distance 0)", std: "#4F8E4F", stdDark: "#376B37", vars: ["--bd-found"], darkVars: ["--bd-found-dark"], inkVars: ["--bd-found-ink"] },
       { id: "key", label: "Prefix green", hint: "the locked start letters shown in green (e.g. IN in IN?)", std: "#2E8B3D", stdDark: "#1F6A2B", vars: ["--bd-key"], darkVars: ["--bd-key-dark"], inkVars: ["--bd-key-ink"] }
     ],
