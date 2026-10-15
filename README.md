@@ -1,3 +1,5 @@
+> **Update 81:** FORBACKLE no longer refuses guesses because of hidden older rows or hint words that did not fit (board shows up to 300 guesses, hints pick fitting words); SHIFTLE's Strict fit now accepts a guess that fits under ANY of the 6 possible color meanings, like ORACLE. See `CHANGES_UPDATE_81.md`.
+
 > **Update 72:** new game FIXLE (Edge-O style: every guess is scored with matching prefix + matching suffix against the secret word; guesses are listed from the highest score to the lowest; a score of twice the word length wins and the winner earns exactly that many points; legend above the board) at `/fixle/`. See `CHANGES_UPDATE_72.md`.
 >
 > **Update 71:** fixed the top toolbar / ribbon being squashed into a thin strip after a round ends (the header parts can no longer shrink; the page scrolls instead). See `CHANGES_UPDATE_71.md`.
