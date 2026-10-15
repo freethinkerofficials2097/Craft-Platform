@@ -158,8 +158,8 @@
     betweendle: {
       title: "Legend",
       items: [
-        { id: "key", glyph: "IN", label: "Green letters — the start shared by the lower and upper word. The secret word starts with it too; the middle box shows it followed by ?.", c: V("--bd-key", "#2E8B3D", "#F3F1E6", "#1F6A2B") },
-        { id: "range", glyph: "!", label: "Outside range — a guess not between the lower and upper bound is skipped, and a short message pops up in the floating window.", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+        { id: "key", glyph: "IN", label: "Green letters — the start shared by the lower and upper word; the secret word starts with it too.", c: V("--bd-key", "#2E8B3D", "#F3F1E6", "#1F6A2B") },
+        { id: "range", glyph: "!", label: "Outside range — a guess not between the two bounds is skipped; a message pops up in the floating window.", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
     fixle: {
