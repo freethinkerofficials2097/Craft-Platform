@@ -46,7 +46,6 @@ const el = {
   autoContinueNote: document.getElementById("autoContinueNote"),
   idleBanner: document.getElementById("idleBanner"),
   bdBoard: document.getElementById("bdBoard"),
-  alphabet: document.getElementById("alphabet"),
   boardStatus: document.getElementById("boardStatus"),
   legendSection: document.getElementById("legendSection"),
   legendTitle: document.getElementById("legendTitle"),
@@ -168,22 +167,337 @@ el.fullscreenBtn.addEventListener("click", () => {
 });
 
 // ------------------------------------------------------------
-// Alphabet tiles: A-Z in two rows of 13, as in the reference game. Purely decorative (not clickable, nothing is dimmed or
-// highlighted any more - the locked prefix is shown in the three boxes instead).
+// Card design (update 83): the look of the three boxes - lower bound, hidden word, upper bound.
+// The host picks one of seven designs and tunes colors / font / size / corners / border / shadow / spacing in
+// Settings -> Card design. The choice lives on the server (data/betweendle-settings.json) so every connected screen
+// shows the same look; this code paints it onto #bdBoard (CSS in betweendle-style.css reads the attributes + variables).
+// BETWEENDLE has no keyboard: the old A-Z letter tiles were removed in this update.
 // ------------------------------------------------------------
-const ALPHABET_ROWS = ["abcdefghijklm", "nopqrstuvwxyz"];
-for (const rowLetters of ALPHABET_ROWS) {
-  const rowEl = document.createElement("div");
-  rowEl.className = "bdAlphaRow";
-  for (const letter of rowLetters) {
-    const key = document.createElement("span");
-    key.className = "bdLetter";
-    key.dataset.letter = letter;
-    key.textContent = letter;
-    rowEl.appendChild(key);
-  }
-  el.alphabet.appendChild(rowEl);
+const CARD_DEFAULTS = {
+  style: "stitched", font: "default",
+  cardColor: "", secretColor: "", textColor: "", accentColor: "",
+  textScale: 100, radius: 18, borderWidth: 3, shadow: 2, gap: 14,
+  labels: false, distance: true, animate: true
+};
+// name / one-line hint / recommended corners, border and shadow for each design
+// faceFromCard: the "Card color" is the face of the box (so the text color is picked to stay readable on it)
+const CARD_STYLES = [
+  { id: "stitched", name: "Stitched", hint: "Knitted patch with a dashed seam", radius: 18, borderWidth: 3, shadow: 2, faceFromCard: true, whiteMix: 0 },
+  { id: "flat", name: "Flat", hint: "Clean solid card, thin border", radius: 10, borderWidth: 2, shadow: 1, faceFromCard: true, whiteMix: 0 },
+  { id: "glass", name: "Glass", hint: "Frosted, see-through card", radius: 22, borderWidth: 1, shadow: 2, faceFromCard: true, whiteMix: 0.45 },
+  { id: "neon", name: "Neon", hint: "Dark card, glowing outline", radius: 14, borderWidth: 2, shadow: 2, faceFromCard: false, whiteMix: 0 },
+  { id: "ticket", name: "Ticket", hint: "Punched notches, perforation", radius: 10, borderWidth: 2, shadow: 1, faceFromCard: true, whiteMix: 0 },
+  { id: "sticker", name: "Sticker", hint: "Bold outline, hard shadow", radius: 14, borderWidth: 3, shadow: 2, faceFromCard: true, whiteMix: 0 },
+  { id: "soft", name: "Soft", hint: "Raised clay, pressed hidden box", radius: 22, borderWidth: 0, shadow: 2, faceFromCard: true, whiteMix: 0 }
+];
+const CARD_FONTS = [
+  { id: "default", name: "Standard", css: "" },
+  { id: "rounded", name: "Rounded", css: "'Quicksand', 'Space Grotesk', sans-serif" },
+  { id: "grotesk", name: "Modern", css: "'Space Grotesk', 'Inter', system-ui, sans-serif" },
+  { id: "mono", name: "Typewriter", css: "ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace" },
+  { id: "script", name: "Script", css: "'Pacifico', cursive" }
+];
+const CARD_PRESET_COLORS = ["#F4E9CF", "#FFFFFF", "#BFE3FF", "#CDEFC8", "#FFD3E4", "#E4D4FF", "#FFE08A", "#FF9E8F", "#3A4256", "#15151C"];
+const CARD_COLOR_FIELDS = [
+  { key: "cardColor", label: "Card color", hint: "Lower and upper boxes. Auto follows the theme and Color shades -> Card.", fallback: "#E2D6B8" },
+  { key: "secretColor", label: "Hidden-word card color", hint: "The middle box. Auto = a lighter version of the card color. It turns green when found.", fallback: "#F0E8D4" },
+  { key: "textColor", label: "Text color", hint: "Words and distances. Auto picks a readable color.", fallback: "#3A2D20" },
+  { key: "accentColor", label: "Border / accent color", hint: "Outline, seam, glow and caption color. Auto follows the theme.", fallback: "#6B4423" }
+];
+const CARD_SLIDERS = [
+  { key: "textScale", label: "Text size", min: 70, max: 140, step: 5, unit: "%" },
+  { key: "radius", label: "Corner roundness", min: 0, max: 32, step: 1, unit: "px" },
+  { key: "borderWidth", label: "Border thickness", min: 0, max: 8, step: 1, unit: "px" },
+  { key: "shadow", label: "Shadow / glow depth", min: 0, max: 3, step: 1, unit: "" },
+  { key: "gap", label: "Space between the boxes", min: 6, max: 30, step: 1, unit: "px" }
+];
+const CARD_TOGGLES = [
+  { key: "labels", label: "Show captions (LOWER BOUND / HIDDEN WORD / UPPER BOUND)" },
+  { key: "distance", label: "Show the distance number" },
+  { key: "animate", label: "Pop-in animation when the board changes" }
+];
+const cardPicker = document.getElementById("cardDesignPicker");
+let curCard = { ...CARD_DEFAULTS };
+let lastCardSig = "";
+let cardUi = null; // references into the picker DOM, filled by buildCardPicker()
+
+function cardHexToRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ""));
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+// readable text color for a given face color (optionally as seen after mixing some white into it)
+function cardInkFor(hex, whiteMix) {
+  const rgb = cardHexToRgb(hex);
+  if (!rgb) return "";
+  const w = whiteMix || 0;
+  const c = rgb.map((v) => v * (1 - w) + 255 * w).map((v) => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  const lum = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  return lum > 0.42 ? "#1f1a14" : "#ffffff";
+}
+function cardStyleMeta(id) { return CARD_STYLES.find((s) => s.id === id) || CARD_STYLES[0]; }
+
+// Writes the look onto an element (the real board, the live preview, or a design thumbnail).
+// opts.onlyLook = true -> only design + colors + font (thumbnails keep their own small size, border and shadow).
+function paintCardDesign(target, d, opts) {
+  if (!target) return;
+  const onlyLook = Boolean(opts && opts.onlyLook);
+  const meta = cardStyleMeta(d.style);
+  const setVar = (name, val) => { if (val === "" || val === null || val === undefined) target.style.removeProperty(name); else target.style.setProperty(name, String(val)); };
+  target.setAttribute("data-card-style", meta.id);
+  target.setAttribute("data-font", d.font);
+  setVar("--bdc-card", d.cardColor);
+  setVar("--bdc-secret", d.secretColor);
+  setVar("--bdc-accent", d.accentColor);
+  const font = CARD_FONTS.find((f) => f.id === d.font);
+  setVar("--bdc-font", font ? font.css : "");
+  // readable text: the host's own text color wins; otherwise follow a custom face color
+  let ink = "", inkSecret = "";
+  if (d.textColor) {
+    ink = inkSecret = d.textColor;
+  } else if (meta.faceFromCard) {
+    if (d.cardColor) ink = cardInkFor(d.cardColor, meta.whiteMix);
+    if (d.secretColor) inkSecret = cardInkFor(d.secretColor, meta.whiteMix ? 0.4 : 0);
+    else if (d.cardColor) inkSecret = cardInkFor(d.cardColor, Math.max(0.55, meta.whiteMix));
+  }
+  setVar("--bdc-ink", ink);
+  setVar("--bdc-ink-secret", inkSecret);
+  // light text means a dark box: brighter locked letters and no white text-shadow (see the data-ink rules in the CSS)
+  const isLightInk = (c) => c === "#ffffff" || (/^#[0-9a-f]{6}$/i.test(c) && cardInkFor(c, 0) === "#1f1a14");
+  if (ink && isLightInk(ink)) target.setAttribute("data-ink", "light"); else target.removeAttribute("data-ink");
+  if (inkSecret && isLightInk(inkSecret)) target.setAttribute("data-ink-secret", "light"); else target.removeAttribute("data-ink-secret");
+  if (onlyLook) return;
+  target.setAttribute("data-labels", d.labels ? "on" : "off");
+  target.setAttribute("data-distance", d.distance ? "on" : "off");
+  target.setAttribute("data-animate", d.animate ? "on" : "off");
+  setVar("--bdc-scale", (d.textScale / 100).toFixed(2));
+  setVar("--bdc-radius", d.radius + "px");
+  setVar("--bdc-bw", d.borderWidth + "px");
+  setVar("--bdc-sh", d.shadow);
+  setVar("--bdc-gap", d.gap + "px");
+}
+
+function cardNorm(d) {
+  const out = { ...CARD_DEFAULTS };
+  if (d && typeof d === "object") for (const k of Object.keys(CARD_DEFAULTS)) if (d[k] !== undefined && d[k] !== null) out[k] = d[k];
+  if (!CARD_STYLES.some((s) => s.id === out.style)) out.style = "stitched";
+  if (!CARD_FONTS.some((f) => f.id === out.font)) out.font = "default";
+  return out;
+}
+
+// Called with every server state: paints the board (only when something changed) and refreshes the picker.
+function applyCardDesign(raw) {
+  const d = cardNorm(raw);
+  const sig = JSON.stringify(d);
+  if (sig === lastCardSig) return;
+  lastCardSig = sig;
+  curCard = d;
+  paintCardDesign(el.bdBoard, d);
+  syncCardPicker(d);
+  if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords()); // size / font / captions can change how long a word is
+}
+
+// One change from the host: shown at once on this screen, saved and sent to every screen by the server.
+let cardSendTimer = null; let cardPending = {};
+function changeCard(patch) {
+  curCard = cardNorm({ ...curCard, ...patch });
+  lastCardSig = JSON.stringify(curCard);
+  paintCardDesign(el.bdBoard, curCard);
+  syncCardPicker(curCard);
+  if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords());
+  cardPending = { ...cardPending, ...patch };
+  clearTimeout(cardSendTimer);
+  cardSendTimer = setTimeout(() => { const p = cardPending; cardPending = {}; send("set_card_design", p); }, 90);
+}
+
+function cardEl(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+// a small static box for the preview and the design thumbnails
+function previewRow(kind, word, prefix, distance) {
+  const row = cardEl("div", "bdRow bd-" + kind);
+  row.appendChild(cardEl("span", "bdTag", kind === "lower" ? "Lower bound" : kind === "upper" ? "Upper bound" : "Hidden word"));
+  if (kind === "secret") {
+    const q = cardEl("span", "bdWord bdQuestion");
+    q.appendChild(cardEl("span", "bdPrefix", prefix));
+    q.appendChild(document.createTextNode("?"));
+    row.appendChild(q);
+  } else {
+    appendPrefixedWord(row, word, prefix, "");
+    row.appendChild(cardEl("span", "bdDistance", String(distance)));
+  }
+  return row;
+}
+
+function buildCardPicker() {
+  if (!cardPicker) return;
+  cardUi = { styleBtns: {}, thumbs: {}, swatches: {}, colorInputs: {}, ranges: {}, rangeVals: {}, fontBtns: {}, toggles: {} };
+  cardPicker.innerHTML = "";
+  const root = cardEl("div", "cdPicker");
+
+  // live preview (works even while no round is running)
+  root.appendChild(cardEl("div", "cdGroupTitle", "Preview"));
+  const prev = cardEl("div", "cdPreview bdBoard");
+  const wrap = cardEl("div", "tilesWrap");
+  wrap.appendChild(previewRow("lower", "inform", "in", 120));
+  wrap.appendChild(previewRow("secret", "", "in", 0));
+  wrap.appendChild(previewRow("upper", "inside", "in", 37));
+  prev.appendChild(wrap);
+  root.appendChild(prev);
+  cardUi.preview = prev;
+
+  // designs
+  root.appendChild(cardEl("div", "cdGroupTitle", "Design"));
+  const grid = cardEl("div", "cdStyles");
+  CARD_STYLES.forEach((s) => {
+    const btn = cardEl("button", "cdStyleBtn");
+    btn.type = "button";
+    btn.setAttribute("aria-label", s.name + " design");
+    const thumb = cardEl("div", "bdBoard");
+    const tw = cardEl("div", "tilesWrap");
+    tw.appendChild(previewRow("lower", "inform", "in", 120));
+    thumb.appendChild(tw);
+    btn.appendChild(thumb);
+    btn.appendChild(cardEl("span", "cdStyleName", s.name));
+    btn.appendChild(cardEl("span", "cdStyleHint", s.hint));
+    btn.addEventListener("click", () => changeCard({ style: s.id, radius: s.radius, borderWidth: s.borderWidth, shadow: s.shadow }));
+    grid.appendChild(btn);
+    cardUi.styleBtns[s.id] = btn;
+    cardUi.thumbs[s.id] = thumb;
+  });
+  root.appendChild(grid);
+
+  // colors
+  root.appendChild(cardEl("div", "cdGroupTitle", "Colors"));
+  CARD_COLOR_FIELDS.forEach((f) => {
+    const field = cardEl("div", "cdField");
+    const lab = cardEl("div", "cdLabel", f.label);
+    field.appendChild(lab);
+    const row = cardEl("div", "cdColors");
+    const auto = cardEl("button", "cdSwatch auto");
+    auto.type = "button"; auto.title = "Automatic"; auto.setAttribute("aria-label", f.label + ": automatic");
+    auto.addEventListener("click", () => changeCard({ [f.key]: "" }));
+    row.appendChild(auto);
+    const sw = [{ hex: "", el: auto }];
+    CARD_PRESET_COLORS.forEach((hex) => {
+      const b = cardEl("button", "cdSwatch");
+      b.type = "button"; b.style.background = hex; b.title = hex; b.setAttribute("aria-label", f.label + " " + hex);
+      b.addEventListener("click", () => changeCard({ [f.key]: hex.toLowerCase() }));
+      row.appendChild(b);
+      sw.push({ hex: hex.toLowerCase(), el: b });
+    });
+    const input = cardEl("input", "cdColorInput");
+    input.type = "color"; input.value = f.fallback.toLowerCase(); input.title = "Pick any color"; input.setAttribute("aria-label", f.label + " custom color");
+    input.addEventListener("input", () => changeCard({ [f.key]: input.value.toLowerCase() }));
+    row.appendChild(input);
+    field.appendChild(row);
+    field.appendChild(cardEl("p", "sectionNote", f.hint));
+    root.appendChild(field);
+    cardUi.swatches[f.key] = sw;
+    cardUi.colorInputs[f.key] = input;
+  });
+
+  // font
+  root.appendChild(cardEl("div", "cdGroupTitle", "Font"));
+  const fonts = cardEl("div", "cdFonts");
+  CARD_FONTS.forEach((f) => {
+    const b = cardEl("button", "cdChip", f.name);
+    b.type = "button";
+    if (f.css) b.style.fontFamily = f.css;
+    b.addEventListener("click", () => changeCard({ font: f.id }));
+    fonts.appendChild(b);
+    cardUi.fontBtns[f.id] = b;
+  });
+  root.appendChild(fonts);
+
+  // size, corners, border, shadow, spacing
+  root.appendChild(cardEl("div", "cdGroupTitle", "Shape & size"));
+  CARD_SLIDERS.forEach((s) => {
+    const field = cardEl("div", "cdField");
+    const lab = cardEl("div", "cdLabel", s.label);
+    const val = cardEl("span", "cdVal");
+    lab.appendChild(val);
+    field.appendChild(lab);
+    const r = cardEl("input", "cdRange");
+    r.type = "range"; r.min = s.min; r.max = s.max; r.step = s.step;
+    r.setAttribute("aria-label", s.label);
+    r.addEventListener("input", () => changeCard({ [s.key]: Number(r.value) }));
+    field.appendChild(r);
+    root.appendChild(field);
+    cardUi.ranges[s.key] = r;
+    cardUi.rangeVals[s.key] = val;
+  });
+
+  // switches
+  root.appendChild(cardEl("div", "cdGroupTitle", "Extras"));
+  const tg = cardEl("div", "cdToggles");
+  CARD_TOGGLES.forEach((t) => {
+    const label = cardEl("label", "switchRow");
+    const cb = cardEl("input"); cb.type = "checkbox";
+    const track = cardEl("span", "switchTrack"); track.appendChild(cardEl("span", "switchThumb"));
+    label.appendChild(cb); label.appendChild(track); label.appendChild(cardEl("span", "switchLabel", t.label));
+    cb.addEventListener("change", () => changeCard({ [t.key]: cb.checked }));
+    tg.appendChild(label);
+    cardUi.toggles[t.key] = cb;
+  });
+  root.appendChild(tg);
+
+  // resets
+  const actions = cardEl("div", "cdActions");
+  const shapeBtn = cardEl("button", "btn btnGhost", "Reset shape of this design");
+  shapeBtn.type = "button";
+  shapeBtn.addEventListener("click", () => { const m = cardStyleMeta(curCard.style); changeCard({ radius: m.radius, borderWidth: m.borderWidth, shadow: m.shadow, textScale: 100, gap: 14 }); });
+  const allBtn = cardEl("button", "btn btnDanger", "Reset everything");
+  allBtn.type = "button";
+  allBtn.style.marginBottom = "0";
+  allBtn.addEventListener("click", () => {
+    clearTimeout(cardSendTimer); cardPending = {};
+    curCard = { ...CARD_DEFAULTS }; lastCardSig = JSON.stringify(curCard);
+    paintCardDesign(el.bdBoard, curCard); syncCardPicker(curCard);
+    if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords());
+    send("reset_card_design", {});
+  });
+  actions.appendChild(shapeBtn); actions.appendChild(allBtn);
+  root.appendChild(actions);
+
+  cardPicker.appendChild(root);
+  syncCardPicker(curCard);
+}
+
+function syncCardPicker(d) {
+  if (!cardUi) return;
+  paintCardDesign(cardUi.preview, d);
+  CARD_STYLES.forEach((s) => {
+    cardUi.styleBtns[s.id].classList.toggle("selected", s.id === d.style);
+    cardUi.styleBtns[s.id].setAttribute("aria-pressed", String(s.id === d.style));
+    // each thumbnail shows its own design in the host's current colors and font
+    paintCardDesign(cardUi.thumbs[s.id], { ...d, style: s.id }, { onlyLook: true });
+  });
+  CARD_COLOR_FIELDS.forEach((f) => {
+    const cur = String(d[f.key] || "").toLowerCase();
+    let anySwatch = false;
+    cardUi.swatches[f.key].forEach((sw) => { const on = sw.hex === cur; sw.el.classList.toggle("selected", on); if (on && cur) anySwatch = true; });
+    const input = cardUi.colorInputs[f.key];
+    if (document.activeElement !== input) input.value = cur || f.fallback.toLowerCase();
+    input.style.outline = cur && !anySwatch ? "3px solid var(--gold)" : "";
+  });
+  CARD_FONTS.forEach((f) => cardUi.fontBtns[f.id].classList.toggle("selected", f.id === d.font));
+  CARD_SLIDERS.forEach((s) => {
+    const r = cardUi.ranges[s.key];
+    if (document.activeElement !== r) r.value = String(d[s.key]);
+    cardUi.rangeVals[s.key].textContent = d[s.key] + s.unit;
+  });
+  CARD_TOGGLES.forEach((t) => { cardUi.toggles[t.key].checked = Boolean(d[t.key]); });
+}
+buildCardPicker();
+
 // The letters every word of the search window starts with. Both bounds must be real guesses (not the opening AAA / ZZZ).
 // Every word between two words that share a start also shares it, so the secret word starts with it as well.
 function lockedPrefix(g) {
@@ -648,6 +962,7 @@ function render(state) {
   renderModeUI(state.game);
   renderLengthBadge(state.game);
   renderLegend(state.game);
+  applyCardDesign(state.game.cardDesign); // update 83: design / colors / font of the three boxes
   renderTiles(state.game);
   renderHintChips(state.game);
   renderModeNotes(state.game);
@@ -754,6 +1069,10 @@ function avatarChipHtml(username, avatarUrl, sizePx) {
 function buildBoardRow(kind, entry, g) {
   const row = document.createElement("div");
   row.className = "bdRow bd-" + kind;
+  const tag = document.createElement("span"); // small caption (shown only when the host turns captions on in Settings -> Card design)
+  tag.className = "bdTag";
+  tag.textContent = kind === "lower" ? "Lower bound" : kind === "upper" ? "Upper bound" : "Hidden word";
+  row.appendChild(tag);
   const prefix = lockedPrefix(g);
 
   if (kind === "secret") {
@@ -850,7 +1169,7 @@ window.addEventListener("resize", () => { clearTimeout(fitResizeTimer); fitResiz
 window.addEventListener("orientationchange", () => { setTimeout(fitBoardWords, 250); });
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitBoardWords()).catch(() => {});
 
-// The status line under the alphabet circles: win / round-over text, or the latest "outside the range" message.
+// The status line under the three boxes: win / round-over text, or the latest "outside the range" message.
 let statusMsg = ""; let statusUntil = 0; let boardStatusTimer = null;
 function renderBoardStatus(g) {
   clearTimeout(boardStatusTimer);

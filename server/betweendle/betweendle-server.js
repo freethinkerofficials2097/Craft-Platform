@@ -30,7 +30,7 @@ import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-a
 import * as HC from "../shared/hint-config-store.js"; // update 58: three hint types + host hint settings
 import * as WH from "../shared/word-hints.js";
 import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
-import { getLegendShow, setLegendShow } from "../shared/betweendle-settings-store.js";
+import { getLegendShow, setLegendShow, getCardDesign, setCardDesign, resetCardDesign } from "../shared/betweendle-settings-store.js";
 import { dictionaryState, loadDictionary } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex } from "../blindle/blindle-difficulty.js";
 import * as WL from "../shared/word-language.js"; // update 48: word language
@@ -268,9 +268,11 @@ const game = {
   // Each is { word, distance, caller, avatarUrl, isStarter } or null while it is still the opening AAA / ZZZ.
   lower: null,
   upper: null,
-  lastGuess: null, // { word, distance, caller } - the newest accepted guess (lights up the alphabet circles)
+  lastGuess: null, // { word, distance, caller } - the newest accepted guess
   // Legend choice (remembered in data/betweendle-settings.json).
   legendShow: getLegendShow(),
+  // The look of the three boxes (update 83) - remembered in data/betweendle-settings.json, shown the same on every screen.
+  cardDesign: getCardDesign(),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -829,6 +831,7 @@ function buildStatePayload() {
       wordLanguageInfo: WL.describeLanguage(wordLanguage),
       starterWord: game.starterWord,
       legendShow: game.legendShow,
+      cardDesign: game.cardDesign,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
       autoContinueDelaySeconds: game.autoContinueDelaySeconds,
@@ -945,6 +948,14 @@ function handleClientAction(ws, msg) {
     }
     case "set_legend_show":
       game.legendShow = setLegendShow(Boolean(payload && payload.on));
+      broadcastState();
+      break;
+    case "set_card_design":
+      game.cardDesign = setCardDesign(payload);
+      broadcastState();
+      break;
+    case "reset_card_design":
+      game.cardDesign = resetCardDesign();
       broadcastState();
       break;
     case "set_starter_word":
