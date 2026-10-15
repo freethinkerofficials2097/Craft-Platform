@@ -225,46 +225,59 @@ button { cursor: pointer; }
    the last letter — all left-packed on one line (no stretched gap). ---- */
 .tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: 14px; margin: 0 0 14px; padding: 2px 2px 8px; }
 
-/* The three boxes (lower bound / hidden word / upper bound): floating cards - soft layered shadow, a glossy top edge and a
-   gentle idle float. Grey base color comes from --bd-bound so the host's "Color shades" picker still works. */
-.bdRow {
-  position: relative; isolation: isolate;
-  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 66px; padding: 10px 20px;
-  color: var(--bd-bound-ink); border-radius: 18px;
+/* The three boxes (lower bound / hidden word / upper bound): premium floating cards. Warm paper-tan cards with a glossy top edge,
+   a coloured accent edge, deep layered shadows (they really lift off the page), a gentle idle float and a pop when a bound changes.
+   The base colour comes from --bd-bound, so the host's "Color shades" picker still works. */
+.bdBoard .tilesWrap .bdRow, .bdRow {
+  position: relative; isolation: isolate; overflow: visible;
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 76px; padding: 12px 22px 12px 26px;
+  color: var(--bd-bound-ink); border-radius: 22px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 46%, rgba(0, 0, 0, 0.05) 100%),
+    radial-gradient(120% 140% at 8% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(80, 55, 20, 0.10) 100%),
     var(--bd-bound);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.75) inset,
-    0 -2px 0 rgba(0, 0, 0, 0.06) inset,
-    0 2px 4px rgba(60, 40, 20, 0.12),
-    0 10px 22px -6px rgba(60, 40, 20, 0.28),
-    0 22px 38px -16px rgba(60, 40, 20, 0.22);
-  font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-  animation: bd-row-in 0.4s cubic-bezier(.2, .9, .3, 1.2), bd-float 5.5s ease-in-out 0.4s infinite;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+    0 2px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -3px 0 rgba(80, 55, 20, 0.10) inset,
+    0 3px 6px rgba(60, 40, 20, 0.14),
+    0 14px 26px -6px rgba(60, 40, 20, 0.34),
+    0 30px 46px -18px rgba(60, 40, 20, 0.34);
+  font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+  transform: translateZ(0);
+  animation: bd-row-in 0.55s cubic-bezier(.2, .9, .3, 1.25) both, bd-float 5.5s ease-in-out 0.6s infinite;
+  transition: box-shadow 0.25s ease, filter 0.25s ease;
 }
-.bdRow.bd-secret { animation-delay: 0s, 1.8s; }
-.bdRow.bd-upper { animation-delay: 0s, 3.2s; }
-.bdRow:hover { box-shadow: 0 1px 0 rgba(255,255,255,.75) inset, 0 4px 8px rgba(60,40,20,.14), 0 16px 30px -6px rgba(60,40,20,.34), 0 30px 46px -18px rgba(60,40,20,.26); }
-@keyframes bd-row-in { 0% { transform: translateY(10px) scale(0.96); opacity: 0.2; } 100% { transform: none; opacity: 1; } }
-@keyframes bd-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* coloured accent edge on the left: blue = lower bound, coral = upper bound */
+.bdRow::before {
+  content: ""; position: absolute; left: 9px; top: 16px; bottom: 16px; width: 5px; border-radius: 5px;
+  background: linear-gradient(180deg, #6EA8FF, #3F6FE0); box-shadow: 0 0 8px rgba(63, 111, 224, 0.45);
+}
+.bdRow.bd-upper::before { background: linear-gradient(180deg, #FF9A7A, #E5484D); box-shadow: 0 0 8px rgba(229, 72, 77, 0.45); }
+.bdRow.bd-secret::before { background: linear-gradient(180deg, #B9A4FF, #7B5CFF); box-shadow: 0 0 8px rgba(123, 92, 255, 0.5); }
+.bdRow.bd-secret { animation-delay: 0.08s, 1.8s; }
+.bdRow.bd-upper { animation-delay: 0.16s, 3.2s; }
+.bdRow:hover { filter: brightness(1.03); box-shadow: 0 2px 0 rgba(255,255,255,.95) inset, 0 -3px 0 rgba(80,55,20,.10) inset, 0 6px 10px rgba(60,40,20,.16), 0 22px 36px -8px rgba(60,40,20,.42), 0 40px 56px -20px rgba(60,40,20,.38); }
+@keyframes bd-row-in { 0% { transform: translateY(16px) scale(0.94); opacity: 0; filter: blur(2px); } 100% { transform: none; opacity: 1; filter: none; } }
+@keyframes bd-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
-/* the hidden-word box: light card with a dashed accent border, like the reference game */
-.bdRow.bd-secret {
+/* the hidden-word box: bright card with a dashed violet border and a soft glow */
+.bdBoard .tilesWrap .bdRow.bd-secret, .bdRow.bd-secret {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.78)),
-    var(--bd-bound);
-  border: 2px dashed rgba(123, 92, 255, 0.55);
+    radial-gradient(120% 140% at 8% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, #ffffff, #f4efff);
+  border: 2px dashed rgba(123, 92, 255, 0.6);
   color: var(--text, #3a2d20);
+  box-shadow:
+    0 2px 0 #fff inset, 0 3px 6px rgba(60, 40, 20, 0.12),
+    0 14px 26px -6px rgba(123, 92, 255, 0.32), 0 30px 46px -18px rgba(60, 40, 20, 0.3);
 }
 .bdWord { flex: 1 1 auto; min-width: 0; font-size: clamp(20px, 6.4vw, 32px); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bdPrefix { color: var(--bd-key); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
 .bdDistance {
   flex: 0 0 auto; margin-left: auto; padding: 3px 10px; border-radius: 999px;
   font-size: clamp(18px, 5.6vw, 28px); font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums;
-  background: rgba(0, 0, 0, 0.2); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18) inset;
+  background: #fff; color: var(--text, #3a2d20); box-shadow: 0 2px 5px rgba(60, 40, 20, 0.2), 0 1px 0 rgba(255,255,255,.9) inset;
 }
 .bdRow.start .bdWord { opacity: 0.75; }
 .bdQuestion { opacity: 1; font-size: clamp(24px, 7.4vw, 36px); }

@@ -999,7 +999,12 @@ function handleClientAction(ws, msg) {
 export async function mountBetweendle(app, io, options = {}) {
   const mountPath = options.mountPath || "/betweendle";
 
-  app.use(mountPath, express.static(path.join(__dirname, "public")));
+  app.use(mountPath, express.static(path.join(__dirname, "public"), {
+  // update 78: always revalidate pages / styles / scripts, so a new deploy shows up immediately (no stale cached CSS or JS)
+  setHeaders(res, filePath) {
+    if (/\.(html|css|js|mjs)$/i.test(filePath)) res.setHeader("Cache-Control", "no-cache");
+  }
+}));
   app.get(mountPath, (req, res) => {
     res.sendFile(path.join(__dirname, "public", "betweendle-index.html"));
   });
