@@ -168,31 +168,45 @@ el.fullscreenBtn.addEventListener("click", () => {
 });
 
 // ------------------------------------------------------------
-// Alphabet circles (like List-O): A-Z in two rows of 13. They are not clickable - gold marks the letters still possible.
+// Alphabet tiles: A-Z in two rows of 13, as in the reference game. Purely decorative (not clickable, nothing is dimmed or
+// highlighted any more - the locked prefix is shown in the three boxes instead).
 // ------------------------------------------------------------
 const ALPHABET_ROWS = ["abcdefghijklm", "nopqrstuvwxyz"];
 for (const rowLetters of ALPHABET_ROWS) {
   const rowEl = document.createElement("div");
   rowEl.className = "bdAlphaRow";
   for (const letter of rowLetters) {
-    const dot = document.createElement("span");
-    dot.className = "bdLetter";
-    dot.dataset.letter = letter;
-    dot.textContent = letter;
-    rowEl.appendChild(dot);
+    const key = document.createElement("span");
+    key.className = "bdLetter";
+    key.dataset.letter = letter;
+    key.textContent = letter;
+    rowEl.appendChild(key);
   }
   el.alphabet.appendChild(rowEl);
 }
-// Gold = the letters a guess can still START with: every letter from the lower bound's first letter to the upper bound's
-// first letter (all 26 before the first guess and once the round is over). Everything else is dimmed.
-function paintAlphabet(g) {
-  const over = g.status === "won" || g.status === "lost" || g.status === "idle";
-  const lo = (g.lower ? g.lower.word : g.startLower || "aaa")[0];
-  const hi = (g.upper ? g.upper.word : g.startUpper || "zzz")[0];
-  el.alphabet.querySelectorAll(".bdLetter").forEach((dot) => {
-    const l = dot.dataset.letter;
-    dot.classList.toggle("on", over || (l >= lo && l <= hi));
-  });
+// The letters every word of the search window starts with. Both bounds must be real guesses (not the opening AAA / ZZZ).
+// Every word between two words that share a start also shares it, so the secret word starts with it as well.
+function lockedPrefix(g) {
+  if (!g.lower || !g.upper) return "";
+  const a = g.lower.word, b = g.upper.word;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  return a.slice(0, i);
+}
+function appendPrefixedWord(parent, word, prefix, extraClass) {
+  const w = document.createElement("span");
+  w.className = "bdWord" + (extraClass ? " " + extraClass : "");
+  if (prefix && word.startsWith(prefix)) {
+    const pre = document.createElement("span");
+    pre.className = "bdPrefix";
+    pre.textContent = prefix;
+    w.appendChild(pre);
+    w.appendChild(document.createTextNode(word.slice(prefix.length)));
+  } else {
+    w.textContent = word;
+  }
+  parent.appendChild(w);
+  return w;
 }
 
 for (let n = 4; n <= 20; n++) {
@@ -638,7 +652,6 @@ function render(state) {
   renderHintChips(state.game);
   renderModeNotes(state.game);
   renderBanners(state.game);
-  paintAlphabet(state.game);
   maybeShowRejection(state.game);
   renderSettingsChips(state);
   renderDiagnostics(state.diagnostics);
@@ -741,32 +754,36 @@ function avatarChipHtml(username, avatarUrl, sizePx) {
 function buildBoardRow(kind, entry, g) {
   const row = document.createElement("div");
   row.className = "bdRow bd-" + kind;
+  const prefix = lockedPrefix(g);
 
   if (kind === "secret") {
     const found = g.status === "won" || g.status === "lost";
     if (g.status === "won") row.classList.add("found");
     if (found && g.secretWord) {
-      const w = document.createElement("span");
-      w.className = "bdWord";
-      w.textContent = g.secretWord;
-      row.appendChild(w);
+      appendPrefixedWord(row, g.secretWord, "", "");
       row.title = g.status === "won" ? "Found! Distance 0" : "The secret word";
     } else {
+      // the locked prefix followed by "?" (just "?" while nothing is locked yet)
       const q = document.createElement("span");
       q.className = "bdWord bdQuestion";
-      q.textContent = "?";
+      if (prefix) {
+        const pre = document.createElement("span");
+        pre.className = "bdPrefix";
+        pre.textContent = prefix;
+        q.appendChild(pre);
+        q.appendChild(document.createTextNode("?"));
+      } else {
+        q.textContent = "?";
+      }
       row.appendChild(q);
-      row.title = "The hidden secret word";
+      row.title = prefix ? 'The hidden word starts with "' + prefix.toUpperCase() + '"' : "The hidden secret word";
     }
     return row;
   }
 
   if (entry) {
     row.appendChild(buildAvatarNode(entry.caller, entry.avatarUrl, 26, 13, "guessAvatar bdAvatar"));
-    const w = document.createElement("span");
-    w.className = "bdWord";
-    w.textContent = entry.word;
-    row.appendChild(w);
+    appendPrefixedWord(row, entry.word, prefix, "");
     const d = document.createElement("span");
     d.className = "bdDistance";
     d.textContent = String(entry.distance);
@@ -949,7 +966,7 @@ function renderLeaderboardTab() {
 // (see betweendle-index.html) and can be hidden by the host in Settings.
 // ------------------------------------------------------------
 const LEGEND_ITEMS = [
-  { chip: "dot", mark: "a", name: "Gold circles", text: "the letters a guess can still start with, between the lower and upper bound. Dimmed letters are out of range." },
+  { chip: "dot", mark: "IN", name: "Green letters", text: "the start shared by the lower and upper word. The secret word starts with it too; the middle box shows it followed by ?." },
   { chip: "msg", mark: "!", name: "Outside range", text: "a guess not between the lower and upper bound is skipped, and a short message pops up in the floating window." }
 ];
 let lastLegendRound = -1;

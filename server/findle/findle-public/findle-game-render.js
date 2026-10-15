@@ -175,6 +175,7 @@ const FindleRender = (() => {
   let lastTickerSignature = null;
 
   function renderTicker(wrapEl, trackEl, list) {
+    if (window.ScoreTicker) window.ScoreTicker.update({ totalLeaderboard: list || [] }); // update 77: the shared, smooth ticker
     if (!list.length) {
       wrapEl.style.display = '';
       trackEl.style.animation = 'none';

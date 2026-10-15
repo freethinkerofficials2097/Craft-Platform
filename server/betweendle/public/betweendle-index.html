@@ -67,10 +67,10 @@
     <main class="stage" id="stage">
       <section class="round-card">
 
-        <!-- The guess board (like List-O): lower bound, the hidden word "?", upper bound, then the alphabet circles. -->
+        <!-- The guess board: A-Z tiles, then three floating boxes: lower bound, the hidden word (shows the locked prefix, e.g. "IN?"), upper bound. -->
         <section class="bdBoard" id="bdBoard" aria-label="Guess board" hidden>
-        <div class="tilesWrap" id="tilesWrap"></div>
-          <div class="bdAlphabet" id="alphabet" aria-label="Letters of the latest guess"></div>
+          <div class="bdAlphabet" id="alphabet" aria-label="Alphabet"></div>
+          <div class="tilesWrap" id="tilesWrap"></div>
           <p class="bdStatus" id="boardStatus" aria-live="polite"></p>
         </section>
         <div class="hintChips" id="hintChips"></div>
@@ -250,7 +250,7 @@
 
       <div class="drawerSection">
         <h4>Color shades</h4>
-        <p class="sectionNote">Choose how strong each board color (grey window rows, green found-word row, gold alphabet circles) looks. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
+        <p class="sectionNote">Choose how strong each board color (grey window rows, green found-word row, green locked-prefix letters) looks. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
         <div id="shadePicker"></div>
       </div>
 
@@ -407,7 +407,7 @@
         <li>Your guess updates the <strong>lower bound</strong> (top row, a word that comes <em>before</em> the secret word) or the <strong>upper bound</strong> (bottom row, a word that comes <em>after</em> it), narrowing down the search. The secret word is always hidden in the <strong>?</strong> row between them.</li>
         <li>The <strong>smaller the distance, the closer</strong> you are. If the distance is <strong>0</strong>, you found the secret word and the ? row turns green.</li>
         <li>A guess that falls outside the two bounds is skipped, and a short <em>"Word outside the allowed range"</em> message pops up in the floating window. A word already on the board is skipped too.</li>
-        <li>The <strong>gold alphabet circles</strong> show the letters a guess can still start with (the letters from the lower bound to the upper bound); the rest are dimmed. The legend above the board explains them (the host can hide it in Settings).</li>
+        <li>When the lower and upper words start with the same letters, those letters are <strong>locked</strong>: the secret word must start with them too. They turn <strong>green</strong> in the two bound words, and the middle box shows them followed by a <strong>?</strong> (for example <strong>IN?</strong>). The legend above the board explains it (the host can hide it in Settings).</li>
         <li><strong>Scoring (Live):</strong> 1 point for the guess that finds the secret word.</li>
         <li>💡 unlimited hints: suggest a word from the middle of the window, reveal a letter, or rule out letters. Difficulty (Normal/Medium/Hard/Random) sets how tricky the secret word is.</li>
         <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = just you, type guesses directly.</li>

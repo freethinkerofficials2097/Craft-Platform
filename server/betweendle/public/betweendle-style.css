@@ -223,247 +223,71 @@ button { cursor: pointer; }
 
 /* ---- Tile grid: avatar, then the word, then counts immediately after
    the last letter — all left-packed on one line (no stretched gap). ---- */
-.tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 4px; }
-.guessBlock { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; }
-.tileRow { display: flex; gap: 6px; flex-wrap: nowrap; flex: 0 0 auto; min-width: 0; }
-.guessAvatar {
-  flex-shrink: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: #fff;
-  text-transform: uppercase;
-  user-select: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-}
-.guessAvatarSpacer { flex-shrink: 0; visibility: hidden; }
-.avatarImg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
-/* Shared circular avatar chip used in leaderboards and the win banner
-   (the bigger, per-guess-row avatar above has its own .guessAvatar
-   sizing but reuses .avatarImg for the actual photo). */
-.lbAvatar {
-  flex-shrink: 0;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-}
-.lbAvatarFallback {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: #fff;
-  text-transform: uppercase;
-  user-select: none;
-}
-.tile {
-  width: 34px;
-  height: 40px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-display);
-  font-size: 17px;
-  font-weight: 700;
-  border-radius: 8px;
-  background: rgba(60, 40, 20, 0.117);
-  border: 1px solid var(--border);
-  color: var(--text);
-  text-transform: uppercase;
-}
-.tile.filled { border-color: rgba(60, 40, 20, 0.42); background: rgba(60, 40, 20, 0.186); animation: tile-pop 0.28s ease; user-select: none; }
-@keyframes tile-pop {
-  0% { transform: scale(0.85); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.tile.current { border-color: rgba(255, 177, 0, 0.5); animation: current-pulse 1.6s ease-in-out infinite; }
-@keyframes current-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 177, 0, 0.25); }
-  50% { box-shadow: 0 0 0 4px rgba(255, 177, 0, 0.12); }
-}
+.tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: 14px; margin: 0 0 14px; padding: 2px 2px 8px; }
 
-.hintExplainer { text-align: center; font-size: 12px; color: var(--muted); margin: -4px 0 10px; }
-.hintChips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 12px; }
-.hintChip {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(255, 177, 0, 0.14);
-  color: var(--gold-text);
-  border: 1px solid rgba(255, 177, 0, 0.3);
-}
-
-/* Reserved slot for the floating rejection window: sits directly above the keyboard,
-   pushing the keyboard and board down so they never overlap the message. */
-.toastSlot {
-  position: relative;
-  flex-shrink: 0;
-  width: 100%;
-  max-width: 640px;
-  margin: 0 auto;
-  height: var(--toast-slot-height, 76px);
-  pointer-events: none;
-}
-/* ---- Rejection toast: brief, self-dismissing ----
-   Positioned absolutely INSIDE the reserved .toastSlot above the keyboard, so it
-   floats in its own layer and showing or hiding it never resizes or shifts anything
-   underneath it
-   (specifically: it never pushes the guessed-words section down).
-   Styled for readability at a glance: solid (non-translucent) dark
-   card, generous padding, larger/bolder text, soft shadow for
-   separation from whatever's behind it. Duration is host-configurable
-   (Settings → "Guess rejection message") and applied inline via JS as
-   the animation's duration - see maybeShowRejection() in game.js. */
-.rejectionToast {
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  pointer-events: none;
-  width: min(92vw, 480px);
-  padding: 10px 16px;
-  border-radius: var(--radius-md);
-  background: rgba(28, 16, 22, 0.96);
-  border: 1px solid rgba(255, 59, 78, 0.45);
-  box-shadow: 0 14px 32px rgba(2, 3, 12, 0.55);
-  color: #ffd7db;
-  font-size: 13.5px;
-  line-height: 1.4;
-  font-weight: 600;
-  text-align: center;
-  letter-spacing: 0.1px;
-}
-.rejectionToast::before {
-  content: "";
-  display: block;
-  width: 34px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--coral);
-  margin: 0 auto 8px;
-}
-@keyframes toast-flash {
-  0% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
-  10% { opacity: 1; transform: translateX(-50%) translateY(0); }
-  85% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-/* ---- Offline / live notes ---- */
-.offlineNote, .liveNote {
-  text-align: center;
-  border-radius: var(--radius-md);
-  padding: 10px 14px;
-  margin-bottom: 14px;
-  font-size: 13px;
-}
-.offlineNote {
-  background: rgba(124, 92, 255, 0.1);
-  border: 1px solid rgba(124, 92, 255, 0.25);
-  color: var(--violet);
-}
-.liveNote {
-  background: rgba(255, 177, 0, 0.08);
-  border: 1px solid rgba(255, 177, 0, 0.2);
-  color: var(--gold-dim);
-}
-.offlineNote p, .liveNote p { margin: 0; }
-
-/* ---- Result / idle banners ---- */
-.resultBanner, .idleBanner {
-  text-align: center;
-  padding: 16px 14px;
-  border-radius: var(--radius-md);
-  margin-bottom: 14px;
-}
-.resultBanner p, .idleBanner p { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
-.resultBanner.win { background: rgba(22, 217, 118, 0.13); border: 1px solid rgba(22, 217, 118, 0.32); color: var(--success-text); }
-.resultBanner.lost { background: rgba(255, 59, 78, 0.16); border: 1px solid rgba(255, 59, 78, 0.4); color: #7A1620; }
-.idleBanner { background: rgba(60, 40, 20, 0.094); border: 1px dashed var(--border); color: var(--muted); }
-.idleBanner p { font-weight: 500; margin: 0; }
-.autoContinueNote { margin: 10px 0 0 !important; font-size: 12px !important; font-weight: 500 !important; opacity: 0.85; }
-
-/* ============================================================
-   Legend: under the floating message window (.toastSlot), above the guess board.
-   A normal block in the page flow - it can never overlap anything.
-   ============================================================ */
-.bdLegend {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: rgba(60, 40, 20, 0.094);
-  padding: 8px 10px 9px;
-  margin-bottom: 10px;
-}
-.bdLegend[hidden] { display: none; }
-.bdLegendTitle {
-  text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 12px;
-  letter-spacing: 0.02em; color: var(--muted); margin-bottom: 7px;
-}
-.bdLegendList { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 6px; }
-.bdLegendItem { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
-.bdLegendText { font-size: 11.5px; font-weight: 500; line-height: 1.3; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
-.bdLegendText b { font-weight: 800; }
-.bdLegendNote { margin: 6px 0 0; text-align: center; font-size: 11px; color: var(--muted); }
-.bdLegendNote:empty { display: none; }
-.bdChip {
-  flex: 0 0 auto; min-width: 30px; height: 20px; padding: 0 4px; border-radius: 6px; margin-top: 0;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-family: var(--font-display); font-weight: 800; font-size: 10px; line-height: 1; text-transform: uppercase;
-  background: var(--bd-bound); color: var(--bd-bound-ink); border: 1.5px solid var(--bd-bound-dark);
-}
-.bdChip-q { color: var(--bd-bound-dark); }
-.bdChip-start { opacity: 0.7; }
-.bdChip-dot { width: 20px; min-width: 20px; border-radius: 50%; background: var(--bd-key); color: var(--bd-key-ink); border-color: var(--bd-key-dark); }
-.bdChip-msg { background: transparent; color: var(--coral); border-color: var(--coral); }
-.bdLegend.shuffled .bdChip { animation: bd-pop 0.6s cubic-bezier(.3, 1.4, .5, 1) both; }
-@keyframes bd-pop { 0% { transform: scale(0.6); opacity: 0.2; } 100% { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .bdLegend.shuffled .bdChip { animation: none; } }
-
-/* ============================================================
-   BETWEENDLE colors (retuned by the platform's "Color shades" picker - see /shared/color-shades.js -> betweendle)
-   ============================================================ */
-:root {
-  --bd-bound: #8F8F8F; --bd-bound-dark: #6E6E6E; --bd-bound-ink: #2B2B2B;
-  --bd-found: #4F8E4F; --bd-found-dark: #376B37; --bd-found-ink: #1F2A1F;
-  --bd-key:   #B8A038; --bd-key-dark:   #8C7A22; --bd-key-ink:   #1B1B1F;
-}
-
-/* ============================================================
-   The guess board: lower bound, ? row, upper bound, alphabet circles, status line
-   ============================================================ */
-.bdBoard[hidden] { display: none; }
-.tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin: 0 0 12px; }
+/* The three boxes (lower bound / hidden word / upper bound): floating cards - soft layered shadow, a glossy top edge and a
+   gentle idle float. Grey base color comes from --bd-bound so the host's "Color shades" picker still works. */
 .bdRow {
-  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 8px 16px;
-  background: var(--bd-bound); color: var(--bd-bound-ink); border-radius: 3px;
+  position: relative; isolation: isolate;
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 66px; padding: 10px 20px;
+  color: var(--bd-bound-ink); border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.12) 46%, rgba(0, 0, 0, 0.05) 100%),
+    var(--bd-bound);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 -2px 0 rgba(0, 0, 0, 0.06) inset,
+    0 2px 4px rgba(60, 40, 20, 0.12),
+    0 10px 22px -6px rgba(60, 40, 20, 0.28),
+    0 22px 38px -16px rgba(60, 40, 20, 0.22);
   font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
-  animation: bd-row-in 0.28s ease;
+  animation: bd-row-in 0.4s cubic-bezier(.2, .9, .3, 1.2), bd-float 5.5s ease-in-out 0.4s infinite;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
-@keyframes bd-row-in { 0% { transform: scale(0.97); opacity: 0.4; } 100% { transform: none; opacity: 1; } }
-.bdWord { flex: 1 1 auto; min-width: 0; font-size: clamp(18px, 6vw, 30px); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bdDistance { flex: 0 0 auto; margin-left: auto; font-size: clamp(18px, 6vw, 30px); font-weight: 800; letter-spacing: 0; }
-.bdRow.start .bdWord { opacity: 0.8; }
-.bdQuestion { opacity: 0.55; font-size: clamp(22px, 7vw, 34px); }
-.bdRow.bd-secret.found { background: var(--bd-found); color: var(--bd-found-ink); animation: bd-found 0.6s ease; }
-@keyframes bd-found { 0% { transform: scale(0.94); } 60% { transform: scale(1.03); } 100% { transform: none; } }
-.bdAvatar { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; border-radius: 50%; overflow: hidden; }
+.bdRow.bd-secret { animation-delay: 0s, 1.8s; }
+.bdRow.bd-upper { animation-delay: 0s, 3.2s; }
+.bdRow:hover { box-shadow: 0 1px 0 rgba(255,255,255,.75) inset, 0 4px 8px rgba(60,40,20,.14), 0 16px 30px -6px rgba(60,40,20,.34), 0 30px 46px -18px rgba(60,40,20,.26); }
+@keyframes bd-row-in { 0% { transform: translateY(10px) scale(0.96); opacity: 0.2; } 100% { transform: none; opacity: 1; } }
+@keyframes bd-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
 
-.bdAlphabet { display: flex; flex-direction: column; align-items: center; gap: 5px; margin: 4px 0 8px; }
-.bdAlphaRow { display: flex; justify-content: center; gap: 4px; max-width: 100%; }
-.bdLetter {
-  flex: 0 1 auto; width: clamp(18px, 6.6vw, 30px); height: clamp(18px, 6.6vw, 30px); border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-weight: 800; font-size: clamp(10px, 3.2vw, 14px); text-transform: uppercase;
-  background: rgba(60, 40, 20, 0.2); color: var(--muted); transition: background 0.15s ease, color 0.15s ease;
+/* the hidden-word box: light card with a dashed accent border, like the reference game */
+.bdRow.bd-secret {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.78)),
+    var(--bd-bound);
+  border: 2px dashed rgba(123, 92, 255, 0.55);
+  color: var(--text, #3a2d20);
 }
-.bdLetter.on { background: var(--bd-key); color: var(--bd-key-ink); }
+.bdWord { flex: 1 1 auto; min-width: 0; font-size: clamp(20px, 6.4vw, 32px); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bdPrefix { color: var(--bd-key); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+.bdDistance {
+  flex: 0 0 auto; margin-left: auto; padding: 3px 10px; border-radius: 999px;
+  font-size: clamp(18px, 5.6vw, 28px); font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, 0.2); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18) inset;
+}
+.bdRow.start .bdWord { opacity: 0.75; }
+.bdQuestion { opacity: 1; font-size: clamp(24px, 7.4vw, 36px); }
+.bdQuestion:not(:has(.bdPrefix)) { opacity: 0.55; }
+.bdRow.bd-secret.found {
+  background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 60%), var(--bd-found);
+  border: 1px solid rgba(255, 255, 255, 0.5); color: var(--bd-found-ink);
+  animation: bd-found 0.6s ease;
+}
+@keyframes bd-found { 0% { transform: scale(0.94); } 60% { transform: scale(1.04); } 100% { transform: none; } }
+.bdAvatar { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; border-radius: 50%; overflow: hidden; box-shadow: 0 2px 6px rgba(60, 40, 20, 0.3); }
+@media (prefers-reduced-motion: reduce) { .bdRow { animation: none; } }
+
+/* A-Z tiles: decorative keys (the same in every state) */
+.bdAlphabet { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px 0 14px; }
+.bdAlphaRow { display: flex; justify-content: center; gap: 5px; max-width: 100%; }
+.bdLetter {
+  flex: 0 1 auto; width: clamp(20px, 6.6vw, 32px); height: clamp(24px, 7.6vw, 36px); border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: clamp(11px, 3.6vw, 16px); text-transform: uppercase;
+  background: #fff; color: var(--text, #3a2d20);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 2px 4px rgba(60, 40, 20, 0.14), 0 5px 10px -4px rgba(60, 40, 20, 0.2);
+}
 .bdStatus { min-height: 22px; margin: 2px 0 4px; text-align: center; font-size: 14px; font-weight: 800; color: var(--text); }
 
 /* ============================================================
