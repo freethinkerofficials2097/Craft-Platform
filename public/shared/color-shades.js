@@ -108,7 +108,7 @@
     betweendle: [
       { id: "bound", label: "Grey", hint: "lower bound, upper bound and ? rows (the search window)", std: "#8F8F8F", stdDark: "#6E6E6E", vars: ["--bd-bound"], darkVars: ["--bd-bound-dark"], inkVars: ["--bd-bound-ink"] },
       { id: "found", label: "Green", hint: "the secret word once it is found (distance 0)", std: "#4F8E4F", stdDark: "#376B37", vars: ["--bd-found"], darkVars: ["--bd-found-dark"], inkVars: ["--bd-found-ink"] },
-      { id: "key", label: "Gold", hint: "alphabet circles for the letters still possible", std: "#B8A038", stdDark: "#8C7A22", vars: ["--bd-key"], darkVars: ["--bd-key-dark"], inkVars: ["--bd-key-ink"] }
+      { id: "key", label: "Prefix green", hint: "the locked start letters shown in green (e.g. IN in IN?)", std: "#2E8B3D", stdDark: "#1F6A2B", vars: ["--bd-key"], darkVars: ["--bd-key-dark"], inkVars: ["--bd-key-ink"] }
     ],
     fixle: [
       { id: "row", label: "Grey", hint: "the guess rows, sorted from the highest score to the lowest (and the legend chip)", std: "#8A8A92", stdDark: "#6A6A72", vars: ["--fx-row"], darkVars: ["--fx-row-dark"], inkVars: ["--fx-row-ink"] },

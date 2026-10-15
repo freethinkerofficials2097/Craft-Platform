@@ -255,6 +255,7 @@
   // --------------------------------------------------------------------
   function renderLeaderboardTicker(top) {
     const list = top || [];
+    if (window.ScoreTicker) window.ScoreTicker.update({ totalLeaderboard: list }); // update 77: the shared, smooth ticker
     const medals = ['🥇', '🥈', '🥉'];
 
     if (!list.length) {

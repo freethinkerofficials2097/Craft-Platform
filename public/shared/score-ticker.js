@@ -1,5 +1,10 @@
 /* ==========================================================================
-   SCORE TICKER  (update 47) - the scrolling "top scorers" news ticker, for every game.
+   SCORE TICKER  (update 47, rebuilt in update 77) - the scrolling "top scorers" news ticker, for every game.
+
+   update 77: ONE ticker for ALL games (FLAGLE, TRAVLE, CROSSDLE and FINDLE now feed this one too; their old tickers are hidden).
+   It scrolls with a small requestAnimationFrame engine that keeps its position: when the scores change or the page re-renders
+   the content is swapped in place and the scroll simply continues - it never jumps back to #1. Design: a month label pill and
+   rounded player pills (avatar, rank, @name, green score).
 
    * Games WITHOUT their own ticker (BLINDLE, ORACLE, COLORBLINDLE, COLORDLE, STRUCTLE, TEXTLE, RANGEDLE,
      CODEDLE, SHAPEDLE, TWISTLE) get one from here. It is a normal block placed right UNDER the game's top
@@ -30,12 +35,12 @@
     size: 14,             // text size in px
     avatars: true,
     points: true,
-    label: "🏆 Top scorers",
+    label: "",            // "" = automatic: TOP 10 · OCT 2026
     accent: "",           // "" = built-in gold
     hideEmpty: false
   };
   // For games that already own a ticker: only apply a value if the host actually changed it.
-  var EXISTING_SELECTORS = "#ticker-wrap, #tickerBar, #leaderboardTicker, .ticker-wrap";
+  var EXISTING_SELECTORS = "#ticker-wrap, #tickerBar, #leaderboardTicker, .ticker-wrap, .leaderboard-ticker";
 
   function load() {
     var s = {}, k;
@@ -49,6 +54,7 @@
     out.speed = clampInt(out.speed, 20, 200);
     out.size = clampInt(out.size, 10, 24);
     out.label = String(out.label).slice(0, 40);
+    if (out.label === "🏆 Top scorers") out.label = ""; // the old default means "automatic" now
     out.source = out.source === "round" ? "round" : "total";
     if (!/^#[0-9a-fA-F]{6}$/.test(out.accent)) out.accent = "";
     return out;
@@ -76,31 +82,32 @@
     var st = document.createElement("style");
     st.id = STYLE_ID;
     st.textContent =
-      "@keyframes stk-scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}" +
       ".stk-bar{position:relative;display:flex;align-items:center;gap:10px;flex:0 0 auto;width:100%;max-width:100%;" +
-      "box-sizing:border-box;margin:0;padding:5px 0 5px 12px;overflow:hidden;z-index:auto;contain:layout paint;" +
-      "background:rgba(127,127,127,.16);border-bottom:1px solid rgba(127,127,127,.38);color:inherit;" +
-      "font-family:inherit;font-size:var(--stk-fs,14px);line-height:1.25;white-space:nowrap}" +
+      "box-sizing:border-box;margin:0;padding:7px 0 7px 10px;overflow:hidden;z-index:auto;contain:layout paint;" +
+      "background:transparent;color:#3b2f22;font-family:inherit;font-size:var(--stk-fs,14px);line-height:1.25;white-space:nowrap}" +
       ".stk-bar[hidden]{display:none!important}" +
-      ".stk-label{flex:0 0 auto;font-weight:800;font-size:.8em;letter-spacing:.4px;color:var(--stk-accent,#d99a00);" +
-      "padding-right:10px;border-right:1px solid rgba(127,127,127,.4);max-width:45%;overflow:hidden;text-overflow:ellipsis}" +
+      ".stk-label{flex:0 0 auto;font-weight:800;font-size:.78em;letter-spacing:.06em;text-transform:uppercase;color:#7a6c58;" +
+      "padding:.45em 1em;border-radius:999px;background:rgba(255,255,255,.72);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 2px 6px rgba(60,40,20,.12);" +
+      "max-width:45%;overflow:hidden;text-overflow:ellipsis}" +
       ".stk-label:empty{display:none}" +
-      ".stk-viewport{flex:1 1 auto;min-width:0;overflow:hidden;white-space:nowrap}" +
-      ".stk-track{display:inline-flex;width:max-content;align-items:center;will-change:transform}" +
-      ".stk-bar:hover .stk-track,.stk-bar:active .stk-track{animation-play-state:paused!important}" +
-      ".stk-item{display:inline-flex;align-items:center;gap:.4em;margin-right:2.2em;font-weight:700;white-space:nowrap}" +
-      ".stk-rank{color:var(--stk-accent,#d99a00);font-weight:800}" +
-      ".stk-pts{opacity:.8;font-weight:700;margin-left:.15em}" +
-      ".stk-empty{font-weight:600;opacity:.75}" +
+      ".stk-viewport{flex:1 1 auto;min-width:0;overflow:hidden;white-space:nowrap;padding:3px 0 6px;" +
+      "-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%);" +
+      "mask-image:linear-gradient(90deg,transparent 0,#000 14px,#000 calc(100% - 14px),transparent 100%)}" +
+      ".stk-track{display:inline-flex;width:max-content;align-items:center;will-change:transform;transform:translate3d(0,0,0)}" +
+      ".stk-item{display:inline-flex;align-items:center;gap:.5em;margin-right:.8em;padding:.3em .95em .3em .3em;border-radius:999px;" +
+      "background:rgba(255,255,255,.72);box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 2px 6px rgba(60,40,20,.13);font-weight:800;white-space:nowrap}" +
+      ".stk-rank{color:#9a8d7a;font-weight:800;font-size:.85em}" +
+      ".stk-name{font-weight:800}" +
+      ".stk-pts{color:#1f8a4c;font-weight:800;margin-left:.1em;font-variant-numeric:tabular-nums}" +
+      ".stk-empty{display:inline-flex;align-items:center;padding:.3em 1em;border-radius:999px;background:rgba(255,255,255,.72);font-weight:700;opacity:.9}" +
       ".stk-av{flex:none;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;" +
-      "color:#fff;font-weight:800;font-size:.7em;text-transform:uppercase;vertical-align:middle}" +
+      "color:#fff;font-weight:800;font-size:.7em;text-transform:uppercase;vertical-align:middle;box-shadow:0 1px 3px rgba(60,40,20,.3)}" +
       ".stk-av img{width:100%;height:100%;object-fit:cover;display:block}" +
       ".stk-bar.stk-noav .stk-av{display:none}" +
-      "@media (prefers-reduced-motion:reduce){.stk-track{animation:none!important}.stk-viewport{overflow-x:auto}}" +
+      ".stk-bar.stk-noav .stk-item{padding-left:.95em}" +
       /* games that keep their own ticker */
-      "html.stk-off #ticker-wrap,html.stk-off #tickerBar,html.stk-off #leaderboardTicker,html.stk-off .ticker-wrap{display:none!important}" +
-      "html.stk-fs .ticker-track,html.stk-fs .ticker-item,html.stk-fs .ticker-entry{font-size:var(--stk-fs)!important}" +
-      "html.stk-noav .ticker-track .avatarChip,html.stk-noav .ticker-item .avatarChip,html.stk-noav .ticker-entry .avatarChip{display:none!important}" +
+      "html.stk-off #ticker-wrap,html.stk-off #tickerBar,html.stk-off #leaderboardTicker,html.stk-off .ticker-wrap,html.stk-off .leaderboard-ticker{display:none!important}" +
+      ".stk-own-hidden{display:none!important}" +
       /* settings block */
       ".stk-set{display:flex;flex-direction:column;gap:10px;margin:14px 0;padding-top:12px;border-top:2px dashed rgba(127,127,127,.4);color:inherit;font-family:inherit}" +
       ".stk-set h4{margin:0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.85}" +
@@ -144,10 +151,35 @@
       document.querySelector("header") || document.querySelector(".topbar");
   }
 
+  /* ---------------- the scrolling engine ----------------
+     A requestAnimationFrame loop that owns ONE number: how far the strip has scrolled (offset, in px). Changing the content
+     never touches it, so the scroll just carries on; only a change of the repeating unit's width wraps it. */
+  var offset = 0, unitW = 0, rafId = 0, lastT = 0, paused = false, running = false;
+  function frame(t) {
+    rafId = requestAnimationFrame(frame);
+    var dt = lastT ? Math.min(0.1, (t - lastT) / 1000) : 0;
+    lastT = t;
+    if (!track || !unitW || paused || reduceMotion || (bar && bar.hidden)) return;
+    offset += settings.speed * dt;
+    if (offset >= unitW) offset -= Math.floor(offset / unitW) * unitW;
+    track.style.transform = "translate3d(" + (-offset).toFixed(2) + "px,0,0)";
+  }
+  function startEngine() {
+    if (running) return;
+    running = true; lastT = 0;
+    rafId = requestAnimationFrame(frame);
+    document.addEventListener("visibilitychange", function () { lastT = 0; });
+  }
+  var reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+  function findOwn() {
+    var els = document.querySelectorAll(EXISTING_SELECTORS);
+    for (var i = 0; i < els.length; i++) if (!els[i].closest("#scoreTickerBar")) return els[i];
+    return null;
+  }
   function build() {
-    if (document.querySelector(EXISTING_SELECTORS)) { existing = true; return; }
+    var own = findOwn();
     var header = findHeader();
-    if (!header || !header.parentNode) return;
     bar = document.createElement("div");
     bar.className = "stk-bar";
     bar.id = "scoreTickerBar";
@@ -155,18 +187,33 @@
     bar.setAttribute("aria-label", "Top scorers");
     bar.hidden = true;
     bar.innerHTML = '<span class="stk-label"></span><div class="stk-viewport"><div class="stk-track"></div></div>';
-    header.insertAdjacentElement("afterend", bar);
+    if (own && own.parentNode) {
+      // games with their own old ticker: this bar takes its place, the old one is hidden (it keeps running unseen)
+      own.parentNode.insertBefore(bar, own);
+      own.classList.add("stk-own-hidden");
+      own.setAttribute("data-stk-replaced", "1");
+    } else if (header && header.parentNode) {
+      header.insertAdjacentElement("afterend", bar);
+    } else {
+      bar = null; return;
+    }
     labelEl = bar.querySelector(".stk-label");
     viewport = bar.querySelector(".stk-viewport");
     track = bar.querySelector(".stk-track");
+    bar.addEventListener("mouseenter", function () { paused = true; });
+    bar.addEventListener("mouseleave", function () { paused = false; });
+    bar.addEventListener("touchstart", function () { paused = true; }, { passive: true });
+    bar.addEventListener("touchend", function () { paused = false; }, { passive: true });
+    bar.addEventListener("touchcancel", function () { paused = false; }, { passive: true });
     if (window.ResizeObserver) {
       var lastW = 0;
       new ResizeObserver(function () {
         var w = viewport.clientWidth;
-        if (Math.abs(w - lastW) < 2) return;
-        lastW = w; lastSig = ""; render();
+        if (Math.abs(w - lastW) < 24) return; // ignore tiny changes; only a real resize needs more copies
+        lastW = w; fillCopies();
       }).observe(viewport);
     }
+    startEngine();
   }
 
   function pokeLayout() {
@@ -177,15 +224,35 @@
     }, 30);
   }
 
+  function autoLabel(n) {
+    if (settings.source === "round") return "THIS ROUND";
+    var d = new Date();
+    var m = d.toLocaleString("en", { month: "short" }).toUpperCase();
+    return "TOP " + Math.max(1, n) + " \u00B7 " + m + " " + d.getFullYear();
+  }
+
+  var unitHtml = "", emptyMode = false;
+  // repeat the unit enough times to always cover the viewport + one unit, then measure the unit
+  function fillCopies() {
+    if (!track || !unitHtml) return;
+    track.innerHTML = unitHtml;
+    var w1 = 0;
+    var kids = track.children;
+    for (var i = 0; i < kids.length; i++) w1 += kids[i].offsetWidth + parseFloat(getComputedStyle(kids[i]).marginRight || 0);
+    if (!w1) w1 = track.scrollWidth || 1;
+    var vw = viewport.clientWidth || 0;
+    var k = Math.max(1, Math.ceil(vw / w1) + 1);
+    track.innerHTML = new Array(k + 1).join(unitHtml);
+    unitW = w1;
+    if (offset >= unitW) offset = offset % unitW; // keep the position (never reset to the start)
+    track.style.transform = "translate3d(" + (-offset).toFixed(2) + "px,0,0)";
+  }
+
   function render() {
     var root = document.documentElement;
-    /* page-level classes for games that keep their own ticker */
     root.classList.toggle("stk-off", !settings.enabled);
     root.classList.toggle("stk-noav", !settings.avatars);
-    var fsOn = existing && settings.touched.size;
-    root.classList.toggle("stk-fs", !!fsOn);
     root.style.setProperty("--stk-fs", settings.size + "px");
-    if (existing) { applyExistingSpeed(); return; }
     if (!bar) return;
 
     bar.style.setProperty("--stk-fs", settings.size + "px");
@@ -199,72 +266,35 @@
     if (bar.hidden === shouldShow) { bar.hidden = !shouldShow; }
     if (!shouldShow) { afterChange(); return; }
 
-    labelEl.textContent = settings.label;
+    var label = settings.label || autoLabel(Math.min(settings.count, Math.max(list.length, settings.count)));
+    if (labelEl.textContent !== label) labelEl.textContent = label;
 
+    // Only rebuild when what is SHOWN changed (names / scores / pictures / look). Anything else (a new guess, a re-render)
+    // leaves the strip completely alone.
     var sig = JSON.stringify([list.map(function (e) { return [e.username, e.score, e.avatarUrl || ""]; }),
-      settings.size, settings.avatars, settings.points, settings.label, settings.source, settings.count, viewport.clientWidth]);
-    if (sig === lastSig) { setDuration(); afterChange(); return; }
+      settings.size, settings.avatars, settings.points, settings.source, settings.count]);
+    if (sig === lastSig) { afterChange(); return; }
     lastSig = sig;
 
     if (!list.length) {
-      track.style.animation = "none";
-      track.innerHTML = '<span class="stk-item stk-empty">Waiting for the first score…</span>';
-      afterChange();
-      return;
+      unitHtml = '<span class="stk-empty">Waiting for the first score\u2026</span>';
+    } else {
+      var av = Math.round(settings.size * 1.6);
+      unitHtml = list.map(function (e, i) {
+        var pts = settings.points ? '<span class="stk-pts">' + esc(e.score) + "</span>" : "";
+        var nm = String(e.username);
+        var shown = nm.charAt(0) === "@" || /^(host|\W)/i.test(nm) ? nm : "@" + nm;
+        return '<span class="stk-item">' + avatarHtml(e.username, e.avatarUrl, av) + '<span class="stk-rank">' + (i + 1) + "</span>" +
+          '<span class="stk-name">' + esc(shown) + "</span>" + pts + "</span>";
+      }).join("");
     }
-    var av = Math.round(settings.size * 1.35);
-    var unit = list.map(function (e, i) {
-      var pts = settings.points ? '<span class="stk-pts">' + esc(e.score) + (e.score === 1 ? " pt" : " pts") + "</span>" : "";
-      return '<span class="stk-item"><span class="stk-rank">' + (MEDALS[i] || (i + 1) + ".") + "</span>" +
-        avatarHtml(e.username, e.avatarUrl, av) + "<span>" + esc(e.username) + "</span>" + pts + "</span>";
-    }).join("");
-    // measure one copy, then repeat it until a copy is at least as wide as the bar (so there is never a gap)
-    track.style.animation = "none";
-    track.innerHTML = unit;
-    var w1 = track.scrollWidth || 1;
-    var vw = viewport.clientWidth || 0;
-    var k = Math.max(1, Math.ceil(vw / w1));
-    var copy = new Array(k + 1).join(unit);
-    track.innerHTML = copy + copy;
-    setDuration();
+    fillCopies();
     afterChange();
-  }
-
-  function setDuration() {
-    if (!track || !track.firstChild || track.querySelector(".stk-empty")) return;
-    var dist = track.scrollWidth / 2;
-    if (!dist) return;
-    var secs = Math.max(4, dist / settings.speed);
-    track.style.animation = "stk-scroll " + secs.toFixed(2) + "s linear infinite";
   }
 
   function afterChange() {
     var h = bar && !bar.hidden ? bar.offsetHeight : 0;
     if (h !== lastBarH) { lastBarH = h; pokeLayout(); }
-  }
-
-  /* ---------------- speed for games that keep their own ticker ---------------- */
-  var existingObs = [];
-  function applyExistingSpeed() {
-    var tracks = document.querySelectorAll(".ticker-track");
-    for (var i = 0; i < tracks.length; i++) {
-      (function (t) {
-        if (!t.__stkObs && window.MutationObserver) {
-          t.__stkObs = new MutationObserver(function () { setExistingDuration(t); });
-          t.__stkObs.observe(t, { childList: true, characterData: true, subtree: true });
-          existingObs.push(t.__stkObs);
-        }
-        setExistingDuration(t);
-      })(tracks[i]);
-    }
-  }
-  function setExistingDuration(t) {
-    if (!settings.touched.speed) { t.style.removeProperty("animation-duration"); return; }
-    var single = t.id === "ticker-track"; // FLAGLE scrolls one copy; the others scroll two copies (-50%)
-    var w = single ? t.offsetWidth : t.scrollWidth / 2;
-    if (!w) return;
-    var secs = Math.max(4, w / settings.speed);
-    t.style.setProperty("animation-duration", secs.toFixed(2) + "s", "important");
   }
 
   /* ---------------- settings section (inserted in every game's Settings drawer) ---------------- */
@@ -296,7 +326,7 @@
       '<label class="stk-check"><input type="checkbox" data-k="avatars"> Show profile pictures</label>' +
       (own ? '<label class="stk-check"><input type="checkbox" data-k="points"> Show points</label>' : "") +
       (own ? '<label class="stk-check"><input type="checkbox" data-k="hideEmpty"> Hide the ticker until someone has scored</label>' : "") +
-      (own ? '<div class="stk-row"><label>Label</label><input type="text" data-k="label" maxlength="40" placeholder="🏆 Top scorers"></div>' : "") +
+      (own ? '<div class="stk-row"><label>Label (empty = automatic)</label><input type="text" data-k="label" maxlength="40" placeholder="Automatic (TOP 10 · OCT 2026)"></div>' : "") +
       (own ? '<div class="stk-row"><label>Accent colour (label and ranks)</label><div class="stk-inline">' +
         '<input type="color" data-k="accent"><button type="button" class="stk-btn" data-act="accent-reset">Default</button></div></div>' : "") +
       '<div><button type="button" class="stk-btn" data-act="reset">Reset ticker settings</button></div>';

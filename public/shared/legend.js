@@ -158,7 +158,7 @@
     betweendle: {
       title: "Legend",
       items: [
-        { id: "key", glyph: "a", label: "Gold circles — the letters a guess can still start with, between the lower and upper bound. Dimmed letters are out of range.", c: V("--bd-key", "#B8A038", "#1B1B1F", "#8C7A22") },
+        { id: "key", glyph: "IN", label: "Green letters — the start shared by the lower and upper word. The secret word starts with it too; the middle box shows it followed by ?.", c: V("--bd-key", "#2E8B3D", "#F3F1E6", "#1F6A2B") },
         { id: "range", glyph: "!", label: "Outside range — a guess not between the lower and upper bound is skipped, and a short message pops up in the floating window.", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },

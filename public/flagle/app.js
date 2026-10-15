@@ -568,6 +568,7 @@ function stopCountdown() {
 }
 
 function renderLeaderboard(list) {
+  if (window.ScoreTicker) window.ScoreTicker.update({ totalLeaderboard: list || [] }); // update 77: the shared, smooth ticker
   if (!list || list.length === 0) {
     leaderboardEl.textContent = "Waiting for the first correct guess…";
   } else {

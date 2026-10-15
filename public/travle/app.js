@@ -1146,6 +1146,7 @@
   function renderTicker() {
     if (!tickerBar) return;
     const entries = Object.entries(sessionScores).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    if (window.ScoreTicker) window.ScoreTicker.update({ totalLeaderboard: entries.map(([name, score]) => ({ username: name, score, avatarUrl: avatarsByUser.get(name.trim().toLowerCase()) })) }); // update 77: the shared, smooth ticker
     if (!entries.length) { tickerBar.hidden = true; tickerTrack.innerHTML = ""; return; }
     tickerBar.hidden = false;
     const itemsHtml = entries.map(([name, score], i) => {
