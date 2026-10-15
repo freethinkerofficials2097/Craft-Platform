@@ -37,7 +37,7 @@ import {
   MIN_WORD_LENGTH,
   MAX_WORD_LENGTH
 } from "../blindle/blindle-answers.js";
-import { isValidGuessWord as enIsValid } from "../blindle/blindle-dictionary.js";
+import { isValidGuessWord as enIsValid, dictionaryState as enDictionaryState } from "../blindle/blindle-dictionary.js";
 import { getWordsForDifficulty as baseGetWordsForDifficulty } from "../blindle/blindle-difficulty.js";
 import { cleanExternalList } from "./lang/lang-stem.mjs"; // update 54
 
@@ -404,5 +404,18 @@ export function describeLanguage(mode) {
     idSource: languageDictionaryState.id.source,
     msSource: languageDictionaryState.ms.source
   };
+}
+/**
+ * Every word a viewer may guess in a mode (all ticked languages), as an array of Sets, plus a cheap "signature" that changes
+ * whenever a dictionary (re)loads. BETWEENDLE measures its distances in ONE sorted list of exactly these words.
+ */
+export function guessWordSets(mode) {
+  const sets = [];
+  let sig = "";
+  for (const l of modeInfo(mode).parts) {
+    if (l === "en") { sets.push(enDictionaryState.words); sig += "e" + enDictionaryState.words.size + enDictionaryState.source; }
+    else { sets.push(LEX[l], BIG[l]); sig += l + LEX[l].size + "/" + BIG[l].size; }
+  }
+  return { sets, signature: sig };
 }
 export { LEX as BUNDLED_LEXICON };
