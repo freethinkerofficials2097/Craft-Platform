@@ -1,3 +1,5 @@
+> **Update 83:** BETWEENDLE: the A-Z letter tiles (keyboard) were removed; the three boxes now come in 7 designs (Stitched, Flat, Glass, Neon, Ticket, Sticker, Soft) with customizable colors, font, text size, corners, border, shadow, spacing, captions, distance and animation (Settings -> Look & sound -> Card design, shared by every screen, saved in `data/betweendle-settings.json`); fixed the hidden-word box not getting its own lighter face/seam. See `CHANGES_UPDATE_83.md`.
+
 > **Update 81:** FORBACKLE no longer refuses guesses because of hidden older rows or hint words that did not fit (board shows up to 300 guesses, hints pick fitting words); SHIFTLE's Strict fit now accepts a guess that fits under ANY of the 6 possible color meanings, like ORACLE. See `CHANGES_UPDATE_81.md`.
 
 > **Update 72:** new game FIXLE (Edge-O style: every guess is scored with matching prefix + matching suffix against the secret word; guesses are listed from the highest score to the lowest; a score of twice the word length wins and the winner earns exactly that many points; legend above the board) at `/fixle/`. See `CHANGES_UPDATE_72.md`.
