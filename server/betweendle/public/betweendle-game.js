@@ -824,7 +824,31 @@ function renderTiles(g) {
   el.tilesWrap.appendChild(buildBoardRow("lower", lo, g));
   el.tilesWrap.appendChild(buildBoardRow("secret", null, g));
   el.tilesWrap.appendChild(buildBoardRow("upper", up, g));
+  fitBoardWords();
 }
+
+// update 79: every word on the board is shown with ALL its letters (no more "INTERN..." cut-offs). The type is shrunk step by
+// step until the word fits on one line; only an extremely long word on a very narrow screen wraps onto a second line.
+function fitBoardWords() {
+  if (!el.tilesWrap) return;
+  const MIN_FS = 14;
+  el.tilesWrap.querySelectorAll(".bdWord").forEach((w) => {
+    w.classList.remove("bdWrap");
+    w.style.removeProperty("--bd-fs");
+    if (!w.clientWidth) return; // board hidden right now
+    let size = parseFloat(getComputedStyle(w).fontSize) || 24;
+    let guard = 0;
+    while (w.scrollWidth > w.clientWidth + 0.5 && size > MIN_FS && guard++ < 60) {
+      size -= 0.5;
+      w.style.setProperty("--bd-fs", size + "px");
+    }
+    if (w.scrollWidth > w.clientWidth + 0.5) w.classList.add("bdWrap");
+  });
+}
+let fitResizeTimer = null;
+window.addEventListener("resize", () => { clearTimeout(fitResizeTimer); fitResizeTimer = setTimeout(fitBoardWords, 80); });
+window.addEventListener("orientationchange", () => { setTimeout(fitBoardWords, 250); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitBoardWords()).catch(() => {});
 
 // The status line under the alphabet circles: win / round-over text, or the latest "outside the range" message.
 let statusMsg = ""; let statusUntil = 0; let boardStatusTimer = null;

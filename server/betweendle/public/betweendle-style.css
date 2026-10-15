@@ -225,71 +225,116 @@ button { cursor: pointer; }
    the last letter — all left-packed on one line (no stretched gap). ---- */
 .tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: 14px; margin: 0 0 14px; padding: 2px 2px 8px; }
 
-/* The three boxes (lower bound / hidden word / upper bound): premium floating cards. Warm paper-tan cards with a glossy top edge,
-   a coloured accent edge, deep layered shadows (they really lift off the page), a gentle idle float and a pop when a bound changes.
-   The base colour comes from --bd-bound, so the host's "Color shades" picker still works. */
+/* ============================================================
+   The three boxes (lower bound / hidden word / upper bound) - update 80
+   Stitched "fabric patch" cards in the platform's knitting-theme language (the same warm theme card, thread-coloured border and
+   dashed stitch line as the toolbar buttons, pickers and hero ribbon - they follow the theme picker).
+   Glossy single-colour face, deep shadows. No floating, no coloured edge, no pill round the distance.
+   - lower / upper boxes: card colour, one running-stitch seam
+   - hidden-word (middle) box: slightly different - a lighter face, a double seam (dashed + fine solid) in the accent yarn
+   The face colour still comes from --bd-bound (Settings -> Color shades -> "Card").
+   ============================================================ */
 .bdBoard .tilesWrap .bdRow, .bdRow {
+  --bd-thread: var(--theme-line, #D9BE93);
+  --bd-seam: color-mix(in srgb, var(--theme-deep, #6B4423) 55%, transparent);
+  --bd-inner: var(--bd-bound, #E2D6B8);
+  --bd-ink: var(--bd-bound-ink, #3a2d20);
   position: relative; isolation: isolate; overflow: visible;
-  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 76px; padding: 12px 22px 12px 26px;
-  color: var(--bd-bound-ink); border-radius: 22px;
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 64px;
+  padding: 11px 18px;
+  border: 3px solid color-mix(in srgb, var(--bd-thread) 80%, var(--theme-deep, #6B4423));
+  border-radius: 18px;
   background:
-    radial-gradient(120% 140% at 8% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(80, 55, 20, 0.10) 100%),
-    var(--bd-bound);
-  border: 1.5px solid rgba(255, 255, 255, 0.85);
+    radial-gradient(75% 70% at 16% 0%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%),
+    var(--bd-inner);
+  color: var(--bd-ink);
   box-shadow:
-    0 2px 0 rgba(255, 255, 255, 0.95) inset,
-    0 -3px 0 rgba(80, 55, 20, 0.10) inset,
-    0 3px 6px rgba(60, 40, 20, 0.14),
-    0 14px 26px -6px rgba(60, 40, 20, 0.34),
-    0 30px 46px -18px rgba(60, 40, 20, 0.34);
-  font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
-  transform: translateZ(0);
-  animation: bd-row-in 0.55s cubic-bezier(.2, .9, .3, 1.25) both, bd-float 5.5s ease-in-out 0.6s infinite;
-  transition: box-shadow 0.25s ease, filter 0.25s ease;
+    0 2px 0 rgba(255, 255, 255, 0.8) inset,
+    0 3px 7px rgba(40, 25, 10, 0.16) inset,
+    0 2px 0 rgba(0, 0, 0, 0.08),
+    0 12px 22px -6px rgba(60, 40, 20, 0.36),
+    0 26px 40px -16px rgba(60, 40, 20, 0.30);
+  font-family: var(--font-display); font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em;
+  animation: bd-row-in 0.5s cubic-bezier(.2, .9, .3, 1.2) both;      /* pops in when the board changes; never keeps moving */
 }
-/* coloured accent edge on the left: blue = lower bound, coral = upper bound */
-.bdRow::before {
-  content: ""; position: absolute; left: 9px; top: 16px; bottom: 16px; width: 5px; border-radius: 5px;
-  background: linear-gradient(180deg, #6EA8FF, #3F6FE0); box-shadow: 0 0 8px rgba(63, 111, 224, 0.45);
+.bdRow::before { content: none; }
+/* the running-stitch seam */
+.bdRow::after {
+  content: ""; position: absolute; inset: 4px; border-radius: 12px; z-index: 1; pointer-events: none;
+  border: 2px dashed var(--bd-seam);
 }
-.bdRow.bd-upper::before { background: linear-gradient(180deg, #FF9A7A, #E5484D); box-shadow: 0 0 8px rgba(229, 72, 77, 0.45); }
-.bdRow.bd-secret::before { background: linear-gradient(180deg, #B9A4FF, #7B5CFF); box-shadow: 0 0 8px rgba(123, 92, 255, 0.5); }
-.bdRow.bd-secret { animation-delay: 0.08s, 1.8s; }
-.bdRow.bd-upper { animation-delay: 0.16s, 3.2s; }
-.bdRow:hover { filter: brightness(1.03); box-shadow: 0 2px 0 rgba(255,255,255,.95) inset, 0 -3px 0 rgba(80,55,20,.10) inset, 0 6px 10px rgba(60,40,20,.16), 0 22px 36px -8px rgba(60,40,20,.42), 0 40px 56px -20px rgba(60,40,20,.38); }
-@keyframes bd-row-in { 0% { transform: translateY(16px) scale(0.94); opacity: 0; filter: blur(2px); } 100% { transform: none; opacity: 1; filter: none; } }
-@keyframes bd-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.bdRow > * { position: relative; z-index: 2; }
 
-/* the hidden-word box: bright card with a dashed violet border and a soft glow */
-.bdBoard .tilesWrap .bdRow.bd-secret, .bdRow.bd-secret {
-  background:
-    radial-gradient(120% 140% at 8% 0%, #ffffff 0%, rgba(255, 255, 255, 0) 60%),
-    linear-gradient(180deg, #ffffff, #f4efff);
-  border: 2px dashed rgba(123, 92, 255, 0.6);
-  color: var(--text, #3a2d20);
-  box-shadow:
-    0 2px 0 #fff inset, 0 3px 6px rgba(60, 40, 20, 0.12),
-    0 14px 26px -6px rgba(123, 92, 255, 0.32), 0 30px 46px -18px rgba(60, 40, 20, 0.3);
+/* the hidden-word (middle) box: lighter face + double seam in the accent yarn */
+.bdRow.bd-secret {
+  --bd-inner: color-mix(in srgb, var(--bd-bound, #E2D6B8) 55%, #fff);
+  --bd-seam: color-mix(in srgb, var(--coral, #ff3b4e) 70%, transparent);
 }
-.bdWord { flex: 1 1 auto; min-width: 0; font-size: clamp(20px, 6.4vw, 32px); line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bdRow.bd-secret::before {
+  content: ""; position: absolute; inset: 9px; border-radius: 9px; z-index: 1; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--coral, #ff3b4e) 38%, transparent);
+}
+.bdRow.bd-secret.found { --bd-inner: var(--bd-found, #4F8E4F); --bd-ink: var(--bd-found-ink, #fff); --bd-seam: rgba(255, 255, 255, 0.7); animation: bd-found 0.6s ease; }
+.bdRow.bd-secret.found::before { border-color: rgba(255, 255, 255, 0.45); }
+
+@keyframes bd-row-in { 0% { transform: translateY(10px) scale(0.96); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@keyframes bd-found { 0% { transform: scale(0.94); } 60% { transform: scale(1.03); } 100% { transform: none; } }
+
+/* the words: always shown with ALL their letters. betweendle-game.js (fitBoardWords) shrinks the type to fit one line,
+   and only for extremely long words lets the word wrap onto a second line instead of ever cutting letters off. */
+.bdWord {
+  flex: 1 1 auto; min-width: 0; line-height: 1.1; white-space: nowrap; overflow: visible; text-overflow: clip;
+  font-size: var(--bd-fs, clamp(20px, 6.4vw, 30px));
+}
+.bdWord.bdWrap { white-space: normal; overflow-wrap: anywhere; word-break: break-all; line-height: 1.05; }
 .bdPrefix { color: var(--bd-key); text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5); }
+/* the distance: plain number, no pill */
 .bdDistance {
-  flex: 0 0 auto; margin-left: auto; padding: 3px 10px; border-radius: 999px;
-  font-size: clamp(18px, 5.6vw, 28px); font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums;
-  background: #fff; color: var(--text, #3a2d20); box-shadow: 0 2px 5px rgba(60, 40, 20, 0.2), 0 1px 0 rgba(255,255,255,.9) inset;
+  flex: 0 0 auto; margin-left: auto; padding: 0 0 0 4px; min-width: 2ch; text-align: right;
+  font-size: clamp(17px, 5.2vw, 24px); font-weight: 800; letter-spacing: 0; font-variant-numeric: tabular-nums;
+  background: none; box-shadow: none; border-radius: 0; color: inherit; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 .bdRow.start .bdWord { opacity: 0.75; }
-.bdQuestion { opacity: 1; font-size: clamp(24px, 7.4vw, 36px); }
+.bdQuestion { opacity: 1; font-size: var(--bd-fs, clamp(24px, 7.4vw, 34px)); }
 .bdQuestion:not(:has(.bdPrefix)) { opacity: 0.55; }
-.bdRow.bd-secret.found {
-  background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 60%), var(--bd-found);
-  border: 1px solid rgba(255, 255, 255, 0.5); color: var(--bd-found-ink);
-  animation: bd-found 0.6s ease;
-}
-@keyframes bd-found { 0% { transform: scale(0.94); } 60% { transform: scale(1.04); } 100% { transform: none; } }
 .bdAvatar { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; border-radius: 50%; overflow: hidden; box-shadow: 0 2px 6px rgba(60, 40, 20, 0.3); }
 @media (prefers-reduced-motion: reduce) { .bdRow { animation: none; } }
+
+/* ============================================================
+   Floating message window (update 79) - the same one every other word game has.
+   It has its own reserved slot under the top bar, so the legend and the board below never overlap it or jump when it appears.
+   (BETWEENDLE had no styles for it, so the message showed as loose unstyled text.)
+   ============================================================ */
+.toastSlot {
+  position: relative; flex-shrink: 0; width: 100%; max-width: 640px; margin: 0 auto;
+  height: 76px; pointer-events: none;
+}
+.rejectionToast {
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%); z-index: 40; pointer-events: none;
+  width: min(94vw, 480px); padding: 7px 12px 8px; border-radius: var(--radius-md);
+  background: rgba(28, 16, 22, 0.96); border: 1px solid rgba(255, 59, 78, 0.45);
+  box-shadow: 0 14px 32px rgba(2, 3, 12, 0.55);
+  color: #ffd7db; font-size: 12.5px; line-height: 1.3; font-weight: 600; text-align: center; letter-spacing: 0.1px;
+  overflow-wrap: anywhere;
+}
+.rejectionToast::before {
+  content: ""; display: block; width: 34px; height: 3px; border-radius: 999px; background: var(--coral); margin: 0 auto 4px;
+}
+@keyframes toast-flash {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  10% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Android phones (about 320-420 px wide): give the boxes the full width so every word fits */
+@media (max-width: 430px) {
+  .stage { padding: 8px 8px 16px; gap: 10px; }
+  .round-card { padding: 8px 8px 10px; border-radius: 18px; }
+  .tilesWrap { gap: 10px; }
+  .bdAlphabet { margin: 2px 0 10px; gap: 4px; }
+  .bdAlphaRow { gap: 3px; }
+}
 
 /* A-Z tiles: decorative keys (the same in every state) */
 .bdAlphabet { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px 0 14px; }
