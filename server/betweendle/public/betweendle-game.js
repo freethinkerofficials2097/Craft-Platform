@@ -176,7 +176,7 @@ const CARD_DEFAULTS = {
   style: "stitched", font: "default",
   cardColor: "", secretColor: "", textColor: "", accentColor: "",
   textScale: 100, radius: 18, borderWidth: 3, shadow: 2, gap: 14,
-  labels: false, distance: true, animate: true,
+  labels: false, distance: true, animate: true, lengthInfo: true,
   // update 84: the panel (white box) behind the three boxes
   panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2
 };
@@ -223,7 +223,8 @@ const CARD_SLIDERS = [
 const CARD_TOGGLES = [
   { key: "labels", label: "Show captions (LOWER BOUND / HIDDEN WORD / UPPER BOUND)" },
   { key: "distance", label: "Show the distance number" },
-  { key: "animate", label: "Pop-in animation when the board changes" }
+  { key: "animate", label: "Pop-in animation when the board changes" },
+  { key: "lengthInfo", label: "Show the word length / range above the legend" }
 ];
 // the panel behind the three boxes (the "white box")
 const PANEL_TOGGLES = [{ key: "panel", label: "Show the panel behind the game" }];
@@ -284,7 +285,30 @@ function paintPanel(target, d) {
   cardSetVar(target, "--bdp-radius", d.panelRadius + "px");
   cardSetVar(target, "--bdp-pad", d.panelPadding + "px");
 }
-function paintAll(d) { paintCardDesign(el.bdBoard, d); paintPanel(roundCardEl, d); }
+// update 85: the text inside the panel (legend, hints, status, word-length strip) adapts to the panel color by itself.
+// Only when the host picked their own panel color: the real look of the panel (its color mixed into the page behind it at the
+// chosen opacity) decides between dark and light text. With the theme's own panel nothing is changed.
+function pageBackdropRgb() {
+  const probe = (node) => {
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/.exec(getComputedStyle(node).backgroundColor || "");
+    if (!m || (m[4] !== undefined && Number(m[4]) < 0.5)) return null;
+    return [Number(m[1]), Number(m[2]), Number(m[3])];
+  };
+  return probe(document.body) || probe(document.documentElement) || [246, 230, 195];
+}
+function paintPanelInk(target, d) {
+  if (!target) return;
+  let mode = "";
+  const rgb = cardHexToRgb(d.panelColor);
+  if (d.panel && rgb && d.panelOpacity >= 30) {
+    const a = d.panelOpacity / 100, bg = pageBackdropRgb();
+    const eff = rgb.map((v, i) => Math.round(v * a + bg[i] * (1 - a)));
+    const hex = "#" + eff.map((v) => v.toString(16).padStart(2, "0")).join("");
+    mode = cardInkFor(hex, 0) === "#ffffff" ? "light" : "dark";
+  }
+  if (mode) target.setAttribute("data-panel-ink", mode); else target.removeAttribute("data-panel-ink");
+}
+function paintAll(d) { paintCardDesign(el.bdBoard, d); paintPanel(roundCardEl, d); paintPanelInk(roundCardEl, d); }
 
 // Writes the look onto an element (the real board, the live preview, or a design thumbnail).
 // opts.onlyLook = true -> only design + colors + font (thumbnails keep their own small size, border and shadow).
@@ -547,6 +571,7 @@ function syncCardPicker(d) {
   if (!cardUi) return;
   paintCardDesign(cardUi.preview, d);
   paintPanel(cardUi.previewPanel, d);
+  paintPanelInk(cardUi.previewPanel, d);
   CARD_STYLES.forEach((s) => {
     cardUi.styleBtns[s.id].classList.toggle("selected", s.id === d.style);
     cardUi.styleBtns[s.id].setAttribute("aria-pressed", String(s.id === d.style));
@@ -1065,6 +1090,29 @@ function renderModeUI(g) {
 
 function renderLengthBadge(g) {
   el.lengthBadge.textContent = g.status === "idle" ? "— letters" : g.wordLength + "-letter word";
+  renderLengthStrip(g);
+}
+
+// update 85: the strip above the legend: how many letters this round's secret word has and, when the host lets the length vary,
+// the range the rounds draw from. It follows the "Show the word length / range" switch in Settings -> Card design.
+const lengthStripEl = document.getElementById("lengthStrip");
+let lastLengthSig = "";
+function renderLengthStrip(g) {
+  if (!lengthStripEl) return;
+  const on = g.status !== "idle" && g.wordLength > 0 && (!g.cardDesign || g.cardDesign.lengthInfo !== false);
+  const randomRange = g.lengthMode === "random" && Number(g.lengthMax) > Number(g.lengthMin);
+  const sig = on ? [g.wordLength, randomRange, g.lengthMin, g.lengthMax].join("|") : "off";
+  if (sig === lastLengthSig) return;
+  lastLengthSig = sig;
+  lengthStripEl.hidden = !on;
+  if (!on) { lengthStripEl.innerHTML = ""; return; }
+  const n = Number(g.wordLength);
+  const boxes = Array.from({ length: Math.min(n, 24) }, () => '<i class="lsBox"></i>').join("");
+  lengthStripEl.innerHTML =
+    '<div class="lsMain"><span class="lsLabel">Secret word</span>' +
+    '<span class="lsCount"><b>' + n + "</b> " + (n === 1 ? "letter" : "letters") + "</span></div>" +
+    '<div class="lsBoxes" aria-hidden="true">' + boxes + "</div>" +
+    (randomRange ? '<div class="lsRange">Random length each round: ' + Number(g.lengthMin) + "–" + Number(g.lengthMax) + " letters</div>" : "");
 }
 
 // ------------------------------------------------------------
