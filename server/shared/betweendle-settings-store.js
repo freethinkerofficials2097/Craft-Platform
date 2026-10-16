@@ -37,12 +37,13 @@ const NUMBER_RANGES = {            // key: [min, max]
   panelPadding: [0, 32],           // px space between the panel edge and the content
   panelShadow: [0, 3]              // 0 none ... 3 deep
 };
-const BOOL_KEYS = ["labels", "distance", "animate", "panel"];
+const BOOL_KEYS = ["labels", "distance", "animate", "panel", "lengthInfo"];
 export const DEFAULT_CARD = {
   style: "stitched", font: "default",
   cardColor: "", secretColor: "", textColor: "", accentColor: "",
   textScale: 100, radius: 18, borderWidth: 3, shadow: 2, gap: 14,
   labels: false, distance: true, animate: true,
+  lengthInfo: true,      // update 85: the word length / range strip above the legend
   panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2
 };
 
