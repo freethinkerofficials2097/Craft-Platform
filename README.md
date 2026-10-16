@@ -1,3 +1,7 @@
+> **Update 87:** BETWEENDLE: when the word length is random, the word-length panel shows the host's range ("Random: 4 - 12") and the toolbar badge shows the range too - never the round's exact length. See `CHANGES_UPDATE_87.md`.
+
+> **Update 86:** BETWEENDLE: the word-length strip is now a panel of its own styled like the legend's; it only says how many letters (e.g. "6 letters") or "Random" - no small boxes, no range, never the round's exact length. See `CHANGES_UPDATE_86.md`.
+
 > **Update 85:** BETWEENDLE: new word-length strip (letters this round, plus the random range) between the floating message window and the legend; all text inside the panel (legend, hints, status, strip) now adapts automatically to a custom panel color. See `CHANGES_UPDATE_85.md`.
 
 > **Update 84:** BETWEENDLE: optional, customizable panel (the box) behind the three cards; no more result text under the boxes (celebration / winner name / secret word / "You win!"), Play again + countdown centered; winner window uses a crown and the winner's real TikTok picture as a perfect circle; 7 more card designs (14 total); "Sticker" design is now straight and balanced. See `CHANGES_UPDATE_84.md`.
