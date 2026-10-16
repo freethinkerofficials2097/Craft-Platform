@@ -19,22 +19,31 @@ const DATA_DIR = path.resolve(__dirname, "../../data");
 const DATA_FILE = path.join(DATA_DIR, "betweendle-settings.json");
 
 // ---- the three boxes: allowed designs, fonts and the default look ----------------------------------------------------------
-export const CARD_STYLES = ["stitched", "flat", "glass", "neon", "ticket", "sticker", "soft"];
+export const CARD_STYLES = ["stitched", "flat", "glass", "neon", "ticket", "sticker", "soft",
+  // update 84: seven more designs
+  "gradient", "outline", "notebook", "chalk", "arcade", "wood", "metal"];
 export const CARD_FONTS = ["default", "rounded", "grotesk", "mono", "script"];
-const COLOR_KEYS = ["cardColor", "secretColor", "textColor", "accentColor"]; // "" = automatic (follows the theme / color shades)
+const COLOR_KEYS = ["cardColor", "secretColor", "textColor", "accentColor", "panelColor", "panelBorderColor"]; // "" = automatic (follows the theme / color shades)
 const NUMBER_RANGES = {            // key: [min, max]
   textScale: [70, 140],            // % of the normal word size
   radius: [0, 32],                 // px corner roundness
   borderWidth: [0, 8],             // px
   shadow: [0, 3],                  // 0 none ... 3 deep
-  gap: [6, 30]                     // px between the three boxes
+  gap: [6, 30],                    // px between the three boxes
+  // update 84: the panel (white box) behind the three boxes
+  panelOpacity: [0, 100],          // % see-through-ness of the panel color
+  panelBorderWidth: [0, 8],        // px
+  panelRadius: [0, 48],            // px corner roundness of the panel
+  panelPadding: [0, 32],           // px space between the panel edge and the content
+  panelShadow: [0, 3]              // 0 none ... 3 deep
 };
-const BOOL_KEYS = ["labels", "distance", "animate"];
+const BOOL_KEYS = ["labels", "distance", "animate", "panel"];
 export const DEFAULT_CARD = {
   style: "stitched", font: "default",
   cardColor: "", secretColor: "", textColor: "", accentColor: "",
   textScale: 100, radius: 18, borderWidth: 3, shadow: 2, gap: 14,
-  labels: false, distance: true, animate: true
+  labels: false, distance: true, animate: true,
+  panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2
 };
 
 const settings = { show: true, card: { ...DEFAULT_CARD } };
