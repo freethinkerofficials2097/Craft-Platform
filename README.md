@@ -1,3 +1,5 @@
+> **Update 85:** BETWEENDLE: new word-length strip (letters this round, plus the random range) between the floating message window and the legend; all text inside the panel (legend, hints, status, strip) now adapts automatically to a custom panel color. See `CHANGES_UPDATE_85.md`.
+
 > **Update 84:** BETWEENDLE: optional, customizable panel (the box) behind the three cards; no more result text under the boxes (celebration / winner name / secret word / "You win!"), Play again + countdown centered; winner window uses a crown and the winner's real TikTok picture as a perfect circle; 7 more card designs (14 total); "Sticker" design is now straight and balanced. See `CHANGES_UPDATE_84.md`.
 
 > **Update 83:** BETWEENDLE: the A-Z letter tiles (keyboard) were removed; the three boxes now come in 7 designs (Stitched, Flat, Glass, Neon, Ticket, Sticker, Soft) with customizable colors, font, text size, corners, border, shadow, spacing, captions, distance and animation (Settings -> Look & sound -> Card design, shared by every screen, saved in `data/betweendle-settings.json`); fixed the hidden-word box not getting its own lighter face/seam. See `CHANGES_UPDATE_83.md`.
