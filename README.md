@@ -1,3 +1,5 @@
+> **Update 88:** BETWEENDLE: the word-length panel is fully customizable (Settings -> Look & sound -> Word length panel): its title, the texts for fixed and random length (several parts separated by "|"), number of rows, text size, alignment, colors, corners, border, and show/hide of the panel box. Random length never reveals the round's exact length. See `CHANGES_UPDATE_88.md`.
+
 > **Update 87:** BETWEENDLE: when the word length is random, the word-length panel shows the host's range ("Random: 4 - 12") and the toolbar badge shows the range too - never the round's exact length. See `CHANGES_UPDATE_87.md`.
 
 > **Update 86:** BETWEENDLE: the word-length strip is now a panel of its own styled like the legend's; it only says how many letters (e.g. "6 letters") or "Random" - no small boxes, no range, never the round's exact length. See `CHANGES_UPDATE_86.md`.
