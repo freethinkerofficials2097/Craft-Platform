@@ -23,7 +23,7 @@ export const CARD_STYLES = ["stitched", "flat", "glass", "neon", "ticket", "stic
   // update 84: seven more designs
   "gradient", "outline", "notebook", "chalk", "arcade", "wood", "metal"];
 export const CARD_FONTS = ["default", "rounded", "grotesk", "mono", "script"];
-const COLOR_KEYS = ["cardColor", "secretColor", "textColor", "accentColor", "panelColor", "panelBorderColor"]; // "" = automatic (follows the theme / color shades)
+const COLOR_KEYS = ["cardColor", "secretColor", "textColor", "accentColor", "panelColor", "panelBorderColor", "lengthBg", "lengthBorder", "lengthTextColor"]; // "" = automatic (follows the theme / color shades)
 const NUMBER_RANGES = {            // key: [min, max]
   textScale: [70, 140],            // % of the normal word size
   radius: [0, 32],                 // px corner roundness
@@ -35,15 +35,25 @@ const NUMBER_RANGES = {            // key: [min, max]
   panelBorderWidth: [0, 8],        // px
   panelRadius: [0, 48],            // px corner roundness of the panel
   panelPadding: [0, 32],           // px space between the panel edge and the content
-  panelShadow: [0, 3]              // 0 none ... 3 deep
+  panelShadow: [0, 3],             // 0 none ... 3 deep
+  // update 88: the word length panel
+  lengthRows: [1, 4],              // how many rows the "|"-separated parts are spread over
+  lengthSize: [70, 160],           // % text size
+  lengthRadius: [0, 32],           // px
+  lengthBorderWidth: [0, 6]        // px
 };
-const BOOL_KEYS = ["labels", "distance", "animate", "panel", "lengthInfo"];
+const STRING_KEYS = { lengthTitle: 40, lengthFixedText: 160, lengthRandomText: 160 };   // key: max characters
+const LENGTH_ALIGNS = ["left", "center", "right"];
+const BOOL_KEYS = ["labels", "distance", "animate", "panel", "lengthInfo", "lengthPanel"];
 export const DEFAULT_CARD = {
   style: "stitched", font: "default",
   cardColor: "", secretColor: "", textColor: "", accentColor: "",
   textScale: 100, radius: 18, borderWidth: 3, shadow: 2, gap: 14,
   labels: false, distance: true, animate: true,
-  lengthInfo: true,      // update 85: the word length / range strip above the legend
+  lengthInfo: true,      // update 85: the word length panel above the legend (shown / hidden)
+  // update 88: customization of the word length panel. Texts may use {length} {min} {max} {range} {language}; "|" starts a new part.
+  lengthTitle: "Word length", lengthFixedText: "{length} letters", lengthRandomText: "Random: {range}",
+  lengthRows: 1, lengthSize: 100, lengthAlign: "center", lengthPanel: true, lengthBg: "", lengthBorder: "", lengthTextColor: "", lengthRadius: 12, lengthBorderWidth: 1,
   panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2
 };
 
@@ -70,6 +80,10 @@ function cleanCardPatch(patch) {
     }
   }
   for (const k of BOOL_KEYS) if (typeof patch[k] === "boolean") out[k] = patch[k];
+  for (const k of Object.keys(STRING_KEYS)) {
+    if (typeof patch[k] === "string") out[k] = patch[k].replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, STRING_KEYS[k]);
+  }
+  if (LENGTH_ALIGNS.includes(patch.lengthAlign)) out.lengthAlign = patch.lengthAlign;
   return out;
 }
 
