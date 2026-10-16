@@ -1,0 +1,23 @@
+# update 54: Indonesian-ONLY words: never a secret word, never accepted as a guess, never given derived forms in Bahasa Melayu (Malaysia).
+agustus aktivitas alay antre antri apartemen apoteker bahwa bakso bandara bandel banget baper baterai
+bersepatu bersepeda besok bioskop bis bocah botok bupati butuh camat capek celana cewek cokelat
+cowok cuek culun cumi daring daster dekil delapan desember dibutuhkan disehatkan dokter dongkrak dosen
+efektivitas fakultas fasilitas gado galau ganteng gaul gimana gitu gombal gorden gubernur halte handuk
+identitas integritas istri jaksa jenderal jomblo juli jumat juni kabupaten kades kakao kakek kamar
+kamis kantor kapabilitas kapasitas karena kebutuhan kecamatan kelinci kelurahan kemangi kemarin kepiting keponakan
+kesehatan knalpot kol komunitas kondektur kontrakan kopling koran kost kreativitas kualitas kuantitas kulkas lalap
+lebay lele lodeh losmen lumpia luring mager maret masinis mbak membutuhkan menit menyehatkan menyetir
+mie mobil mobilitas ngobrol ngomong nongkrong ojek oncom onde otoritas parlemen partai pasien pecel
+peladen pemda pemilu penyehatan penyetir perbedaan permen persneling pindai pindang ponsel popularitas pramuniaga preman
+prioritas probabilitas produktivitas pulsa puskesmas rawon realitas satpam sehat semangka sembako senin sensitivitas sepatu
+sepeda sepedaan seprai serundeng setir singkong sirup sopir sore sosis spion stabilitas stasiun surel
+swalayan tagar tautan televisi tentara terong tetangga tomat udah unduh unggah universitas walikota wortel
+alpukat apel becak begal bohlam jadwal kangen kasus klakson kompor rapor resmi meresmikan diresmikan peresmian seluler spanduk taksi telepon surga pemirsa pemulung doyan lemot mantul nyokap bokap gabut kepo
+bapakku ibuku
+obat obeng nomor rahasia rekor redaktur ritsleting salju skripsi sorga tauge toples truk uang wasit miliar montir omset
+brangkas amplop arsitek kondangan konyol loteng lansia liburan imut kinclong kampanye karcis khawatir mengkhawatirkan grosir
+rusak merusak coba jahe film
+
+# update 57: Indonesian-ONLY words found in shared root lists (never accepted / never secret in Bahasa Melayu mode)
+akordeon akun akuntan akurat aljabar amplop apotek aspal bagian balok bandeng baskom bawel beda benahi bepergian bis bolos bohlam bunglon cakram camat dekil desain fisika garansi garasi gembok gerbong ginjal gratis gravitasi grosir helm hirarki idulfitri iduladha impor ekspor informasi insinyur inspektur instansi investasi iuran jadwal jembatan kaleng kampungan kardus kasir keanekaragaman keberagaman keberlanjutan keberlangsungan kebijakan kecepatan kemandirian kemitraan kemiri kendaraan kenyamanan kepegawaian kepemilikan kesepahaman kesulitan kesusastraan kewajiban kompetisi kondisi koper korupsi kosakata sastra legenda legendaris lingkungan listrik lokakarya lurah mahluk majelis makalah mandor materi metode militer musala narkoba obeng olahraga oli onta opor paman panci panitia pelestarian pelit pembagian pengrajin perangko perkawinan pikir pikiran pilek plafon pledoi pojok pribumi pulpen rekening resensi sakelar saklar sedot sedotan sekrup sentra senter teknisi tenggorokan terowongan toko tombol wawancara wisata wisatawan wisuda kapan enggak nggak triliun persen olimpiade salat otomatis otonomi otentik aula standar teknis internasional keuangan solusi reservasi konsumsi konkret kacamata ransel keramik waduk polusi ubin parkir sastrawan  akuntansi manajer manajemen direktur keharmonisan kekhawatiran
+sendok bebek ketenagakerjaan

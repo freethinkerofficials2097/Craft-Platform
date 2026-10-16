@@ -1,0 +1,30 @@
+# Transitive verb ROOTS shared by Bahasa Indonesia and Bahasa Melayu (same spelling, same meaning).
+# Only true root words (no affixes already attached). Engine adds meN-, di-, ter-, peN-, -an, peN-an, -kan.
+ambil angkat antar atur awasi bagi bahas bakar bangun banting bantu baca bawa bayar beli beri bentuk bentang buang buat
+buka bunuh bungkus bujuk bimbing bisik belai bela bina bantah balas balik bongkar campur cabut cari catat cium cuci
+cukur curi cipta cetak coba colek cubit cakar cegah celup cicip congkel dengar dapat dorong didik dakap dakwa daftar damping
+dukung dandan ejek ganti gali gigit gosok goreng genggam gelar gulung gunting hapus hitung hias hormat hubung hukum halau
+hantar hantam hidang hirup hisap hentak hembus isi ikat ikut ingat iring iris incar injak intip jaga jahit jala jamu jawab
+jemput jual jilat jumpa jemur junjung jepit jerat kejar kenal kirim kupas kumpul kunci kunjung kait kutip kocok kikis kemas
+kepung kurung kutuk kerat kisah lempar lihat lipat lukis lindung lepas lapor latih lawan lamar lilit lumur masak masuk
+minum minta mohon muat pakai panah pasang panggil pecah pegang pelihara pilih pindah pikul pinjam pukul pungut putar
+putus pangkas pantau pangku papar pecat peluk perah periksa pesan petik pijak pijat pikir potong pupuk puji raih rampas
+rawat rebut rebus redam rekam renung robek rusak sambut sambung sapu sebut selidik semai semprot serang serah siram sobek
+songsong sorot suap suruh susun sulam sumbang tabur tahan tampung tangkap tanam tarik tatap tebang telan temu
+tempa tempel tempuh tendang tenun terbit terjang tiup timbang timpa tinjau tipu tolak tolong tonton tukar tulis tumbuk tuang
+tunda tunggu tuntut tunjuk tutup ukir ukur ulang uji ulas undang urai urus usap usir usung bekuk belenggu benam bidik bius
+blokir bubuh cabik cela cengkam cerna colok cucuk culik cumbu curah dedah dekap desak dobrak dongkrak duga elak elus
+embus emban galang gandeng ganggu gantung garap gasak gembok gendong gerus giling gertak gesek giring gorok gugah gugat
+guncang guyur halang hambat hampar hanyut hasut himpun hindar hibur hina hunus hurai imbau impit isap jabat
+jajah jalin jangkau jarah jebak jenguk jerumus jinjing juang kacau kail kalang kancing kawal kawin kecup kedip kelola kelupas
+kenang kepal keruk kibas kipas kisar kobar korek kubur kucup kumandang kunyah kuras laju landa langgar lantik lapis larang
+lelang lerai lewat libat licin lindas lingkar lobi lompat lontar lupa pacu padam pahat pahami
+paksa palak pandang pantul parkir perintah pesona picu pimpin pisah
+pugar pujuk pulih punah putar racik rakit ramal ramas rancang rangkai rangkul rangsang ranjau rayu remas rempuh
+rendam rentang resapi restui retas rias rintang rogoh rombak rongrong ronta rujuk salin salur sambar sanggah sapa
+saring segel sekat selip sembah sembelih sembunyi semat sengat senggol sentuh serap serbu serut simak simpan singkap
+singkir sisip sita sokong solek suguh sulap sumbat sunting susul tadah tafsir tagih taksir tambah tambat tampar tangkal
+tangkis tantang tapis tebak tebus tekuk telaah telusuri tembak tembus tenung tepis tepuk terima terka tikam tilik timpuk
+tindih tiru titip tombak tonjol topang tumpang tumpuk tunjang tunggang tusuk umbar ungkap ungkit unjuk upah urut
+# --- more transitive verb roots (batch 2) ---
+adili aduk agih ajak ajar alami alih alir alas amati anggap angkut antuk anyam apung arak asah asuh awet babat badik bajak bakar balut bangkit bantai bedah begal bekap benahi bendung bentak berangus bingkai bobol bohongi bongkar bubut buru cacah cakup campak catu cekik cemari cemooh cengkeram centang cicil cocok coret dampingi dekorasi denda derita desain dorong dukung eja ekspor endus eram fitnah foto gabung gadai gaji gambar ganjal ganti garis gelar gelitik gempur gerai geser goda goncang gores gotong gubah gurat hadang hafal hajar halangi hambur himbau hirup hukumi hurai inap incar intai jajal jamin jangkiti jelajahi juluki jungkir kabari kail kaji karang kebas kebut kecam kelabui kepalai lacak lahap lamar lambai lipur lirik lolos

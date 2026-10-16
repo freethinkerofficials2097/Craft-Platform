@@ -1,0 +1,56 @@
+# Plain everyday words, batch 2 (same in Indonesian and Malay).
+# --- waktu, bilangan, arah / time, numbers, directions ---
+detik menit jam hari pekan minggu bulan tahun abad zaman masa waktu kala saat ketika sekarang tadi nanti kelak esok lusa
+kemarin dulu kini senja subuh fajar pagi siang petang sore malam tengah dini larut musim semi gugur kemarau penghujan
+januari februari maret april juni juli agustus september oktober november desember senin selasa rabu kamis jumat sabtu
+ahad satu dua tiga empat lima enam tujuh delapan sembilan sepuluh seratus seribu juta miliar triliun pertama kedua ketiga
+setengah separuh seperempat sepertiga ganda kali utara selatan timur barat tenggara barat daya timur laut penjuru arah
+sisi tepi pinggir ujung pangkal tengah tengah pusat sudut pojok sela celah lubang ruang jarak ukuran isi luas panjang
+tinggi lebar tebal berat bobot jumlah angka bilangan hitungan nomor urutan barisan deret baris lajur kolom tingkat lapis
+# --- sekolah dan ilmu / school and knowledge ---
+sekolah kelas pelajaran mata pelajaran ujian ulangan tugas pekerjaan rumah nilai rapor ijazah sijil gelar sarjana magister
+doktor profesor guru murid siswa kurikulum silabus kuliah seminar lokakarya latihan pelatihan kursus kemahiran bakat
+ilmu pengetahuan sains fisika kimia biologi matematika aljabar geometri statistik sejarah geografi ekonomi sosiologi
+antropologi filsafat psikologi bahasa sastra puisi pantun syair sajak cerpen novel dongeng legenda mitos hikayat
+fabel drama teater lakon naskah naskhah karya karangan esai artikel berita laporan makalah skripsi tesis disertasi
+huruf abjad alfabet kata kalimat paragraf bab judul tema topik isi bacaan tulisan ejaan tanda baca titik koma
+tanya seru kurung petik tanda garis miring buku tulis halaman lembar kertas pena pensil penghapus penggaris jangka
+busur jangka papan tulis kapur spidol tinta sampul rak lemari perpustakaan
+# --- teknologi dan mesin / technology ---
+teknologi komputer internet jaringan situs laman surel pesan layar papan kunci tetikus cetak pencetak pemindai kamera
+gawai telepon seluler pintar program aplikasi perisian perangkat lunak keras data berkas fail folder map sandi kata
+sandi akun pengguna layanan server peladen cloud awan aman virus siber robot mesin motor mesin tenaga listrik elektrik
+arus tegangan daya baterai kabel sakelar steker colokan lampu bohlam sensor sinyal isyarat gelombang frekuensi radar
+sonar laser sinar rontgen magnet medan gaya gravitasi tekanan suhu panas kalor energi cahaya bunyi suara getaran
+roket satelit antariksa angkasa planet bintang galaksi komet asteroid meteor teleskop mikroskop
+# --- kesehatan / health ---
+kesehatan sehat sakit penyakit demam batuk pilek flu pusing mual muntah diare sembelit luka lecet memar bengkak nyeri
+ngilu gatal ruam bisul jerawat kudis kurap cacar campak gondong tifus malaria demam berdarah kanker diabetes jantung
+asma alergi imun vaksin suntik infus obat tablet pil kapsul sirup salep minyak balsam plester perban kasa gips tongkat
+kursi roda rumah sakit klinik apotek ambulans operasi bedah pemeriksaan diagnosis resep dosis gejala sembuh pulih
+istirahat tidur olahraga senam yoga lari renang gizi vitamin protein lemak serat karbohidrat mineral kalsium zat besi
+# --- olahraga dan permainan / sports and games ---
+olahraga sepak bola basket voli bulu tangkis tenis pingpong renang atletik lari lompat lempar tolak peluru cakram lembing
+senam tinju gulat judo karate silat taekwondo panahan menembak balap sepeda motor mendaki memancing berburu catur dam
+ludo congkak gasing layang layang kelereng petak umpet lompat tali engklek bekel egrang tarik tambang karung balap
+permainan mainan boneka robot teka teki kartu dadu papan peluit gawang jaring net raket bet pukulan tendangan gol skor
+angka poin juara medali piala kejuaraan liga kompetisi turnamen pertandingan wasit pelatih kapten tim regu kubu
+# --- seni, musik, tradisi / arts and music ---
+seni musik lagu nyanyian irama nada lirik syair melodi harmoni tempo ritme gamelan angklung kolintang sasando gambus
+rebana kompang gendang kendang gong kenong saron bonang suling seruling serunai rebab sitar gitar biola piano seruling
+drum terompet trompet harmonika akordeon orkes band paduan suara dalang wayang topeng tari tarian joget zapin ronggeng
+saman reog barong pencak silat randai ludruk ketoprak mak yong tarian lukisan patung ukiran kerajinan anyaman batik
+songket tenun kain pelekat sarung ulos lurik jumputan keris kris tombak badik rencong mandau
+# --- pemerintahan, hukum, agama / civics, law, belief ---
+negara negeri bangsa rakyat kerajaan republik presiden perdana menteri raja sultan ratu pangeran putri permaisuri datuk
+pemerintah parlemen dewan majelis senat kabinet partai pemilu pilihan suara kampanye calon wakil anggota ketua sekretaris
+bendahara undang hukum peraturan perda pasal ayat sidang pengadilan mahkamah hakim jaksa saksi terdakwa vonis denda penjara
+penjara tahanan polisi tentara angkatan perang damai pajak cukai bea anggaran belanja kas dompet kantong uang wang
+duit rupiah ringgit dolar euro yen sen rupiah mata uang agama kepercayaan iman ibadah doa solat sembahyang puasa zakat
+haji umrah masjid musala surau gereja kuil pura vihara kitab suci ayat surah doa ustaz ulama imam khatib pendeta
+biksu pastor misa natal paskah waisak nyepi galungan lebaran raya idulfitri iduladha maulid
+# --- warna, bentuk, bahan / colours, shapes, materials ---
+warna merah jingga kuning hijau biru nila ungu jambu merah muda hitam putih abu kelabu cokelat coklat emas perak krem
+bentuk bulat bundar lonjong persegi segitiga segi empat jajaran genjang trapesium belah ketupat kubus balok bola tabung
+kerucut limas prisma bintang hati lengkung garis titik sudut lingkaran kotak lembar kain kulit kayu bambu rotan plastik
+karet kaca logam besi baja tembaga kertas karton lilin tanah liat keramik porselen gerabah semen beton bata genting
