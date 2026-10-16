@@ -172,11 +172,18 @@ el.fullscreenBtn.addEventListener("click", () => {
 // shows the same look; this code paints it onto #bdBoard (CSS in betweendle-style.css reads the attributes + variables).
 // BETWEENDLE has no keyboard: the old A-Z letter tiles were removed in this update.
 // ------------------------------------------------------------
+// update 88: the word length panel. Texts may use {length} {min} {max} {range} {language}; "|" starts a new part.
+const LENGTH_DEFAULTS = {
+  lengthInfo: true, lengthTitle: "Word length", lengthFixedText: "{length} letters", lengthRandomText: "Random: {range}",
+  lengthRows: 1, lengthSize: 100, lengthAlign: "center", lengthPanel: true, lengthBg: "", lengthBorder: "", lengthTextColor: "", lengthRadius: 12, lengthBorderWidth: 1
+};
+let lastLengthGame = null; // newest game state (the length panel is redrawn from it when the host changes a setting)
 const CARD_DEFAULTS = {
   style: "stitched", font: "default",
   cardColor: "", secretColor: "", textColor: "", accentColor: "",
   textScale: 100, radius: 18, borderWidth: 3, shadow: 2, gap: 14,
-  labels: false, distance: true, animate: true, lengthInfo: true,
+  labels: false, distance: true, animate: true,
+  ...LENGTH_DEFAULTS,
   // update 84: the panel (white box) behind the three boxes
   panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2
 };
@@ -223,9 +230,30 @@ const CARD_SLIDERS = [
 const CARD_TOGGLES = [
   { key: "labels", label: "Show captions (LOWER BOUND / HIDDEN WORD / UPPER BOUND)" },
   { key: "distance", label: "Show the distance number" },
-  { key: "animate", label: "Pop-in animation when the board changes" },
-  { key: "lengthInfo", label: "Show the word length panel above the legend" }
+  { key: "animate", label: "Pop-in animation when the board changes" }
 ];
+// the word length panel
+const LENGTH_TOGGLES = [
+  { key: "lengthInfo", label: "Show the word length panel above the legend" },
+  { key: "lengthPanel", label: "Show the panel box (background and border)" }
+];
+const LENGTH_TEXTS = [
+  { key: "lengthTitle", label: "Title (leave empty for no title)", max: 40, placeholder: "Word length" },
+  { key: "lengthFixedText", label: "Text when the length is fixed", max: 160, placeholder: "{length} letters" },
+  { key: "lengthRandomText", label: "Text when the length is random", max: 160, placeholder: "Random: {range}" }
+];
+const LENGTH_COLOR_FIELDS = [
+  { key: "lengthBg", label: "Panel background color", hint: "Auto follows the legend's panel.", fallback: "#E8DCC4" },
+  { key: "lengthBorder", label: "Panel border color", hint: "Auto follows the legend's panel.", fallback: "#CFC3A8" },
+  { key: "lengthTextColor", label: "Text color", hint: "Auto picks a readable color.", fallback: "#3A2D20" }
+];
+const LENGTH_SLIDERS = [
+  { key: "lengthRows", label: "Rows", min: 1, max: 4, step: 1, unit: "" },
+  { key: "lengthSize", label: "Text size", min: 70, max: 160, step: 5, unit: "%" },
+  { key: "lengthRadius", label: "Corner roundness", min: 0, max: 32, step: 1, unit: "px" },
+  { key: "lengthBorderWidth", label: "Border thickness", min: 0, max: 6, step: 1, unit: "px" }
+];
+const LENGTH_ALIGNS = [{ id: "left", name: "Left" }, { id: "center", name: "Center" }, { id: "right", name: "Right" }];
 // the panel behind the three boxes (the "white box")
 const PANEL_TOGGLES = [{ key: "panel", label: "Show the panel behind the game" }];
 const PANEL_COLOR_FIELDS = [
@@ -239,9 +267,9 @@ const PANEL_SLIDERS = [
   { key: "panelPadding", label: "Space inside the panel", min: 0, max: 32, step: 1, unit: "px" },
   { key: "panelShadow", label: "Panel shadow depth", min: 0, max: 3, step: 1, unit: "" }
 ];
-const ALL_COLOR_FIELDS = CARD_COLOR_FIELDS.concat(PANEL_COLOR_FIELDS);
-const ALL_SLIDERS = CARD_SLIDERS.concat(PANEL_SLIDERS);
-const ALL_TOGGLES = CARD_TOGGLES.concat(PANEL_TOGGLES);
+const ALL_COLOR_FIELDS = CARD_COLOR_FIELDS.concat(PANEL_COLOR_FIELDS, LENGTH_COLOR_FIELDS);
+const ALL_SLIDERS = CARD_SLIDERS.concat(PANEL_SLIDERS, LENGTH_SLIDERS);
+const ALL_TOGGLES = CARD_TOGGLES.concat(PANEL_TOGGLES, LENGTH_TOGGLES);
 const PANEL_DEFAULTS = { panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2 };
 const roundCardEl = document.getElementById("roundCard");
 const cardPicker = document.getElementById("cardDesignPicker");
@@ -355,6 +383,7 @@ function cardNorm(d) {
   if (d && typeof d === "object") for (const k of Object.keys(CARD_DEFAULTS)) if (d[k] !== undefined && d[k] !== null) out[k] = d[k];
   if (!CARD_STYLES.some((s) => s.id === out.style)) out.style = "stitched";
   if (!CARD_FONTS.some((f) => f.id === out.font)) out.font = "default";
+  if (!LENGTH_ALIGNS.some((a) => a.id === out.lengthAlign)) out.lengthAlign = "center";
   return out;
 }
 
@@ -367,6 +396,7 @@ function applyCardDesign(raw) {
   curCard = d;
   paintAll(d);
   syncCardPicker(d);
+  refreshLengthStrip();
   if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords()); // size / font / captions can change how long a word is
 }
 
@@ -377,6 +407,7 @@ function changeCard(patch) {
   lastCardSig = JSON.stringify(curCard);
   paintAll(curCard);
   syncCardPicker(curCard);
+  refreshLengthStrip();
   if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords());
   cardPending = { ...cardPending, ...patch };
   clearTimeout(cardSendTimer);
@@ -407,7 +438,7 @@ function previewRow(kind, word, prefix, distance) {
 
 function buildCardPicker() {
   if (!cardPicker) return;
-  cardUi = { styleBtns: {}, thumbs: {}, swatches: {}, colorInputs: {}, ranges: {}, rangeVals: {}, fontBtns: {}, toggles: {} };
+  cardUi = { texts: {}, aligns: {}, styleBtns: {}, thumbs: {}, swatches: {}, colorInputs: {}, ranges: {}, rangeVals: {}, fontBtns: {}, toggles: {} };
   cardPicker.innerHTML = "";
   const root = cardEl("div", "cdPicker");
 
@@ -448,7 +479,7 @@ function buildCardPicker() {
 
   // colors
   root.appendChild(cardEl("div", "cdGroupTitle", "Colors"));
-  const addColorField = (f) => {
+  const addColorField = (f, parent) => {
     const field = cardEl("div", "cdField");
     const lab = cardEl("div", "cdLabel", f.label);
     field.appendChild(lab);
@@ -471,11 +502,11 @@ function buildCardPicker() {
     row.appendChild(input);
     field.appendChild(row);
     field.appendChild(cardEl("p", "sectionNote", f.hint));
-    root.appendChild(field);
+    (parent || root).appendChild(field);
     cardUi.swatches[f.key] = sw;
     cardUi.colorInputs[f.key] = input;
   };
-  CARD_COLOR_FIELDS.forEach(addColorField);
+  CARD_COLOR_FIELDS.forEach((f) => addColorField(f));
 
   // font
   root.appendChild(cardEl("div", "cdGroupTitle", "Font"));
@@ -492,7 +523,7 @@ function buildCardPicker() {
 
   // size, corners, border, shadow, spacing
   root.appendChild(cardEl("div", "cdGroupTitle", "Shape & size"));
-  const addSlider = (s) => {
+  const addSlider = (s, parent) => {
     const field = cardEl("div", "cdField");
     const lab = cardEl("div", "cdLabel", s.label);
     const val = cardEl("span", "cdVal");
@@ -503,11 +534,11 @@ function buildCardPicker() {
     r.setAttribute("aria-label", s.label);
     r.addEventListener("input", () => changeCard({ [s.key]: Number(r.value) }));
     field.appendChild(r);
-    root.appendChild(field);
+    (parent || root).appendChild(field);
     cardUi.ranges[s.key] = r;
     cardUi.rangeVals[s.key] = val;
   };
-  CARD_SLIDERS.forEach(addSlider);
+  CARD_SLIDERS.forEach((s) => addSlider(s));
 
   // switches
   root.appendChild(cardEl("div", "cdGroupTitle", "Extras"));
@@ -538,8 +569,8 @@ function buildCardPicker() {
     cardUi.toggles[t.key] = cb;
   });
   root.appendChild(tgPanel);
-  PANEL_COLOR_FIELDS.forEach(addColorField);
-  PANEL_SLIDERS.forEach(addSlider);
+  PANEL_COLOR_FIELDS.forEach((f) => addColorField(f));
+  PANEL_SLIDERS.forEach((s) => addSlider(s));
   const panelReset = cardEl("button", "btn btnGhost", "Reset panel");
   panelReset.type = "button";
   panelReset.addEventListener("click", () => changeCard({ ...PANEL_DEFAULTS }));
@@ -556,7 +587,7 @@ function buildCardPicker() {
   allBtn.addEventListener("click", () => {
     clearTimeout(cardSendTimer); cardPending = {};
     curCard = { ...CARD_DEFAULTS }; lastCardSig = JSON.stringify(curCard);
-    paintAll(curCard); syncCardPicker(curCard);
+    paintAll(curCard); syncCardPicker(curCard); refreshLengthStrip();
     if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords());
     send("reset_card_design", {});
   });
@@ -564,6 +595,67 @@ function buildCardPicker() {
   root.appendChild(actions);
 
   cardPicker.appendChild(root);
+
+  // ---------- word length panel (update 88): its own section in Settings ----------
+  const lengthHost = document.getElementById("lengthPanelPicker");
+  if (lengthHost) {
+    lengthHost.innerHTML = "";
+    const lroot = cardEl("div", "cdPicker");
+    lroot.appendChild(cardEl("div", "cdGroupTitle", "Preview"));
+    const pf = cardEl("div", "lengthStrip"); const pr = cardEl("div", "lengthStrip");
+    lroot.appendChild(cardEl("div", "cdLabel", "When the length is fixed"));
+    lroot.appendChild(pf);
+    lroot.appendChild(cardEl("div", "cdLabel", "When the length is random"));
+    lroot.appendChild(pr);
+    cardUi.lenPrevFixed = pf; cardUi.lenPrevRandom = pr;
+
+    lroot.appendChild(cardEl("div", "cdGroupTitle", "Texts"));
+    LENGTH_TEXTS.forEach((t) => {
+      const field = cardEl("div", "cdField");
+      field.appendChild(cardEl("div", "cdLabel", t.label));
+      const inp = cardEl("input", "cdTextInput");
+      inp.type = "text"; inp.maxLength = t.max; inp.placeholder = t.placeholder; inp.autocomplete = "off"; inp.spellcheck = false;
+      inp.setAttribute("aria-label", t.label);
+      inp.addEventListener("input", () => changeCard({ [t.key]: inp.value }));
+      field.appendChild(inp);
+      lroot.appendChild(field);
+      cardUi.texts[t.key] = inp;
+    });
+    lroot.appendChild(cardEl("p", "sectionNote", "Put several texts in one line by separating them with | , for example:  {length} letters | {language}  . Each part becomes its own item (and \"Rows\" spreads the parts over several rows). Available words: {length}  {min}  {max}  {range}  {language}. When the length is random, {length} shows the range - never the round's exact length."));
+    lroot.appendChild(cardEl("div", "cdGroupTitle", "Layout"));
+    LENGTH_SLIDERS.slice(0, 2).forEach((sl) => addSlider(sl, lroot));
+    const alignField = cardEl("div", "cdField");
+    alignField.appendChild(cardEl("div", "cdLabel", "Text alignment"));
+    const alignRow = cardEl("div", "cdFonts");
+    LENGTH_ALIGNS.forEach((a) => {
+      const b = cardEl("button", "cdChip", a.name);
+      b.type = "button";
+      b.addEventListener("click", () => changeCard({ lengthAlign: a.id }));
+      alignRow.appendChild(b);
+      cardUi.aligns[a.id] = b;
+    });
+    alignField.appendChild(alignRow);
+    lroot.appendChild(alignField);
+    lroot.appendChild(cardEl("div", "cdGroupTitle", "Panel look"));
+    const ltg = cardEl("div", "cdToggles");
+    LENGTH_TOGGLES.forEach((t) => {
+      const label = cardEl("label", "switchRow");
+      const cb = cardEl("input"); cb.type = "checkbox";
+      const track = cardEl("span", "switchTrack"); track.appendChild(cardEl("span", "switchThumb"));
+      label.appendChild(cb); label.appendChild(track); label.appendChild(cardEl("span", "switchLabel", t.label));
+      cb.addEventListener("change", () => changeCard({ [t.key]: cb.checked }));
+      ltg.appendChild(label);
+      cardUi.toggles[t.key] = cb;
+    });
+    lroot.appendChild(ltg);
+    LENGTH_COLOR_FIELDS.forEach((f) => addColorField(f, lroot));
+    LENGTH_SLIDERS.slice(2).forEach((sl) => addSlider(sl, lroot));
+    const lreset = cardEl("button", "btn btnGhost", "Reset word length panel");
+    lreset.type = "button";
+    lreset.addEventListener("click", () => changeCard({ ...LENGTH_DEFAULTS }));
+    lroot.appendChild(lreset);
+    lengthHost.appendChild(lroot);
+  }
   syncCardPicker(curCard);
 }
 
@@ -590,9 +682,12 @@ function syncCardPicker(d) {
   ALL_SLIDERS.forEach((s) => {
     const r = cardUi.ranges[s.key];
     if (document.activeElement !== r) r.value = String(d[s.key]);
-    cardUi.rangeVals[s.key].textContent = d[s.key] + s.unit;
+    if (cardUi.rangeVals[s.key]) cardUi.rangeVals[s.key].textContent = d[s.key] + s.unit;
   });
-  ALL_TOGGLES.forEach((t) => { cardUi.toggles[t.key].checked = Boolean(d[t.key]); });
+  ALL_TOGGLES.forEach((t) => { if (cardUi.toggles[t.key]) cardUi.toggles[t.key].checked = Boolean(d[t.key]); });
+  LENGTH_TEXTS.forEach((t) => { const inp = cardUi.texts[t.key]; if (inp && document.activeElement !== inp) inp.value = d[t.key]; });
+  LENGTH_ALIGNS.forEach((a) => { if (cardUi.aligns[a.id]) cardUi.aligns[a.id].classList.toggle("selected", a.id === d.lengthAlign); });
+  paintLengthPreviews(d);
 }
 buildCardPicker();
 
@@ -1095,26 +1190,70 @@ function renderLengthBadge(g) {
   renderLengthStrip(g);
 }
 
-// update 85/86: the strip above the legend, in a panel of its own like the legend's. Fixed length: how many letters ("6 letters").
-// Random length: shows the host's range ("Random: 4 - 12") - never this round's exact length, which would narrow the answer down.
-// It follows the "Show the word length" switch in Settings -> Card design.
+// update 85-88: the word length panel above the legend, in a panel of its own like the legend's.
+// Fixed length: the host's text (default "6 letters"). Random length: the host's text with the range (default "Random: 4 - 12") -
+// never this round's exact length, which would narrow the answer down: in random mode {length} also shows the range.
+// Texts, rows, size, alignment and colors come from Settings -> Word length panel; "|" separates parts.
 const lengthStripEl = document.getElementById("lengthStrip");
 let lastLengthSig = "";
-function renderLengthStrip(g) {
+
+function lengthTemplateParts(template, vals) {
+  return String(template || "").split("|").map((x) => x.trim()).filter(Boolean).map((seg) => {
+    let h = escapeHtml(seg).replace(/\{(length|min|max|range|language)\}/gi, (m, k) => "<b>" + escapeHtml(String(vals[k.toLowerCase()])) + "</b>");
+    return h.replace(/<b>1<\/b>(\s+)letters\b/gi, "<b>1</b>$1letter");
+  });
+}
+// Fills one panel element (the real one or a preview in Settings). info: { random, n, min, max, language }
+function fillLengthStrip(target, d, info) {
+  const range = info.min + " - " + info.max;
+  const vals = { length: info.random ? range : info.n, min: info.min, max: info.max, range, language: info.language || "" };
+  const parts = lengthTemplateParts(info.random ? d.lengthRandomText : d.lengthFixedText, vals);
+  const rows = Math.max(1, Math.min(Number(d.lengthRows) || 1, parts.length || 1));
+  const per = Math.max(1, Math.ceil(parts.length / rows));
+  let html = d.lengthTitle ? '<div class="lsTitle">' + escapeHtml(d.lengthTitle) + "</div>" : "";
+  for (let i = 0; i < parts.length; i += per) {
+    html += '<div class="lsRow">' + parts.slice(i, i + per).map((x) => '<span class="lsPart">' + x + "</span>").join('<span class="lsDiv" aria-hidden="true"></span>') + "</div>";
+  }
+  target.innerHTML = html;
+  target.setAttribute("data-align", d.lengthAlign);
+  target.setAttribute("data-box", d.lengthPanel ? "on" : "off");
+  cardSetVar(target, "--ls-scale", (d.lengthSize / 100).toFixed(2));
+  cardSetVar(target, "--ls-radius", d.lengthRadius + "px");
+  cardSetVar(target, "--ls-bw", d.lengthBorderWidth + "px");
+  cardSetVar(target, "--ls-bg", d.lengthBg);
+  cardSetVar(target, "--ls-border", d.lengthBorder);
+  // readable text: the host's own text color, otherwise follow a custom background color
+  cardSetVar(target, "--ls-ink", d.lengthTextColor || (d.lengthBg && d.lengthPanel ? cardInkFor(d.lengthBg, 0) : ""));
+  return Boolean(html);
+}
+function lengthInfoOf(g) {
+  const random = g.lengthMode === "random" && Number(g.lengthMax) > Number(g.lengthMin);
+  const lang = g.wordLanguageInfo && g.wordLanguageInfo.label ? g.wordLanguageInfo.label : "";
+  return { random, n: Number(g.wordLength), min: Number(g.lengthMin), max: Number(g.lengthMax), language: lang };
+}
+function renderLengthStrip(g, design) {
   if (!lengthStripEl) return;
-  const on = g.status !== "idle" && g.wordLength > 0 && (!g.cardDesign || g.cardDesign.lengthInfo !== false);
-  const isRandom = g.lengthMode === "random" && Number(g.lengthMax) > Number(g.lengthMin);
-  const sig = on ? (isRandom ? "random|" + g.lengthMin + "|" + g.lengthMax : "fixed|" + g.wordLength) : "off";
+  lastLengthGame = g;
+  const d = design || cardNorm(g.cardDesign);
+  const on = g.status !== "idle" && g.wordLength > 0 && d.lengthInfo !== false;
+  const info = lengthInfoOf(g);
+  const sig = on ? JSON.stringify([info.random, info.random ? 0 : info.n, info.min, info.max, info.language, d.lengthTitle, d.lengthFixedText, d.lengthRandomText, d.lengthRows, d.lengthSize, d.lengthAlign, d.lengthPanel, d.lengthBg, d.lengthBorder, d.lengthTextColor, d.lengthRadius, d.lengthBorderWidth]) : "off";
   if (sig === lastLengthSig) return;
   lastLengthSig = sig;
-  lengthStripEl.hidden = !on;
-  if (!on) { lengthStripEl.innerHTML = ""; return; }
-  const n = Number(g.wordLength);
-  lengthStripEl.innerHTML =
-    '<div class="lsTitle">Word length</div>' +
-    (isRandom
-      ? '<div class="lsValue">Random: <b>' + Number(g.lengthMin) + " - " + Number(g.lengthMax) + "</b></div>"
-      : '<div class="lsValue"><b>' + n + "</b> " + (n === 1 ? "letter" : "letters") + "</div>");
+  if (!on) { lengthStripEl.hidden = true; lengthStripEl.innerHTML = ""; return; }
+  lengthStripEl.hidden = !fillLengthStrip(lengthStripEl, d, info);
+}
+function refreshLengthStrip() { if (lastLengthGame) renderLengthStrip(lastLengthGame, curCard); }
+// the two previews in Settings (always shown, even before a round starts)
+function paintLengthPreviews(d) {
+  if (!cardUi || !cardUi.lenPrevFixed) return;
+  const g = lastLengthGame || {};
+  const language = g.wordLanguageInfo && g.wordLanguageInfo.label ? g.wordLanguageInfo.label : "English";
+  const min = Number(g.lengthMin) > 0 ? Number(g.lengthMin) : 4;
+  const max = Number(g.lengthMax) > min ? Number(g.lengthMax) : Math.max(min + 1, 12);
+  const n = g.lengthMode !== "random" && Number(g.wordLength) > 0 ? Number(g.wordLength) : 6;
+  fillLengthStrip(cardUi.lenPrevFixed, d, { random: false, n, min, max, language });
+  fillLengthStrip(cardUi.lenPrevRandom, d, { random: true, n, min, max, language });
 }
 
 // ------------------------------------------------------------
