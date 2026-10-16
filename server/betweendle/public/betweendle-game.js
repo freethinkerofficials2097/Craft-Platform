@@ -224,7 +224,7 @@ const CARD_TOGGLES = [
   { key: "labels", label: "Show captions (LOWER BOUND / HIDDEN WORD / UPPER BOUND)" },
   { key: "distance", label: "Show the distance number" },
   { key: "animate", label: "Pop-in animation when the board changes" },
-  { key: "lengthInfo", label: "Show the word length / range above the legend" }
+  { key: "lengthInfo", label: "Show the word length panel above the legend" }
 ];
 // the panel behind the three boxes (the "white box")
 const PANEL_TOGGLES = [{ key: "panel", label: "Show the panel behind the game" }];
@@ -1089,30 +1089,32 @@ function renderModeUI(g) {
 }
 
 function renderLengthBadge(g) {
-  el.lengthBadge.textContent = g.status === "idle" ? "— letters" : g.wordLength + "-letter word";
+  // random length: show the range, never this round's exact length (it would narrow the answer down for the audience)
+  const rangeMode = g.lengthMode === "random" && Number(g.lengthMax) > Number(g.lengthMin);
+  el.lengthBadge.textContent = g.status === "idle" ? "— letters" : rangeMode ? g.lengthMin + "–" + g.lengthMax + " letters" : g.wordLength + "-letter word";
   renderLengthStrip(g);
 }
 
-// update 85: the strip above the legend: how many letters this round's secret word has and, when the host lets the length vary,
-// the range the rounds draw from. It follows the "Show the word length / range" switch in Settings -> Card design.
+// update 85/86: the strip above the legend, in a panel of its own like the legend's. Fixed length: how many letters ("6 letters").
+// Random length: shows the host's range ("Random: 4 - 12") - never this round's exact length, which would narrow the answer down.
+// It follows the "Show the word length" switch in Settings -> Card design.
 const lengthStripEl = document.getElementById("lengthStrip");
 let lastLengthSig = "";
 function renderLengthStrip(g) {
   if (!lengthStripEl) return;
   const on = g.status !== "idle" && g.wordLength > 0 && (!g.cardDesign || g.cardDesign.lengthInfo !== false);
-  const randomRange = g.lengthMode === "random" && Number(g.lengthMax) > Number(g.lengthMin);
-  const sig = on ? [g.wordLength, randomRange, g.lengthMin, g.lengthMax].join("|") : "off";
+  const isRandom = g.lengthMode === "random" && Number(g.lengthMax) > Number(g.lengthMin);
+  const sig = on ? (isRandom ? "random|" + g.lengthMin + "|" + g.lengthMax : "fixed|" + g.wordLength) : "off";
   if (sig === lastLengthSig) return;
   lastLengthSig = sig;
   lengthStripEl.hidden = !on;
   if (!on) { lengthStripEl.innerHTML = ""; return; }
   const n = Number(g.wordLength);
-  const boxes = Array.from({ length: Math.min(n, 24) }, () => '<i class="lsBox"></i>').join("");
   lengthStripEl.innerHTML =
-    '<div class="lsMain"><span class="lsLabel">Secret word</span>' +
-    '<span class="lsCount"><b>' + n + "</b> " + (n === 1 ? "letter" : "letters") + "</span></div>" +
-    '<div class="lsBoxes" aria-hidden="true">' + boxes + "</div>" +
-    (randomRange ? '<div class="lsRange">Random length each round: ' + Number(g.lengthMin) + "–" + Number(g.lengthMax) + " letters</div>" : "");
+    '<div class="lsTitle">Word length</div>' +
+    (isRandom
+      ? '<div class="lsValue">Random: <b>' + Number(g.lengthMin) + " - " + Number(g.lengthMax) + "</b></div>"
+      : '<div class="lsValue"><b>' + n + "</b> " + (n === 1 ? "letter" : "letters") + "</div>");
 }
 
 // ------------------------------------------------------------
