@@ -389,17 +389,16 @@ button { cursor: pointer; }
 .bdBoard[data-card-style="ticket"][data-labels="on"] .bdRow { padding-top: 21px; }
 .bdBoard[data-card-style="ticket"][data-labels="on"] .bdRow > .bdTag { top: 4px; left: calc(var(--notch) + 12px); }
 
-/* ---------- design: STICKER - bold outline, hard offset shadow, slight tilt ---------- */
+/* ---------- design: STICKER - bold outline and a hard shadow underneath; perfectly straight (update 84: no tilt, centered) ---------- */
 .bdBoard[data-card-style="sticker"] .bdRow {
   --bd-edge: var(--bdc-accent, #1d1a17);
   background: var(--bd-inner);
-  box-shadow: calc(var(--sh) * 3px) calc(var(--sh) * 3px) 0 var(--bd-edge);
+  box-shadow: 0 calc(var(--sh) * 3px) 0 var(--bd-edge);
   letter-spacing: 0.01em;
 }
+.bdBoard[data-card-style="sticker"] .tilesWrap { padding-bottom: calc(8px + var(--sh, 2) * 3px); }
 .bdBoard[data-card-style="sticker"] .bdRow::after,
 .bdBoard[data-card-style="sticker"] .bdRow.bd-secret::before { content: none; }
-.bdBoard[data-card-style="sticker"] .bdRow.bd-lower { rotate: -0.7deg; }
-.bdBoard[data-card-style="sticker"] .bdRow.bd-upper { rotate: 0.7deg; }
 .bdBoard[data-card-style="sticker"] .bdPrefix, .bdBoard[data-card-style="sticker"] .bdDistance { text-shadow: none; }
 .bdBoard[data-card-style="sticker"] .bdRow.bd-secret { border-style: dashed; }
 .bdBoard[data-card-style="sticker"] .bdRow.bd-secret.found { border-style: solid; }
@@ -953,3 +952,154 @@ body[data-game="betweendle"] .toolbarRow .lengthBadge {
 .bdBoard[data-ink-secret="light"] .bdRow.bd-secret .bdDistance { text-shadow: none; }
 .cdPreview { max-width: 520px; }
 .cdStyleBtn .bdRow .bdDistance { font-size: 13px; }
+
+
+/* ============================================================
+   update 84 - the panel behind the game (the "white box" around the three boxes), avatars, end-of-round, winner window
+   ============================================================ */
+/* The panel: .round-card on the page and the preview in Settings. betweendle-game.js sets:
+     data-panel = on | off, data-panel-color = auto | custom, data-panel-sh = 0..3
+     --bdp-color --bdp-op (see-through %) --bdp-border --bdp-bw --bdp-radius --bdp-pad */
+.bdPanelTarget {
+  --bdp-op: 100%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel-light) var(--bdp-op), transparent), color-mix(in srgb, var(--panel) var(--bdp-op), transparent));
+  border: var(--bdp-bw, 1px) solid var(--bdp-border, var(--border));
+  border-radius: var(--bdp-radius, 22px);
+  padding: var(--bdp-pad, 14px);
+  box-shadow: var(--shadow);
+}
+.bdPanelTarget[data-panel-color="custom"] { background: color-mix(in srgb, var(--bdp-color) var(--bdp-op), transparent); }
+.bdPanelTarget[data-panel-sh="0"] { box-shadow: none; }
+.bdPanelTarget[data-panel-sh="1"] { box-shadow: 0 4px 12px -4px rgba(60, 40, 20, 0.25); }
+.bdPanelTarget[data-panel-sh="3"] { box-shadow: 0 16px 40px -8px rgba(40, 25, 10, 0.5), 0 4px 10px rgba(40, 25, 10, 0.2); }
+.bdPanelTarget[data-panel="off"] { background: none; border-color: transparent; box-shadow: none; }
+@media (max-width: 430px) { .round-card.bdPanelTarget { padding: calc(var(--bdp-pad, 14px) * 0.6); } }
+
+/* circular avatars (leaderboards, winner window) - these rules were missing here, which made the winner picture square */
+.avatarImg { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.lbAvatar { flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
+.lbAvatarFallback { font-family: var(--font-display); font-weight: 700; color: #fff; text-transform: uppercase; user-select: none; }
+
+/* after a round: only Play again + the countdown, centered */
+.resultBanner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 12px; padding: 0; text-align: center; background: none; border: none; }
+.resultBanner[hidden] { display: none; }
+.resultBanner .btn { min-width: 190px; }
+.autoContinueNote { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); text-align: center; }
+.autoContinueNote[hidden] { display: none; }
+.idleBanner { text-align: center; padding: 16px 14px; border-radius: var(--radius-md); margin-bottom: 14px; background: rgba(60, 40, 20, 0.094); border: 1px dashed var(--border); color: var(--muted); }
+.idleBanner[hidden] { display: none; }
+.idleBanner p { font-weight: 500; margin: 0; font-size: 15px; }
+
+/* winner window: crown + big circular TikTok picture */
+.celebCrown { font-size: 38px; line-height: 1; margin-bottom: -4px; filter: drop-shadow(0 3px 6px rgba(255, 177, 0, 0.45)); }
+.celebAvatarWrap { display: flex; justify-content: center; margin: 2px 0; }
+.celebAvatarWrap .lbAvatar { box-shadow: 0 0 0 4px var(--gold), 0 8px 22px rgba(0, 0, 0, 0.35); }
+.celebAvatarWrap .lbAvatarFallback { font-size: 40px; }
+.celebWinnerName { font-family: var(--font-display); font-weight: 800; font-size: 22px; color: var(--text); word-break: break-word; }
+
+/* ============================================================
+   update 84 - seven more card designs: gradient, outline, notebook, chalk, arcade, wood, metal
+   ============================================================ */
+.bdBoard:is([data-card-style="gradient"], [data-card-style="outline"], [data-card-style="notebook"], [data-card-style="arcade"], [data-card-style="wood"], [data-card-style="metal"]) .bdRow::after,
+.bdBoard:is([data-card-style="gradient"], [data-card-style="outline"], [data-card-style="notebook"], [data-card-style="chalk"], [data-card-style="arcade"], [data-card-style="wood"], [data-card-style="metal"]) .bdRow.bd-secret::before { content: none; }
+.bdBoard[data-card-style="chalk"] .bdRow:not(.bd-secret)::after { content: none; }
+
+/* ---------- GRADIENT - vivid two-color gradient, white text ---------- */
+.bdBoard[data-card-style="gradient"] .bdRow {
+  --g1: var(--bdc-card, #8b5cf6);
+  --g2: var(--bdc-accent, color-mix(in srgb, var(--g1) 45%, #ec4899));
+  --bd-edge: transparent; --bd-ink: var(--bdc-ink, #ffffff); --bd-tag-bg: #1d1a17;
+  background: linear-gradient(135deg, var(--g1), var(--g2)); background-origin: border-box;
+  box-shadow: 0 calc(var(--sh) * 5px) calc(var(--sh) * 10px) calc(var(--sh) * -4px) color-mix(in srgb, var(--g1) 75%, #000), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+.bdBoard[data-card-style="gradient"] .bdRow.bd-secret { --g1: var(--bdc-secret, #f59e0b); --g2: var(--bdc-accent, color-mix(in srgb, var(--g1) 50%, #ef4444)); --bd-ink: var(--bdc-ink-secret, var(--bdc-ink, #ffffff)); }
+.bdBoard[data-card-style="gradient"] .bdRow.bd-secret.found { --g1: #22c55e; --g2: #15803d; --bd-ink: #fff; }
+.bdBoard[data-card-style="gradient"] .bdPrefix { color: #bbf7d0; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.bdBoard[data-card-style="gradient"] .bdDistance { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.28); }
+
+/* ---------- OUTLINE - see-through card with a thick colored line ---------- */
+.bdBoard[data-card-style="outline"] .bdRow {
+  --bd-line: var(--bdc-accent, var(--bdc-card, var(--theme-deep, #6b4423)));
+  --bd-edge: var(--bd-line); --bd-inner: color-mix(in srgb, var(--bd-line) 7%, transparent);
+  --bd-ink: var(--bdc-ink, color-mix(in srgb, var(--bd-line) 72%, #000)); --bd-tag-bg: var(--bd-line);
+  background: var(--bd-inner); box-shadow: none; text-shadow: none;
+}
+.bdBoard[data-card-style="outline"] .bdRow.bd-secret { --bd-line: var(--bdc-accent, var(--bdc-secret, var(--coral, #ff3b4e))); border-style: dashed; --bd-ink: var(--bdc-ink-secret, var(--bdc-ink, color-mix(in srgb, var(--bd-line) 72%, #000))); }
+.bdBoard[data-card-style="outline"] .bdRow.bd-secret.found { --bd-line: #22a559; --bd-inner: rgba(34, 165, 89, 0.2); --bd-ink: #14532d; border-style: solid; }
+.bdBoard[data-card-style="outline"] .bdPrefix, .bdBoard[data-card-style="outline"] .bdDistance { text-shadow: none; }
+
+/* ---------- NOTEBOOK - ruled paper with a red margin line (the hidden word is a yellow sticky note) ---------- */
+.bdBoard[data-card-style="notebook"] .bdRow {
+  --nb-paper: var(--bdc-card, #fffdf3);
+  --bd-edge: var(--bdc-accent, #d4ccb2); --bd-ink: var(--bdc-ink, #23324f); --bd-tag-bg: #3b5bdb;
+  padding-left: 56px;
+  background:
+    linear-gradient(90deg, transparent 0 42px, rgba(220, 60, 60, 0.5) 42px 43.5px, transparent 43.5px),
+    repeating-linear-gradient(180deg, transparent 0 20px, rgba(70, 110, 200, 0.3) 20px 21px),
+    var(--nb-paper);
+  box-shadow: 0 calc(var(--sh) * 2px) calc(var(--sh) * 5px) -1px rgba(0, 0, 0, 0.25);
+  text-shadow: none; letter-spacing: 0.02em;
+}
+.bdBoard[data-card-style="notebook"] .bdRow.bd-secret { --nb-paper: var(--bdc-secret, #fff4b8); --bd-ink: var(--bdc-ink-secret, var(--bdc-ink, #23324f)); }
+.bdBoard[data-card-style="notebook"] .bdRow.bd-secret.found { --nb-paper: #d9f2dc; --bd-ink: #14532d; }
+.bdBoard[data-card-style="notebook"] .bdPrefix, .bdBoard[data-card-style="notebook"] .bdDistance { text-shadow: none; }
+
+/* ---------- CHALK - chalkboard in a wooden frame ---------- */
+.bdBoard[data-card-style="chalk"] .bdRow {
+  --cb: var(--bdc-card, #2e4a3f);
+  --bd-edge: var(--bdc-accent, #b98a5b); --bd-ink: var(--bdc-ink, #f5f2e6); --bd-tag-bg: #b98a5b; --bd-tag-ink: #2a1b0c;
+  background: radial-gradient(120% 90% at 30% 15%, rgba(255, 255, 255, 0.12), transparent 60%), var(--cb);
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.5), 0 calc(var(--sh) * 4px) calc(var(--sh) * 8px) -3px rgba(0, 0, 0, 0.45);
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.75); --bd-seam: rgba(255, 255, 255, 0.42);
+}
+.bdBoard[data-card-style="chalk"] .bdRow.bd-secret { --cb: var(--bdc-secret, #3a5a4c); --bd-ink: var(--bdc-ink-secret, var(--bdc-ink, #f5f2e6)); }
+.bdBoard[data-card-style="chalk"] .bdRow.bd-secret.found { --cb: #1f6b3a; --bd-ink: #fff; }
+.bdBoard[data-card-style="chalk"] .bdPrefix { color: #9be8a8; text-shadow: 0 0 2px rgba(155, 232, 168, 0.6); }
+.bdBoard[data-card-style="chalk"] .bdDistance { text-shadow: 0 0 1px rgba(255, 255, 255, 0.7); }
+
+/* ---------- ARCADE - black screen, stepped pixel corners, scanlines ---------- */
+.bdBoard[data-card-style="arcade"] .tilesWrap { filter: drop-shadow(0 calc(var(--sh) * 3px) 0 rgba(0, 0, 0, 0.4)); }
+.bdBoard[data-card-style="arcade"] .bdRow {
+  --px: 6px;
+  --bd-line: var(--bdc-accent, var(--bdc-card, #facc15));
+  --bd-edge: var(--bd-line); --bd-ink: var(--bdc-ink, #fde68a); --bd-tag-bg: var(--bd-line); --bd-tag-ink: #07070f;
+  border-radius: 0; box-shadow: none; text-shadow: 0 0 calc(var(--sh) * 3px) color-mix(in srgb, var(--bd-line) 70%, transparent);
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 4px), color-mix(in srgb, var(--bd-line) 8%, #07070f);
+  font-family: var(--bdc-font, ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace); letter-spacing: 0.06em;
+  padding-left: calc(var(--px) + 12px); padding-right: calc(var(--px) + 12px);
+  clip-path: polygon(0 var(--px), var(--px) var(--px), var(--px) 0, calc(100% - var(--px)) 0, calc(100% - var(--px)) var(--px), 100% var(--px), 100% calc(100% - var(--px)), calc(100% - var(--px)) calc(100% - var(--px)), calc(100% - var(--px)) 100%, var(--px) 100%, var(--px) calc(100% - var(--px)), 0 calc(100% - var(--px)));
+}
+.bdBoard[data-card-style="arcade"] .bdRow.bd-secret { --bd-line: var(--bdc-accent, var(--bdc-secret, #22d3ee)); --bd-ink: var(--bdc-ink-secret, var(--bdc-ink, #a5f3fc)); }
+.bdBoard[data-card-style="arcade"] .bdRow.bd-secret.found { --bd-line: #4ade80; --bd-ink: #dcfce7; --bd-inner: #052e16; }
+.bdBoard[data-card-style="arcade"] .bdPrefix { color: #4ade80; text-shadow: 0 0 6px rgba(74, 222, 128, 0.8); }
+.bdBoard[data-card-style="arcade"] .bdDistance { text-shadow: 0 0 calc(var(--sh) * 3px) var(--bd-line); }
+.bdBoard[data-card-style="arcade"][data-labels="on"] .bdRow { padding-top: 21px; }
+.bdBoard[data-card-style="arcade"][data-labels="on"] .bdRow > .bdTag { top: 5px; left: calc(var(--px) + 12px); }
+
+/* ---------- WOOD - wooden plank with grain ---------- */
+.bdBoard[data-card-style="wood"] .bdRow {
+  --wd: var(--bdc-card, #c99a62);
+  --bd-edge: var(--bdc-accent, color-mix(in srgb, var(--wd) 55%, #2a1405)); --bd-ink: var(--bdc-ink, #3a2210); --bd-tag-bg: #5a3818;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 14px, rgba(90, 50, 15, 0.08) 14px 15px, transparent 15px 33px),
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0 3px, rgba(60, 30, 5, 0.06) 3px 5px),
+    linear-gradient(180deg, color-mix(in srgb, var(--wd) 86%, #fff), var(--wd) 58%, color-mix(in srgb, var(--wd) 84%, #000));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -3px 6px rgba(60, 30, 5, 0.3), 0 calc(var(--sh) * 4px) calc(var(--sh) * 8px) -3px rgba(40, 20, 5, 0.5);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.bdBoard[data-card-style="wood"] .bdRow.bd-secret { --wd: var(--bdc-secret, #dfb883); --bd-ink: var(--bdc-ink-secret, var(--bdc-ink, #3a2210)); }
+.bdBoard[data-card-style="wood"] .bdRow.bd-secret.found { --wd: #6aa35c; --bd-ink: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3); }
+
+/* ---------- METAL - brushed gold; the hidden word is silver ---------- */
+.bdBoard[data-card-style="metal"] .bdRow {
+  --mt: var(--bdc-card, #e2b94f);
+  --bd-edge: var(--bdc-accent, color-mix(in srgb, var(--mt) 60%, #000)); --bd-ink: var(--bdc-ink, #3a2a05); --bd-tag-bg: color-mix(in srgb, var(--mt) 55%, #000);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--mt) 50%, #fff) 0%, var(--mt) 28%, color-mix(in srgb, var(--mt) 76%, #000) 52%, color-mix(in srgb, var(--mt) 88%, #fff) 74%, color-mix(in srgb, var(--mt) 70%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 -2px 3px rgba(0, 0, 0, 0.25), 0 calc(var(--sh) * 4px) calc(var(--sh) * 9px) -3px rgba(40, 25, 5, 0.5);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.bdBoard[data-card-style="metal"] .bdRow.bd-secret { --mt: var(--bdc-secret, #c9d1db); --bd-ink: var(--bdc-ink-secret, var(--bdc-ink, #1f2937)); }
+.bdBoard[data-card-style="metal"] .bdRow.bd-secret.found { --mt: #4caf6a; --bd-ink: #fff; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3); }
+.cdPreviewPanel { max-width: 560px; }
+.cdPreviewPanel .cdPreview { padding: 0; }

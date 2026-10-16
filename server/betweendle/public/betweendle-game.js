@@ -41,7 +41,6 @@ const el = {
   hintExplainer: document.getElementById("hintExplainer"),
   offlineNote: document.getElementById("offlineNote"),
   resultBanner: document.getElementById("resultBanner"),
-  resultText: document.getElementById("resultText"),
   playAgainBtn: document.getElementById("playAgainBtn"),
   autoContinueNote: document.getElementById("autoContinueNote"),
   idleBanner: document.getElementById("idleBanner"),
@@ -177,7 +176,9 @@ const CARD_DEFAULTS = {
   style: "stitched", font: "default",
   cardColor: "", secretColor: "", textColor: "", accentColor: "",
   textScale: 100, radius: 18, borderWidth: 3, shadow: 2, gap: 14,
-  labels: false, distance: true, animate: true
+  labels: false, distance: true, animate: true,
+  // update 84: the panel (white box) behind the three boxes
+  panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2
 };
 // name / one-line hint / recommended corners, border and shadow for each design
 // faceFromCard: the "Card color" is the face of the box (so the text color is picked to stay readable on it)
@@ -188,7 +189,15 @@ const CARD_STYLES = [
   { id: "neon", name: "Neon", hint: "Dark card, glowing outline", radius: 14, borderWidth: 2, shadow: 2, faceFromCard: false, whiteMix: 0 },
   { id: "ticket", name: "Ticket", hint: "Punched notches, perforation", radius: 10, borderWidth: 2, shadow: 1, faceFromCard: true, whiteMix: 0 },
   { id: "sticker", name: "Sticker", hint: "Bold outline, hard shadow", radius: 14, borderWidth: 3, shadow: 2, faceFromCard: true, whiteMix: 0 },
-  { id: "soft", name: "Soft", hint: "Raised clay, pressed hidden box", radius: 22, borderWidth: 0, shadow: 2, faceFromCard: true, whiteMix: 0 }
+  { id: "soft", name: "Soft", hint: "Raised clay, pressed hidden box", radius: 22, borderWidth: 0, shadow: 2, faceFromCard: true, whiteMix: 0 },
+  // update 84: seven more designs
+  { id: "gradient", name: "Gradient", hint: "Vivid two-color fade, white text", radius: 16, borderWidth: 0, shadow: 2, faceFromCard: true, whiteMix: 0 },
+  { id: "outline", name: "Outline", hint: "See-through with a thick line", radius: 14, borderWidth: 3, shadow: 0, faceFromCard: false, whiteMix: 0 },
+  { id: "notebook", name: "Notebook", hint: "Ruled paper, sticky-note hidden box", radius: 6, borderWidth: 1, shadow: 1, faceFromCard: true, whiteMix: 0 },
+  { id: "chalk", name: "Chalkboard", hint: "Green board in a wooden frame", radius: 8, borderWidth: 5, shadow: 2, faceFromCard: true, whiteMix: 0 },
+  { id: "arcade", name: "Arcade", hint: "Pixel corners, glowing screen", radius: 0, borderWidth: 4, shadow: 2, faceFromCard: false, whiteMix: 0 },
+  { id: "wood", name: "Wood", hint: "Wooden plank with grain", radius: 10, borderWidth: 3, shadow: 2, faceFromCard: true, whiteMix: 0 },
+  { id: "metal", name: "Metal", hint: "Brushed gold, silver hidden box", radius: 14, borderWidth: 2, shadow: 2, faceFromCard: true, whiteMix: 0 }
 ];
 const CARD_FONTS = [
   { id: "default", name: "Standard", css: "" },
@@ -216,6 +225,24 @@ const CARD_TOGGLES = [
   { key: "distance", label: "Show the distance number" },
   { key: "animate", label: "Pop-in animation when the board changes" }
 ];
+// the panel behind the three boxes (the "white box")
+const PANEL_TOGGLES = [{ key: "panel", label: "Show the panel behind the game" }];
+const PANEL_COLOR_FIELDS = [
+  { key: "panelColor", label: "Panel color", hint: "Auto follows the theme.", fallback: "#FFF8E8" },
+  { key: "panelBorderColor", label: "Panel border color", hint: "Auto follows the theme.", fallback: "#D9BE93" }
+];
+const PANEL_SLIDERS = [
+  { key: "panelOpacity", label: "Panel opacity", min: 0, max: 100, step: 5, unit: "%" },
+  { key: "panelBorderWidth", label: "Panel border thickness", min: 0, max: 8, step: 1, unit: "px" },
+  { key: "panelRadius", label: "Panel corner roundness", min: 0, max: 48, step: 1, unit: "px" },
+  { key: "panelPadding", label: "Space inside the panel", min: 0, max: 32, step: 1, unit: "px" },
+  { key: "panelShadow", label: "Panel shadow depth", min: 0, max: 3, step: 1, unit: "" }
+];
+const ALL_COLOR_FIELDS = CARD_COLOR_FIELDS.concat(PANEL_COLOR_FIELDS);
+const ALL_SLIDERS = CARD_SLIDERS.concat(PANEL_SLIDERS);
+const ALL_TOGGLES = CARD_TOGGLES.concat(PANEL_TOGGLES);
+const PANEL_DEFAULTS = { panel: true, panelColor: "", panelBorderColor: "", panelOpacity: 100, panelBorderWidth: 1, panelRadius: 22, panelPadding: 14, panelShadow: 2 };
+const roundCardEl = document.getElementById("roundCard");
 const cardPicker = document.getElementById("cardDesignPicker");
 let curCard = { ...CARD_DEFAULTS };
 let lastCardSig = "";
@@ -240,6 +267,24 @@ function cardInkFor(hex, whiteMix) {
   return lum > 0.42 ? "#1f1a14" : "#ffffff";
 }
 function cardStyleMeta(id) { return CARD_STYLES.find((s) => s.id === id) || CARD_STYLES[0]; }
+
+function cardSetVar(target, name, val) {
+  if (val === "" || val === null || val === undefined) target.style.removeProperty(name); else target.style.setProperty(name, String(val));
+}
+// Writes the panel (the box behind the whole game) onto an element: the real .round-card or the preview in Settings.
+function paintPanel(target, d) {
+  if (!target) return;
+  target.setAttribute("data-panel", d.panel ? "on" : "off");
+  target.setAttribute("data-panel-color", d.panelColor ? "custom" : "auto");
+  target.setAttribute("data-panel-sh", String(d.panelShadow));
+  cardSetVar(target, "--bdp-color", d.panelColor);
+  cardSetVar(target, "--bdp-op", d.panelOpacity + "%");
+  cardSetVar(target, "--bdp-border", d.panelBorderColor);
+  cardSetVar(target, "--bdp-bw", d.panelBorderWidth + "px");
+  cardSetVar(target, "--bdp-radius", d.panelRadius + "px");
+  cardSetVar(target, "--bdp-pad", d.panelPadding + "px");
+}
+function paintAll(d) { paintCardDesign(el.bdBoard, d); paintPanel(roundCardEl, d); }
 
 // Writes the look onto an element (the real board, the live preview, or a design thumbnail).
 // opts.onlyLook = true -> only design + colors + font (thumbnails keep their own small size, border and shadow).
@@ -296,7 +341,7 @@ function applyCardDesign(raw) {
   if (sig === lastCardSig) return;
   lastCardSig = sig;
   curCard = d;
-  paintCardDesign(el.bdBoard, d);
+  paintAll(d);
   syncCardPicker(d);
   if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords()); // size / font / captions can change how long a word is
 }
@@ -306,7 +351,7 @@ let cardSendTimer = null; let cardPending = {};
 function changeCard(patch) {
   curCard = cardNorm({ ...curCard, ...patch });
   lastCardSig = JSON.stringify(curCard);
-  paintCardDesign(el.bdBoard, curCard);
+  paintAll(curCard);
   syncCardPicker(curCard);
   if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords());
   cardPending = { ...cardPending, ...patch };
@@ -344,14 +389,17 @@ function buildCardPicker() {
 
   // live preview (works even while no round is running)
   root.appendChild(cardEl("div", "cdGroupTitle", "Preview"));
+  const panelPrev = cardEl("div", "cdPreviewPanel bdPanelTarget");
   const prev = cardEl("div", "cdPreview bdBoard");
   const wrap = cardEl("div", "tilesWrap");
   wrap.appendChild(previewRow("lower", "inform", "in", 120));
   wrap.appendChild(previewRow("secret", "", "in", 0));
   wrap.appendChild(previewRow("upper", "inside", "in", 37));
   prev.appendChild(wrap);
-  root.appendChild(prev);
+  panelPrev.appendChild(prev);
+  root.appendChild(panelPrev);
   cardUi.preview = prev;
+  cardUi.previewPanel = panelPrev;
 
   // designs
   root.appendChild(cardEl("div", "cdGroupTitle", "Design"));
@@ -376,7 +424,7 @@ function buildCardPicker() {
 
   // colors
   root.appendChild(cardEl("div", "cdGroupTitle", "Colors"));
-  CARD_COLOR_FIELDS.forEach((f) => {
+  const addColorField = (f) => {
     const field = cardEl("div", "cdField");
     const lab = cardEl("div", "cdLabel", f.label);
     field.appendChild(lab);
@@ -402,7 +450,8 @@ function buildCardPicker() {
     root.appendChild(field);
     cardUi.swatches[f.key] = sw;
     cardUi.colorInputs[f.key] = input;
-  });
+  };
+  CARD_COLOR_FIELDS.forEach(addColorField);
 
   // font
   root.appendChild(cardEl("div", "cdGroupTitle", "Font"));
@@ -419,7 +468,7 @@ function buildCardPicker() {
 
   // size, corners, border, shadow, spacing
   root.appendChild(cardEl("div", "cdGroupTitle", "Shape & size"));
-  CARD_SLIDERS.forEach((s) => {
+  const addSlider = (s) => {
     const field = cardEl("div", "cdField");
     const lab = cardEl("div", "cdLabel", s.label);
     const val = cardEl("span", "cdVal");
@@ -433,12 +482,13 @@ function buildCardPicker() {
     root.appendChild(field);
     cardUi.ranges[s.key] = r;
     cardUi.rangeVals[s.key] = val;
-  });
+  };
+  CARD_SLIDERS.forEach(addSlider);
 
   // switches
   root.appendChild(cardEl("div", "cdGroupTitle", "Extras"));
   const tg = cardEl("div", "cdToggles");
-  CARD_TOGGLES.forEach((t) => {
+  const addToggle = (t) => {
     const label = cardEl("label", "switchRow");
     const cb = cardEl("input"); cb.type = "checkbox";
     const track = cardEl("span", "switchTrack"); track.appendChild(cardEl("span", "switchThumb"));
@@ -446,8 +496,30 @@ function buildCardPicker() {
     cb.addEventListener("change", () => changeCard({ [t.key]: cb.checked }));
     tg.appendChild(label);
     cardUi.toggles[t.key] = cb;
-  });
+  };
+  CARD_TOGGLES.forEach(addToggle);
   root.appendChild(tg);
+
+  // the panel behind the game (update 84)
+  root.appendChild(cardEl("div", "cdGroupTitle", "Panel behind the game"));
+  root.appendChild(cardEl("p", "sectionNote", "The box that surrounds the three cards (and the legend). Turn it off for a clean look, or restyle it."));
+  const tgPanel = cardEl("div", "cdToggles");
+  PANEL_TOGGLES.forEach((t) => {
+    const label = cardEl("label", "switchRow");
+    const cb = cardEl("input"); cb.type = "checkbox";
+    const track = cardEl("span", "switchTrack"); track.appendChild(cardEl("span", "switchThumb"));
+    label.appendChild(cb); label.appendChild(track); label.appendChild(cardEl("span", "switchLabel", t.label));
+    cb.addEventListener("change", () => changeCard({ [t.key]: cb.checked }));
+    tgPanel.appendChild(label);
+    cardUi.toggles[t.key] = cb;
+  });
+  root.appendChild(tgPanel);
+  PANEL_COLOR_FIELDS.forEach(addColorField);
+  PANEL_SLIDERS.forEach(addSlider);
+  const panelReset = cardEl("button", "btn btnGhost", "Reset panel");
+  panelReset.type = "button";
+  panelReset.addEventListener("click", () => changeCard({ ...PANEL_DEFAULTS }));
+  root.appendChild(panelReset);
 
   // resets
   const actions = cardEl("div", "cdActions");
@@ -460,7 +532,7 @@ function buildCardPicker() {
   allBtn.addEventListener("click", () => {
     clearTimeout(cardSendTimer); cardPending = {};
     curCard = { ...CARD_DEFAULTS }; lastCardSig = JSON.stringify(curCard);
-    paintCardDesign(el.bdBoard, curCard); syncCardPicker(curCard);
+    paintAll(curCard); syncCardPicker(curCard);
     if (typeof fitBoardWords === "function") requestAnimationFrame(() => fitBoardWords());
     send("reset_card_design", {});
   });
@@ -474,13 +546,14 @@ function buildCardPicker() {
 function syncCardPicker(d) {
   if (!cardUi) return;
   paintCardDesign(cardUi.preview, d);
+  paintPanel(cardUi.previewPanel, d);
   CARD_STYLES.forEach((s) => {
     cardUi.styleBtns[s.id].classList.toggle("selected", s.id === d.style);
     cardUi.styleBtns[s.id].setAttribute("aria-pressed", String(s.id === d.style));
     // each thumbnail shows its own design in the host's current colors and font
     paintCardDesign(cardUi.thumbs[s.id], { ...d, style: s.id }, { onlyLook: true });
   });
-  CARD_COLOR_FIELDS.forEach((f) => {
+  ALL_COLOR_FIELDS.forEach((f) => {
     const cur = String(d[f.key] || "").toLowerCase();
     let anySwatch = false;
     cardUi.swatches[f.key].forEach((sw) => { const on = sw.hex === cur; sw.el.classList.toggle("selected", on); if (on && cur) anySwatch = true; });
@@ -489,12 +562,12 @@ function syncCardPicker(d) {
     input.style.outline = cur && !anySwatch ? "3px solid var(--gold)" : "";
   });
   CARD_FONTS.forEach((f) => cardUi.fontBtns[f.id].classList.toggle("selected", f.id === d.font));
-  CARD_SLIDERS.forEach((s) => {
+  ALL_SLIDERS.forEach((s) => {
     const r = cardUi.ranges[s.key];
     if (document.activeElement !== r) r.value = String(d[s.key]);
     cardUi.rangeVals[s.key].textContent = d[s.key] + s.unit;
   });
-  CARD_TOGGLES.forEach((t) => { cardUi.toggles[t.key].checked = Boolean(d[t.key]); });
+  ALL_TOGGLES.forEach((t) => { cardUi.toggles[t.key].checked = Boolean(d[t.key]); });
 }
 buildCardPicker();
 
@@ -890,9 +963,12 @@ function showCelebrationStage(stageIndex, g) {
     const winnerAvatar = info && info.avatarUrl;
     const word = ((info && info.word) || "").toUpperCase();
     const pointsLine = info && typeof info.points === "number" ? '<div class="celebPoints">+' + info.points + (info.points === 1 ? " point" : " points") + "</div>" : "";
+    // update 84: crown instead of the party popper, and the winner's real TikTok picture as a big perfect circle
     el.celebrationBody.innerHTML =
-      '<div class="celebLabel">🎉 Winner</div>' +
-      '<div class="celebWinnerRow">' + avatarChipHtml(winnerName, winnerAvatar, 34) + '<span>' + escapeHtml(winnerName) + "</span></div>" +
+      '<div class="celebCrown" aria-hidden="true">👑</div>' +
+      '<div class="celebLabel">Winner</div>' +
+      '<div class="celebAvatarWrap">' + avatarChipHtml(winnerName, winnerAvatar, 92) + "</div>" +
+      '<div class="celebWinnerName">' + escapeHtml(winnerName) + "</div>" +
       '<div class="celebAnswerRow">' + escapeHtml(word) + "</div>" +
       pointsLine;
   } else if (stage === "round") {
@@ -1173,8 +1249,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitB
 let statusMsg = ""; let statusUntil = 0; let boardStatusTimer = null;
 function renderBoardStatus(g) {
   clearTimeout(boardStatusTimer);
-  if (g.status === "won") { el.boardStatus.textContent = "You win!"; return; }
-  if (g.status === "lost") { el.boardStatus.textContent = "The correct answer was: " + (g.secretWord || ""); return; }
+  if (g.status === "won" || g.status === "lost") { el.boardStatus.textContent = ""; return; } // update 84: no "You win!" / answer line under the boxes
   const left = statusUntil - Date.now();
   if (statusMsg && left > 0) {
     el.boardStatus.textContent = statusMsg;
@@ -1197,20 +1272,8 @@ function renderBanners(g) {
   el.idleBanner.hidden = g.status !== "idle";
   el.resultBanner.hidden = g.status !== "won" && g.status !== "lost";
 
-  if (g.status === "won") {
-    const lastGuess = g.lastGuess;
-    const word = (g.lastWinInfo && g.lastWinInfo.word) || (lastGuess && lastGuess.word) || "";
-    el.resultBanner.className = "resultBanner win";
-    if (g.lastWinInfo && g.lastWinInfo.username) {
-      const pointsPart = typeof g.lastWinInfo.points === "number" ? " — +" + g.lastWinInfo.points + (g.lastWinInfo.points === 1 ? " point" : " points") : "";
-      el.resultText.textContent = "🎉 " + g.lastWinInfo.username + ' solved it! "' + word.toUpperCase() + '"' + pointsPart;
-    } else {
-      el.resultText.textContent = '🎉 Solved it! The word was "' + word.toUpperCase() + '".';
-    }
-  } else if (g.status === "lost") {
-    el.resultBanner.className = "resultBanner lost";
-    el.resultText.textContent = '⏱ Round ended. The word was "' + ((g.secretWord || "").toUpperCase()) + '".';
-  }
+  // update 84: no celebration / winner name / secret word text here any more - just the (centered) Play again button + countdown
+  el.resultBanner.className = g.status === "won" ? "resultBanner win" : "resultBanner lost";
 
   if ((g.status === "won" || g.status === "lost") && g.autoContinue) {
     el.autoContinueNote.hidden = false;
