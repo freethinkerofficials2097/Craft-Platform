@@ -1,0 +1,79 @@
+# Plain everyday words, spelled and used the same in Bahasa Indonesia and Bahasa Melayu. Real words only, no proper names.
+# --- alam / nature ---
+alam semesta bumi dunia matahari rembulan purnama gerhana cakrawala pelangi guruh guntur banjir longsor gempa letusan lahar
+tsunami arus aliran muara hulu hilir teluk tanjung semenanjung kepulauan daratan lautan samudra selat rawa paya gua lubuk
+lurah ngarai padang savana gurun oasis kutub salju es embun beku kabut asap debu abu kerikil kerak tanah liat lempung gambut
+pasir batu cadas granit marmer kapur arang emas perak tembaga besi baja timah perunggu kuningan nikel raksa belerang garam
+intan permata mutiara zamrud yakut nilam batu akik kristal kaca lilin obor bara bunga api percikan nyala sinar kilau
+rumput ilalang alang bambu rotan buluh nipah bakau rumbia aren enau pandan resam paku pakis lumut jamur cendawan benalu
+tunas kuntum mahkota putik benang sari serbuk madu getah damar kemenyan cendana jati meranti kamper ulin mahoni sengon trembesi
+beringin asam ketapang rambutan duku langsat manggis durian cempedak nangka sukun jambu nanas pisang mangga belimbing
+salak sirsak srikaya markisa kelapa kopi teh tebu padi gandum jagung sagu ubi keladi talas kentang
+bayam kangkung sawi kubis lobak mentimun labu terung tomat cabai lada bawang jahe kunyit lengkuas serai kunyit kencur
+temulawak ketumbar jintan kayumanis pala cengkih vanila kapulaga daun salam
+# --- hewan / animals ---
+hewan binatang satwa unggas ternak kerbau sapi lembu kambing domba kuda keledai unta rusa kijang banteng badak gajah harimau
+singa macan kumbang citah beruang serigala rubah anjing kucing tikus bajing tupai kelelawar kera monyet siamang orangutan
+simpanse gorila trenggiling landak armadillo luwak musang berang lumba paus hiu pari duyung penyu kura buaya kadal biawak
+cicak tokek ular sanca kobra tedung bunglon katak kodok salamander ikan lele gabus patin bawal gurami tongkol tenggiri kakap
+kerapu bandeng tuna teri udang kepiting rajungan lobster kerang tiram siput cumi sotong gurita ubur bintang laut karang
+ayam bebek itik angsa kalkun merpati dara burung elang rajawali alap kakatua nuri beo murai kutilang perkutut punai pipit
+gagak camar bangau kuntul pelikan kasuar kiwi cenderawasih merak enggang rangkong kenari kolibri hantu pungguk walet layang
+tawon kumbang kupu rama belalang jangkrik capung nyamuk lalat semut rayap kutu tungau kecoa laba serangga ulat cacing
+lintah keong bekicot siput landak belut sidat sepat betok
+# --- makanan / food and drink ---
+makanan minuman hidangan santapan sarapan jamuan nasi bubur lontong ketupat bihun roti pisang goreng
+gorengan sambal terasi saus cuka minyak mentega keju susu yogurt telur daging
+iga hati ginjal rendang gulai opor sate soto acar sayur sup kari abon
+dendeng ikan asin pepes lemper dadar kacang tapai dodol wajik lepat kolak bubur
+puding agar selai madu gula garam lada manisan kopi teh air soda santan kelapa parut
+lebah pelita kecap tahu jus cendol
+# --- rumah / home and things ---
+rumah teratai halaman pekarangan pagar pintu jendela jendela atap genting lantai dinding tiang tangga beranda serambi dapur
+ruang tamu kamar tidur mandi tandas sumur kolam loteng gudang garasi lorong gang jalan lorong simpang tikungan jembatan
+terowongan menara istana benteng kota desa kampung dusun bandar wilayah daerah negeri negara bangsa rakyat penduduk warga
+meja kursi bangku dipan ranjang katil tilam bantal selimut sarung tikar permadani gorden langsir lemari rak laci cermin
+lampu lentera obor kipas sapu pel ember gayung timba tong baskom panci periuk kuali wajan kendi guci tempayan belanga
+sendok garpu pisau parang golok kapak cangkul sabit arit bajak pahat palu gergaji tang obeng paku sekrup baut mur rantai
+tali benang jarum gunting kain kapas wol sutra beludru permadani renda pita kancing ritsleting saku kantong dompet tas
+topi peci songkok kopiah tudung selendang syal dasi sabuk ikat pinggang celana seluar kemeja baju sarung kebaya sandal
+selipar kasut sepatu kaus kaki sarung tangan cincin gelang kalung anting subang bros jam kacamata payung jas mantel
+buku kitab kamus novel majalah koran surat kabar akhbar peta atlas pena pensil kapur papan tulis penghapus penggaris
+kertas kartu amplop perangko lencana bendera panji spanduk poster gambar lukisan foto patung ukiran tenunan anyaman
+batik songket tenun ukiran keris tombak perisai panah busur pedang meriam senapan peluru bom
+radio televisi telepon ponsel komputer layar papan ketik tetikus kabel baterai lampu senter cermin kamera film video
+mesin motor roda ban kemudi rem pedal bensin solar oli bengkel pompa katup piston gigi poros sasis lampu klakson
+kapal perahu sampan rakit jukung biduk layar dayung kemudi jangkar pelabuhan dermaga mercusuar
+kereta api bis bas truk lori pesawat helikopter roket satelit stasiun terminal halte lapangan landasan
+# --- tubuh / body ---
+tubuh badan kepala rambut dahi alis kening mata bulu hidung lubang mulut bibir gigi gusi lidah langit rahang dagu pipi
+telinga leher tengkuk bahu lengan siku pergelangan tangan telapak jari ibu kuku dada payudara perut pusar pinggang pinggul
+punggung tulang rusuk sumsum otot urat saraf pembuluh darah jantung paru hati limpa ginjal usus lambung empedu kerongkongan
+tenggorokan kulit daging lemak keringat air mata ludah dahak napas nafas denyut suara paha lutut betis tumit telapak kaki
+jempol kelingking telunjuk
+# --- manusia dan keluarga / people ---
+manusia orang lelaki perempuan pria wanita laki gadis jejaka dara bujang pemuda pemudi remaja dewasa bayi balita bocah
+anak cucu cicit moyang nenek kakek datuk atuk opah wan ayah ibu bapa emak mak abah papa mama kakak abang adik saudara sepupu
+kemenakan keponakan paman bibi makcik pakcik mertua menantu ipar suami istri isteri jodoh pasangan kekasih tunangan sahabat
+teman kawan rekan tetangga jiran tamu musafir pelancong turis pengembara perantau pendatang penduduk pribumi leluhur
+nenek moyang keturunan warisan pusaka adat budaya tradisi
+# --- pekerjaan / jobs ---
+guru dosen murid siswa pelajar mahasiswa doktor dokter perawat jururawat bidan apoteker dukun tabib petani nelayan peladang
+penternak pedagang saudagar penjual pembeli pelanggan tukang kuli buruh pekerja karyawan majikan bos mandor pengurus
+pemimpin ketua wakil menteri gubernur bupati lurah hakim jaksa peguam pengacara polisi tentara askar prajurit pahlawan
+pengawal satpam penjaga pelaut nakhoda juru mudi pilot kapten sopir pemandu pengemudi tukang masak koki pelayan penari
+penyanyi pelukis penulis pengarang penyair wartawan redaktur penerbit pencetak arsitek jurutera insinyur ahli ilmuwan
+peneliti pakar pustakawan petugas pegawai sekretaris juru bayar bendahara akuntan pemandu penerjemah penyiar pelawak
+dalang pemain pesenam atlet juara penonton
+# --- tempat / places ---
+sekolah madrasah kampus universitas perpustakaan pasar kedai toko warung restoran kafe hotel penginapan asrama rumah sakit
+klinik puskesmas apotek bank kantor pejabat pabrik kilang bengkel ladang kebun sawah hutan taman kebun binatang museum
+galeri teater panggung bioskop stadium gelanggang padang lapangan pantai pulau gunung bukit lembah masjid surau gereja
+kuil pura vihara candi makam kubur tanah lapang alun balai gedung wisma markas penjara tahanan pos perkemahan
+pelabuhan bandara stesen terminal
+# --- perasaan, sifat, abstrak / feelings & abstract nouns ---
+perasaan rasa hati jiwa nyawa semangat harapan cita impian khayalan angan kenangan ingatan pikiran fikiran akal budi
+kesedihan kebahagiaan kegembiraan kemarahan ketakutan kerinduan kecemburuan kebencian kasih sayang cinta rindu dendam
+amarah geram benci iri dengki cemburu bangga malu segan sungkan canggung resah gelisah cemas khawatir bimbang ragu
+curiga percaya iman takwa sabar syukur ikhlas rela tulus jujur adil bijak arif luhur budi pekerti akhlak moral etika
+nilai harga mutu kualitas jasa guna faedah untung rugi laba modal utang hutang piutang cicilan bunga pajak cukai

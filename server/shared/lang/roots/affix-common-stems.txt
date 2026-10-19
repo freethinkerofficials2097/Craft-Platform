@@ -1,0 +1,7 @@
+# update 56: ROOTS whose ber- / ke-an forms may be SECRET words (hard tier). Every other affixed word needs an entry in affix-lexical-ok.txt.
+# verbs (ber- forms)
+baca tulis beli jual bawa buka cari ambil ajar ubah pilih tanam tarik bantu bayar jaga dengar lihat minta tunggu tanya jawab kerja main jalan lari nyanyi bicara cerita pikir fikir harap hasil henti janji juang usaha bangun bentuk bagi bina buat kenal kirim kumpul latih lawan lompat lukis makan masak pakai pandang panggil pasang pegang peluk pimpin pinjam potong pukul putar rasa rawat siap simpan sebut serang susun tambah tangkap tembak terbang terima tolong tonton tukar tumbuh tunjuk ulang undang urus ukur
+dapat datang duduk gabung ganti gerak hadap hadir hubung ikut ingat jatuh jemput kembang kunjung lahir lupa mandi mimpi nama naik pindah sambung sampai senyum tahan tinggal turun tidur tangis tawa usul
+# adjectives / nouns (ke-an and ber- forms)
+adil aman baik benar bebas biasa bersih butuh perlu cepat cantik damai indah ingin jelas jujur kaya kuat lemah mampu marah mati menang mudah nyata pasti sabar sakit salah sedih sehat setia sibuk sopan sukar sulit sunyi takut teliti tinggi tulus untung yakin miskin nikmat panjang pintar sempurna senang sukses tenang tegas cerdas bahagia bangga berani ramah
+kota negara desa rumah sekolah guru murid ilmu agama budaya bangsa hidup kawan teman saudara sahabat keluarga niaga dagang perang kebun ternak ikan hutan
