@@ -1108,31 +1108,12 @@ body[data-game="betweendle"] .toolbarRow .lengthBadge {
 /* ============================================================
    update 85 - word length strip + automatic text color inside the panel
    ============================================================ */
-/* a panel of its own, styled like the legend's panel by default; Settings -> Word length panel can restyle it
-   data-align = left | center | right, data-box = on | off,
-   --ls-scale --ls-radius --ls-bw --ls-bg --ls-border --ls-ink (unset = automatic) */
-.lengthStrip {
-  margin: 2px 0 8px; padding: 7px 12px 8px; color: var(--ls-ink, var(--text)); overflow: hidden; text-align: center;
-  font-size: calc(17px * var(--ls-scale, 1));
-  background: var(--ls-bg, var(--lg-panel-bg, rgba(127, 127, 160, 0.10)));
-  border: var(--ls-bw, 1px) solid var(--ls-border, var(--lg-panel-border, rgba(127, 127, 160, 0.28)));
-  border-radius: var(--ls-radius, 12px);
-}
-.lengthStrip[hidden] { display: none; }
-.lengthStrip[data-align="left"] { text-align: left; }
-.lengthStrip[data-align="right"] { text-align: right; }
-.lengthStrip[data-box="off"] { background: none; border-color: transparent; padding-left: 0; padding-right: 0; }
-.lsTitle { font-weight: 800; font-size: 0.76em; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.8; margin: 0 0 3px; }
-.lsRow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1em; font-weight: 800; line-height: 1.25; }
-.lengthStrip[data-align="left"] .lsRow { justify-content: flex-start; }
-.lengthStrip[data-align="right"] .lsRow { justify-content: flex-end; }
-.lsRow b { font-size: 1.3em; }
-.lsDiv { align-self: stretch; width: 2px; min-height: 1em; margin: 0 0.6em; background: currentColor; opacity: 0.35; border-radius: 2px; }
+/* update 90: the word length panel is now the shared one (public/shared/length-panel.css) */
 .cdTextInput { width: 100%; box-sizing: border-box; padding: 9px 11px; border: 2px solid var(--border); border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.7); color: var(--text); font: inherit; font-size: 14px; }
 .cdTextInput:focus { outline: none; border-color: var(--gold); }
 
 /* the host picked a dark / light panel color: every text inside it follows (the legend reads --text) */
 .bdPanelTarget[data-panel-ink="light"] { --text: #f7f3ea; --muted: rgba(247, 243, 234, 0.72); color: var(--text); }
 .bdPanelTarget[data-panel-ink="dark"] { --text: #241a10; --muted: rgba(36, 26, 16, 0.66); color: var(--text); }
-.bdPanelTarget[data-panel-ink="light"] .lgSection.lgPanel, .bdPanelTarget[data-panel-ink="light"] .lengthStrip { --lg-panel-bg: rgba(255, 255, 255, 0.10); --lg-panel-border: rgba(255, 255, 255, 0.30); }
-.bdPanelTarget[data-panel-ink="dark"] .lgSection.lgPanel, .bdPanelTarget[data-panel-ink="dark"] .lengthStrip { --lg-panel-bg: rgba(0, 0, 0, 0.06); --lg-panel-border: rgba(0, 0, 0, 0.22); }
+.bdPanelTarget[data-panel-ink="light"] .lgSection.lgPanel, .bdPanelTarget[data-panel-ink="light"] .lengthPanel { --lg-panel-bg: rgba(255, 255, 255, 0.10); --lg-panel-border: rgba(255, 255, 255, 0.30); }
+.bdPanelTarget[data-panel-ink="dark"] .lgSection.lgPanel, .bdPanelTarget[data-panel-ink="dark"] .lengthPanel { --lg-panel-bg: rgba(0, 0, 0, 0.06); --lg-panel-border: rgba(0, 0, 0, 0.22); }

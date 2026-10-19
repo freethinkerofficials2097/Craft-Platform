@@ -11,25 +11,28 @@
   href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
   rel="stylesheet"
 />
-<link rel="stylesheet" href="/shared/theme.css?v=88" />
+<link rel="stylesheet" href="/shared/theme.css?v=90" />
 <script src="/shared/theme.js"></script>
 <script src="/shared/session.js"></script>
 <script src="/shared/platform-sync.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="betweendle-style.css?v=88" />
-<link rel="stylesheet" href="/shared/game-chrome.css?v=88" />
-<link rel="stylesheet" href="/shared/hints.css?v=88" />
-<link rel="stylesheet" href="/shared/settings-shell.css?v=88" />
-<link rel="stylesheet" href="/shared/game-colors.css?v=88" />
-<link rel="stylesheet" href="/shared/color-shades.css?v=88" />
-<script src="/shared/color-shades.js?v=88" data-game="betweendle"></script>
-<link rel="stylesheet" href="/shared/legend.css?v=88" />
-<script src="/shared/legend.js?v=88" data-game="betweendle"></script>
+<link rel="stylesheet" href="betweendle-style.css?v=90" />
+<link rel="stylesheet" href="/shared/game-chrome.css?v=90" />
+<link rel="stylesheet" href="/shared/hints.css?v=90" />
+<link rel="stylesheet" href="/shared/settings-shell.css?v=90" />
+<link rel="stylesheet" href="/shared/game-colors.css?v=90" />
+<link rel="stylesheet" href="/shared/color-shades.css?v=90" />
+<link rel="stylesheet" href="/shared/length-panel.css?v=90" />
+<script src="/shared/color-shades.js?v=90" data-game="betweendle"></script>
+<link rel="stylesheet" href="/shared/legend.css?v=90" />
+<script src="/shared/legend.js?v=90" data-game="betweendle"></script>
+<script src="/shared/length-panel-schema.js?v=90"></script>
+<script src="/shared/length-panel.js?v=90" data-game="betweendle" data-no-exact="1"></script>
 <script src="/shared/title-font.js" defer></script>
-<script src="/shared/score-ticker.js?v=88"></script>
+<script src="/shared/score-ticker.js?v=90"></script>
 <script src="/shared/word-language.js"></script>
-<script src="/shared/hints.js?v=88"></script>
-<script src="/shared/settings-shell.js?v=88"></script>
+<script src="/shared/hints.js?v=90"></script>
+<script src="/shared/settings-shell.js?v=90"></script>
 </head>
 <body data-game="betweendle">
   <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
@@ -67,9 +70,6 @@
     <main class="stage" id="stage">
       <section class="round-card bdPanelTarget" id="roundCard">
 
-        <!-- update 85: how many letters this round uses (or the range when the length is random). It sits directly under the floating
-             message window and above the legend. The class "toast-slot" is the anchor legend.js uses to put the legend right below it. -->
-        <div class="lengthStrip toast-slot" id="lengthStrip" aria-live="polite" hidden></div>
 
         <!-- The guess board: three boxes - lower bound, the hidden word (shows the locked prefix, e.g. "IN?"), upper bound.
              (update 83: the A-Z letter tiles are gone - BETWEENDLE has no keyboard.) -->
@@ -264,12 +264,6 @@
         <div id="cardDesignPicker"></div>
       </div>
 
-      <div class="drawerSection" id="lengthPanelSection">
-        <h4>Word length panel</h4>
-        <p class="sectionNote">The panel above the legend that tells the audience how long the secret word is. Change its texts, rows, size, alignment and colors. Every change applies right away on every screen.</p>
-        <div id="lengthPanelPicker"></div>
-      </div>
-
       <div class="drawerSection">
         <h4>Win celebration</h4>
         <p class="sectionNote">After a win, the leaderboard pops up automatically, then closes on its own. Auto-continue (above) always waits for this celebration to finish before starting the next round.</p>
@@ -435,6 +429,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/engagement.js"></script>
-  <script src="betweendle-game.js?v=88"></script>
+  <script src="betweendle-game.js?v=90"></script>
 </body>
 </html>
