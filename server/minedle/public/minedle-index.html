@@ -71,7 +71,7 @@
         <!-- Order of the page (top to bottom, one normal flow, nothing positioned on top of anything else):
                1. the floating message window (.toastSlot, above this card)
                2. the legend - /shared/legend.js puts it right here, as the first block of this card
-               3. the sweep grid, its "Reset marks" button and the Letter bank
+               3. the sweep grid, its "Reset marks" button and the Letter bank 
                4. the guess board (the guesses made by the audience) -->
 
         <section class="mineSection" id="mineSection" aria-label="Letter grid with numbers" hidden>
@@ -79,7 +79,7 @@
             <div class="mineGrid" id="mineGrid"></div>
             <div class="mineTools"><button class="resetMarksBtn" id="resetMarksBtn" type="button">Reset marks</button></div>
           </div>
-          <div class="letterBankWrap">
+          <div class="letterBankWrap" id="letterBankWrap">
             <div class="letterBankTitle">Letter bank</div>
             <div class="letterBank" id="letterBank" aria-live="polite"></div>
           </div>
@@ -263,8 +263,28 @@
 
       <div class="drawerSection">
         <h4>Color shades</h4>
-        <p class="sectionNote">Choose how strong each color (green, yellow and grey clues, plus the blue and red you paint on the grid) looks, in the tiles, the Letter bank and the legend. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
+        <p class="sectionNote">Choose how strong each color (green, yellow and grey clues, plus the blue and red you paint on the grid and the Letter bank and the Reset marks button) looks, in the tiles and the legend. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
         <div id="shadePicker"></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Reset marks button</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="resetVisibleToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Show the "Reset marks" button under the grid</span>
+        </label>
+        <p class="sectionNote">On (default): the button is shown. Off: it is hidden on every connected screen. Applies right away and is remembered.</p>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Letter bank</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="bankVisibleToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Show the Letter bank under the grid</span>
+        </label>
+        <p class="sectionNote">On (default): the blue letters are collected in the Letter bank. Off: it is hidden on every connected screen. Applies right away and is remembered.</p>
       </div>
 
       <div class="drawerSection">
@@ -429,7 +449,7 @@
         <li>The board is a <strong>grid of tiles</strong>: 5 × 5 for 4–5 letter words, 8 × 8 for 6–9 letters and 10 × 10 for 10–20 letters. Every tile shows a <strong>letter</strong> and a <strong>number</strong>.</li>
         <li>The <strong>number</strong> tells how many of the touching tiles — diagonals included — hold a letter that is used in the secret word.</li>
         <li>The host taps a tile to mark its letter: <span class="legendTile mnBlue">1×</span> <strong>Blue</strong> = the letter is in the word, <span class="legendTile mnRed">2×</span> <strong>Red</strong> = not in the word, <strong>3×</strong> = clear the mark. Every tile with the same letter changes together.</li>
-        <li>Blue letters are collected in the <strong>Letter bank</strong>. <strong>Reset marks</strong> clears all marks.</li>
+        <li>Blue letters are collected in the <strong>Letter bank</strong> (the host can hide it in Settings). <strong>Reset marks</strong> clears all marks (the host can hide that button in Settings). When the round is solved, every tile turns blue or red by itself to show which letters are in the word.</li>
         <li>Chat guesses real words of the right length, made only of letters that are on the grid (letters can be reused freely).</li>
         <li>After every guess each letter turns <span class="legendTile mn0">Green</span>, <span class="legendTile mn1">Yellow</span> or <span class="legendTile mn2">Grey</span>:<br><strong>Green</strong> — correct letter, <strong>right position</strong>.<br><strong>Yellow</strong> — the letter is in the word but in the <strong>wrong position</strong>.<br><strong>Grey</strong> — the letter is <strong>not in the word</strong>.</li>
         <li>A word already on the board is skipped. <em>Strict fit</em> is off by default; the host can switch it on in Settings so only guesses that still fit every earlier color are accepted.</li>

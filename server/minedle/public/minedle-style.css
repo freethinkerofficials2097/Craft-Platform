@@ -481,6 +481,8 @@ button { cursor: pointer; }
   --mn-gray:   #858589; --mn-gray-dark:   #606064; --mn-gray-ink:   #1B1B1F;
   --mn-blue:   #2A5CA8; --mn-blue-dark:   #1B3F78; --mn-blue-ink:   #FFFFFF;
   --mn-red:    #B86B6E; --mn-red-dark:    #8E4A4D; --mn-red-ink:    #FFFFFF;
+  --mn-bank:   #1F8A8A; --mn-bank-dark:   #146363; --mn-bank-ink:   #FFFFFF;
+  --mn-reset:  #7B4FC9; --mn-reset-dark:  #57338F; --mn-reset-ink:  #FFFFFF;
 }
 .tile.filled.mn0, .legendTile.mn0 { background: var(--mn-green); color: var(--mn-green-ink); border: 1.5px solid var(--mn-green-dark); }
 .tile.filled.mn1, .legendTile.mn1 { background: var(--mn-yellow); color: var(--mn-yellow-ink); border: 1.5px solid var(--mn-yellow-dark); }
@@ -489,7 +491,7 @@ button { cursor: pointer; }
 .legendTile.mnBlue { background: var(--mn-blue); color: var(--mn-blue-ink); border: 1.5px solid var(--mn-blue-dark); }
 .legendTile.mnRed { background: var(--mn-red); color: var(--mn-red-ink); border: 1.5px solid var(--mn-red-dark); }
 
-/* ---- the sweep grid + the letter bank. A normal block of the page flow (never positioned), so it can never overlap the
+/* ---- the sweep grid. A normal block of the page flow (never positioned), so it can never overlap the
         legend above it or the guess board below it ---- */
 .mineSection {
   margin: 0 0 12px; padding: 10px 10px 12px; border: 1px solid var(--border); border-radius: 14px;
@@ -512,26 +514,28 @@ button { cursor: pointer; }
 .mineTile.locked { cursor: default; }
 .mineTile.locked:active { transform: none; }
 .mineTools { display: flex; justify-content: center; }
+.mineTools[hidden] { display: none; }
 .resetMarksBtn {
-  border: 1px solid var(--mn-red-dark); background: var(--mn-red); color: var(--mn-red-ink); border-radius: 999px;
+  border: 1px solid var(--mn-reset-dark); background: var(--mn-reset); color: var(--mn-reset-ink); border-radius: 999px;
   padding: 6px 16px; font-family: var(--font-display); font-weight: 700; font-size: 13px; cursor: pointer;
 }
 .resetMarksBtn:active { transform: scale(0.96); }
 .resetMarksBtn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .letterBankWrap { margin-top: 10px; }
+.letterBankWrap[hidden] { display: none; }
 .letterBankTitle {
   font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--muted); margin: 0 0 4px 2px;
 }
 .letterBank {
   min-height: 46px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
-  padding: 8px; border: 1px solid var(--border); border-radius: 12px; background: rgba(0, 0, 0, 0.07);
+  padding: 8px; border: 1px solid var(--mn-bank-dark); border-radius: 12px; background: rgba(0, 0, 0, 0.07);
 }
 .letterBank .bankEmpty { color: var(--muted); font-style: italic; font-size: 13px; padding: 0 4px; }
 .bankLetter {
   display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 7px;
-  background: var(--mn-blue); color: var(--mn-blue-ink); border: 1.5px solid var(--mn-blue-dark);
+  background: var(--mn-bank); color: var(--mn-bank-ink); border: 1.5px solid var(--mn-bank-dark);
   font-family: var(--font-display); font-weight: 800; text-transform: uppercase; user-select: none;
 }
 

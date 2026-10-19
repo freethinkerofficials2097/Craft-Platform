@@ -5,11 +5,13 @@
 //
 // The host works the grid by hand (a manual scratchpad, like BLINDLE's keyboard): tap a tile once = BLUE (the letter is in the
 // word), twice = RED (not in the word), three times = clear. Every tile with the same letter changes together, and the blue
-// letters are collected in the LETTER BANK. Marks are shared with every screen connected to the game and reset each round.
+// The blue letters are collected in the LETTER BANK (own color, can be hidden). Marks are shared with every screen connected to the game and reset each round.
 //
 // The audience guesses by chat. A guess must be a real word of the right length that only uses letters found on the grid.
 // After every guess each letter turns GREEN (right letter, right spot), YELLOW (in the word, wrong spot) or GREY (not in the
 // word) - the classic clue. There are no number columns like BLINDLE.
+//
+// When the round ends every tile is painted blue (letter in the word) or red (not) so the audience sees the answer's letters.
 //
 // Everything else follows BLINDLE: unlimited guesses for the whole chat, unlimited hints, Live / Test / Offline modes,
 // host-set secret word, difficulty tiers, win celebration + leaderboards.
@@ -319,8 +321,12 @@ const game = {
   gridLetters: [],
   gridNums: [],
   gridLetterSet: new Set(),
-  // The host's manual marks: letter -> 1 (blue, in the word) / 2 (red, not in the word). Insertion order = letter bank order.
+  // The host's manual marks: letter -> 1 (blue, in the word) / 2 (red, not in the word).
   marks: new Map(),
+  // true (default): the "Reset marks" button is shown. The host can hide it in Settings (remembered in data/starter-word.json).
+  showResetBtn: getStarterWord("minedle-resetbtn", true),
+  // true (default): the Letter bank (the blue letters) is shown. The host can hide it in Settings (remembered in data/starter-word.json).
+  showBank: getStarterWord("minedle-bank", true),
   lastWinInfo: null, // { username, points, word } - set the instant a round is won
   recentComments: [],
   usedWords: new Set(),
@@ -381,6 +387,7 @@ function processGuess(word, caller) {
     const points = game.mode === "live" ? WIN_POINTS : null;
     awardPoints(caller, WIN_POINTS);
     game.status = "won";
+    revealMarks();
     game.streak += 1;
     game.lastWinInfo = { username: caller, points, word, avatarUrl };
   } else {
@@ -535,6 +542,7 @@ function setSecretWord(rawWord) {
 function giveUp() {
   if (game.status !== "live") return;
   game.status = "lost";
+  revealMarks();
   game.streak = 0;
   if (game.autoContinue) game.autoContinueAt = Date.now() + game.autoContinueDelaySeconds * 1000;
   broadcastState();
@@ -889,9 +897,12 @@ function buildStatePayload() {
       roundNumber: game.roundNumber,
       // The grid of the round (letters + numbers, row by row). Never contains the secret word itself.
       grid: game.status === "idle" || !game.secretWord ? null : { size: game.gridSize, letters: game.gridLetters, nums: game.gridNums },
-      // The host's marks (letter -> 1 blue / 2 red) and the letter bank (the blue letters, in the order they were marked).
+      // The host's marks (letter -> 1 blue / 2 red). When the round ends they are filled in automatically (see revealMarks).
       marks: game.status === "idle" ? {} : Object.fromEntries(game.marks),
+      showResetBtn: game.showResetBtn,
+      // The Letter bank: the blue letters, in the order they were marked.
       bank: game.status === "idle" ? [] : [...game.marks].filter(([, v]) => v === 1).map(([k]) => k),
+      showBank: game.showBank,
       streak: game.streak,
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,
@@ -923,6 +934,14 @@ function buildStatePayload() {
       dictionaryLoading: dictionaryState.loading
     }
   };
+}
+
+// When a round ends (solved or given up) every letter of the grid is painted automatically so the audience can see the answer's
+// letters: BLUE = the letter is in the secret word, RED = it is not.
+function revealMarks() {
+  const inWord = new Set(game.secretWord.split(""));
+  game.marks.clear();
+  for (const letter of game.gridLetterSet) game.marks.set(letter, inWord.has(letter) ? 1 : 2);
 }
 
 // The host taps a tile: 1 tap = blue (in the word), 2 taps = red (not in the word), 3 taps = clear. Every tile with the same
@@ -1027,6 +1046,14 @@ function handleClientAction(ws, msg) {
     }
     case "tap_letter":
       tapLetter(payload && payload.letter);
+      break;
+    case "set_reset_visible":
+      game.showResetBtn = setStarterWord("minedle-resetbtn", Boolean(payload && payload.on));
+      broadcastState();
+      break;
+    case "set_bank_visible":
+      game.showBank = setStarterWord("minedle-bank", Boolean(payload && payload.on));
+      broadcastState();
       break;
     case "reset_marks":
       if (game.status === "live") {

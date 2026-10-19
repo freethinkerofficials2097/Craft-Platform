@@ -1,6 +1,6 @@
 // minedle-game.js — runs in the browser (host view / display view)
 // MINEDLE: a grid of letter-and-number tiles (the number = how many touching tiles hold a letter of the secret word), tiles the
-// host taps blue / red, a Letter bank of the blue letters, and green / yellow / grey clue colors for every guess (see minedle-server.js).
+// host taps blue / red, and green / yellow / grey clue colors for every guess (see minedle-server.js).
 
 function setRealViewportHeight() {
   const vh = window.innerHeight * 0.01;
@@ -42,6 +42,10 @@ const el = {
   mineGrid: document.getElementById("mineGrid"),
   resetMarksBtn: document.getElementById("resetMarksBtn"),
   letterBank: document.getElementById("letterBank"),
+  letterBankWrap: document.getElementById("letterBankWrap"),
+  bankVisibleToggle: document.getElementById("bankVisibleToggle"),
+  resetVisibleToggle: document.getElementById("resetVisibleToggle"),
+  mineTools: document.querySelector(".mineTools"),
   hintChips: document.getElementById("hintChips"),
   hintExplainer: document.getElementById("hintExplainer"),
   offlineNote: document.getElementById("offlineNote"),
@@ -166,8 +170,8 @@ el.fullscreenBtn.addEventListener("click", () => {
 });
 
 // ------------------------------------------------------------
-// The sweep grid + the Letter bank. The server sends the grid of the round (`grid`: size, letters, nums), the host's marks
-// (`marks`: letter -> 1 blue / 2 red) and the Letter bank (`bank`: the blue letters in the order they were marked).
+// The sweep grid. The server sends the grid of the round (`grid`: size, letters, nums), the host's marks
+// (`marks`: letter -> 1 blue / 2 red, `bank`: the blue letters in marking order; filled in automatically by the server when the round ends).
 // A tap on any tile asks the server to cycle that LETTER: none -> blue -> red -> none, so every tile with the same letter
 // changes together on every connected screen. The page itself never colors anything on its own.
 // ------------------------------------------------------------
@@ -191,7 +195,7 @@ function renderMine(g) {
   const bank = g.bank || [];
   const locked = g.status !== "live";
   const width = el.mineSection.clientWidth;
-  const signature = [g.roundNumber, g.grid.size, locked ? 1 : 0, width, JSON.stringify(marks), bank.join("")].join("|");
+  const signature = [g.roundNumber, g.grid.size, locked ? 1 : 0, width, JSON.stringify(marks), g.showResetBtn === false ? 0 : 1, g.showBank === false ? 0 : 1, bank.join("")].join("|");
   if (signature === lastMineSignature) return;
   lastMineSignature = signature;
 
@@ -224,8 +228,10 @@ function renderMine(g) {
   }
 
   el.resetMarksBtn.disabled = locked;
+  el.mineTools.hidden = g.showResetBtn === false;
 
-  // Letter bank: every blue letter, in the order it was marked
+  // Letter bank: every blue letter, in the order it was marked (own color; the host can hide it)
+  el.letterBankWrap.hidden = g.showBank === false;
   el.letterBank.innerHTML = "";
   if (bank.length === 0) {
     const empty = document.createElement("span");
@@ -316,6 +322,8 @@ function syncStagedSettingsFromState(g) {
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
   el.strictFitToggle.checked = g.strictFit === true; // Strict fit is OFF in MINEDLE unless the host switched it on
+  if (el.bankVisibleToggle) el.bankVisibleToggle.checked = g.showBank !== false;
+  if (el.resetVisibleToggle) el.resetVisibleToggle.checked = g.showResetBtn !== false;
   if (el.starterWordToggle) el.starterWordToggle.checked = g.starterWord === true; // OFF unless the host switched it on
   updateModePickerLabel();
 }
@@ -506,6 +514,13 @@ el.strictFitToggle.addEventListener("change", () => {
 // Starter word: OFF by default in MINEDLE, remembered by the server, used from the next round.
 if (el.starterWordToggle) el.starterWordToggle.addEventListener("change", () => {
   send("set_starter_word", { on: el.starterWordToggle.checked });
+});
+
+if (el.bankVisibleToggle) el.bankVisibleToggle.addEventListener("change", () => {
+  send("set_bank_visible", { on: el.bankVisibleToggle.checked });
+});
+if (el.resetVisibleToggle) el.resetVisibleToggle.addEventListener("change", () => {
+  send("set_reset_visible", { on: el.resetVisibleToggle.checked });
 });
 
 el.playAgainBtn.addEventListener("click", () => send("play_again", {}));
@@ -733,7 +748,7 @@ function renderLengthBadge(g) {
 //             of ballooning for short words
 //   - height: shrinks further if there are enough guess rows that
 //             they wouldn't otherwise all fit in the visible area
-// (No keyboard in MINEDLE - the grid and the Letter bank replace it.)
+// (No keyboard in MINEDLE - the grid replaces it.)
 function computeAvailableTilesHeight() {
   const viewportH = window.innerHeight;
   const top = el.tilesWrap.getBoundingClientRect().top;
