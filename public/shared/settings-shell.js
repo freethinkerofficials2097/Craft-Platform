@@ -31,11 +31,11 @@
     ["hints",   /^hints?\b/i],
     ["tools",   /live event|host say|^tools?$/i],
     ["connect", /tiktok|connect|^mode\b|game mode|diagnos|connection|status/i],
-    ["look",    /appearance|theme|title font|colou?r shades|card design|word length panel|^font|sound|audio|symbols? (look|style)/i],
+    ["look",    /appearance|theme|title font|colou?r shades|card design|word length panel|wave panel|^font|sound|audio|symbols? (look|style)/i],
     ["scores",  /score|leaderboard|celebration|rejection|reveal\s*&|winner/i]
   ];
   var ICONS = [
-    [/appearance|theme/i, "🎨"], [/title font|^font/i, "🔤"], [/shades/i, "🌈"], [/card design/i, "🃏"], [/word length panel/i, "🔡"], [/sound|audio/i, "🔊"],
+    [/appearance|theme/i, "🎨"], [/title font|^font/i, "🔤"], [/shades/i, "🌈"], [/card design/i, "🃏"], [/word length panel/i, "🔡"], [/wave panel/i, "🌊"], [/sound|audio/i, "🔊"],
     [/tiktok|connect/i, "📡"], [/^mode|game mode/i, "🧭"], [/diagnos/i, "🩺"],
     [/word length|trail length/i, "📏"], [/difficulty/i, "🎚️"], [/language/i, "🌐"], [/auto-?continue|between rounds|next round|timing|round (length|clock|setup)/i, "⏱️"],
     [/starter/i, "🎲"], [/strict/i, "🎯"], [/auto-?colou?r/i, "⌨️"], [/symbol/i, "🔣"], [/length hints/i, "🔢"], [/blur/i, "🌫️"],
