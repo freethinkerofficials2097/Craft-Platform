@@ -9,7 +9,9 @@ MINEDLE is a BLINDLE copy built on the Sweep-O idea. Every round shows a grid of
 
 ## Marking (host, shared by every screen, reset each round)
 - Tap a tile: 1x blue (letter is in the word), 2x red (not in the word), 3x clear. All tiles with the same letter change together.
-- Blue letters fill the Letter bank. "Reset marks" clears everything.
+- Blue letters fill the Letter bank (own teal color, customizable in Color shades). The host can hide or show it in Settings -> Letter bank (shared by every screen, remembered).
+- "Reset marks" (own purple color, customizable in Color shades) clears everything. The host can hide or show it in Settings -> Reset marks button (shared by every screen, remembered).
+- When a round is solved (or given up) every tile is painted automatically: blue = letter is in the word, red = not, so the audience sees the answer's letters.
 
 ## Guesses and score
 - A guess must be a real word of the right length made only of grid letters. Letters turn green / yellow / grey. No number columns.
@@ -18,7 +20,7 @@ MINEDLE is a BLINDLE copy built on the Sweep-O idea. Every round shows a grid of
 
 ## Layout (one normal flow, nothing overlaps)
 floating message window -> legend -> grid + Reset marks + Letter bank -> guess board.
-The legend (customizable like the other games) explains numbers, blue, red, 3-tap clear, Letter bank, green/yellow/grey, score and Reset marks.
+The legend (customizable like the other games) explains numbers, blue, red, 3-tap clear, Letter bank, auto-reveal, green/yellow/grey, score and Reset marks.
 
 ## Files
 - NEW `server/minedle/minedle-server.js`, `server/minedle/public/minedle-index.html`, `minedle-game.js`, `minedle-style.css`

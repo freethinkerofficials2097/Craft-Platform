@@ -119,8 +119,10 @@
       { id: "green", label: "Green", hint: "right letter, right spot (guess tiles & legend)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--mn-green"], darkVars: ["--mn-green-dark"], inkVars: ["--mn-green-ink"] },
       { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (guess tiles & legend)", std: "#D9A700", stdDark: "#A98200", vars: ["--mn-yellow"], darkVars: ["--mn-yellow-dark"], inkVars: ["--mn-yellow-ink"] },
       { id: "gray", label: "Grey", hint: "not in the word (guess tiles & legend)", std: "#858589", stdDark: "#606064", vars: ["--mn-gray"], darkVars: ["--mn-gray-dark"], inkVars: ["--mn-gray-ink"] },
-      { id: "blue", label: "Blue", hint: "tiles you mark as IN the word, and the Letter bank (grid & legend)", std: "#2A5CA8", stdDark: "#1B3F78", vars: ["--mn-blue"], darkVars: ["--mn-blue-dark"], inkVars: ["--mn-blue-ink"] },
-      { id: "red", label: "Red", hint: "tiles you mark as NOT in the word (grid & legend)", std: "#B86B6E", stdDark: "#8E4A4D", vars: ["--mn-red"], darkVars: ["--mn-red-dark"], inkVars: ["--mn-red-ink"] }
+      { id: "blue", label: "Blue", hint: "tiles you mark as IN the word (grid & legend)", std: "#2A5CA8", stdDark: "#1B3F78", vars: ["--mn-blue"], darkVars: ["--mn-blue-dark"], inkVars: ["--mn-blue-ink"] },
+      { id: "red", label: "Red", hint: "tiles you mark as NOT in the word (grid & legend)", std: "#B86B6E", stdDark: "#8E4A4D", vars: ["--mn-red"], darkVars: ["--mn-red-dark"], inkVars: ["--mn-red-ink"] },
+      { id: "bank", label: "Teal", hint: "the Letter bank letters (and legend)", std: "#1F8A8A", stdDark: "#146363", vars: ["--mn-bank"], darkVars: ["--mn-bank-dark"], inkVars: ["--mn-bank-ink"] },
+      { id: "reset", label: "Purple", hint: "the Reset marks button (and legend)", std: "#7B4FC9", stdDark: "#57338F", vars: ["--mn-reset"], darkVars: ["--mn-reset-dark"], inkVars: ["--mn-reset-ink"] }
     ],
     comparable: [
       { id: "green", label: "Green", hint: "right letter, right spot (tiles, legend & keyboard keys)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--cm-green"], darkVars: ["--cm-green-dark"], inkVars: ["--cm-green-ink"] },
