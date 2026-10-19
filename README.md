@@ -1,3 +1,5 @@
+> **Update 91:** new game LINEDLE (pillars + a light-blue secret wave-line and a white guess wave-line, height = letter from A (low) to Z (high); green/yellow/grey clues; 1 point for solving) at `/linedle/`. See `CHANGES_UPDATE_91.md`.
+
 > **Update 89:** new game MINEDLE (Sweep-O style letter + number grid, blue/red marks, Letter bank, green/yellow/grey clues; 1 point for solving) at `/minedle/`. See `CHANGES_UPDATE_89.md`.
 
 > **Update 88:** BETWEENDLE: the word-length panel is fully customizable (Settings -> Look & sound -> Word length panel): its title, the texts for fixed and random length (several parts separated by "|"), number of rows, text size, alignment, colors, corners, border, and show/hide of the panel box. Random length never reveals the round's exact length. See `CHANGES_UPDATE_88.md`.

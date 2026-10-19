@@ -115,6 +115,13 @@
       { id: "latest", label: "Dark grey", hint: "the newest-guess row at the top and the score badges", std: "#3C3C40", stdDark: "#28282B", vars: ["--fx-latest"], darkVars: ["--fx-latest-dark"], inkVars: ["--fx-latest-ink"] },
       { id: "found", label: "Green", hint: "the top row once the secret word is found (score = twice the word length)", std: "#4CAF50", stdDark: "#357A38", vars: ["--fx-found"], darkVars: ["--fx-found-dark"], inkVars: ["--fx-found-ink"] }
     ],
+    linedle: [
+      { id: "green", label: "Green", hint: "right letter, right spot (guess tiles, wave dots & legend)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--ln-green"], darkVars: ["--ln-green-dark"], inkVars: ["--ln-green-ink"] },
+      { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (guess tiles, wave dots & legend)", std: "#D9A700", stdDark: "#A98200", vars: ["--ln-yellow"], darkVars: ["--ln-yellow-dark"], inkVars: ["--ln-yellow-ink"] },
+      { id: "gray", label: "Grey", hint: "not in the word (guess tiles, wave dots & legend)", std: "#858589", stdDark: "#606064", vars: ["--ln-gray"], darkVars: ["--ln-gray-dark"], inkVars: ["--ln-gray-ink"] },
+      { id: "wave", label: "Light blue", hint: "the secret word's wave-line (wave board & legend)", std: "#8FD3FF", stdDark: "#4FA8E0", vars: ["--ln-wave"], darkVars: ["--ln-wave-dark"], inkVars: ["--ln-wave-ink"] },
+      { id: "guess", label: "White", hint: "the guess wave-line (wave board & legend)", std: "#FFFFFF", stdDark: "#CFD6E4", vars: ["--ln-guess"], darkVars: ["--ln-guess-dark"], inkVars: ["--ln-guess-ink"] }
+    ],
     minedle: [
       { id: "green", label: "Green", hint: "right letter, right spot (guess tiles & legend)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--mn-green"], darkVars: ["--mn-green-dark"], inkVars: ["--mn-green-ink"] },
       { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (guess tiles & legend)", std: "#D9A700", stdDark: "#A98200", vars: ["--mn-yellow"], darkVars: ["--mn-yellow-dark"], inkVars: ["--mn-yellow-ink"] },

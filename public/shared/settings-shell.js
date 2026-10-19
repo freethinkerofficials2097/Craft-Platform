@@ -43,7 +43,7 @@
     [/live event/i, "📊"], [/host say/i, "🎙️"], [/round control|round controls/i, "🕹️"]
   ];
   // features that only take effect after the host presses Apply (only used on games that have an Apply button)
-  var NEEDS_APPLY = /word length|difficulty|auto-?continue|symbols|length hints|trail length|round (length|setup|timing)|rounds? &|timing|round clock|flag blur/i;
+  var NEEDS_APPLY = /word length(?! panel)|difficulty|auto-?continue|symbols|length hints|trail length|round (length|setup|timing)|rounds? &|timing|round clock|flag blur/i;
 
   /* ------------------------------------------------------------------ helpers */
   function $(s, r) { return (r || document).querySelector(s); }

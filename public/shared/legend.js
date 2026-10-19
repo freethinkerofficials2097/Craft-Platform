@@ -175,6 +175,21 @@
         { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
+    linedle: {
+      title: "What the waves, pillars and colors mean",
+      items: [
+        { id: "pillar", glyph: "▮", label: "Pillars — one per letter of the secret word (5 pillars = a 5-letter word)", c: { bg: "rgba(60,40,20,.19)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "blue", glyph: "~", label: "Light-blue wave — the SECRET word: its height at each pillar is the letter there", c: V("--ln-wave", "#8FD3FF", "#06223d", "#4FA8E0") },
+        { id: "white", glyph: "~", label: "White wave — the latest guess, drawn the same way. Win = white sits exactly on blue", c: V("--ln-guess", "#FFFFFF", "#1B1B1F", "#CFD6E4") },
+        { id: "height", glyph: "A↕Z", label: "Height — the lower the line, the closer to A; the higher, the closer to Z (A bottom, Z top)", c: { bg: "rgba(60,40,20,.19)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "green", glyph: "A", label: "Green — right letter, right spot", c: V("--ln-green", "#2E7D32", "#F3F1E6", "#1F5E24") },
+        { id: "yellow", glyph: "A", label: "Yellow — in the word, wrong spot", c: V("--ln-yellow", "#D9A700", "#1B1B1F", "#A98200") },
+        { id: "gray", glyph: "A", label: "Grey — not in the word", c: V("--ln-gray", "#858589", "#1B1B1F", "#606064") },
+        { id: "score", glyph: "+1", label: "Score — 1 point for the guess that solves the round", c: V("--ln-green", "#2E7D32", "#F3F1E6", "#1F5E24") },
+        { id: "reveal", glyph: "★", label: "Round over — the letters appear under the pillars", c: V("--ln-wave", "#8FD3FF", "#06223d", "#4FA8E0") },
+        { id: "float", glyph: "!", label: "Floating window — announces each new guess or a skipped one", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+      ]
+    },
     minedle: {
       title: "What the tiles, marks and colors mean",
       items: [
