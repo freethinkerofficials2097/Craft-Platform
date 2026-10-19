@@ -1,3 +1,21 @@
+> **Update 91:** new game LINEDLE (pillars + a light-blue secret wave-line and a white guess wave-line, height = letter from A (low) to Z (high); green/yellow/grey clues; 1 point for solving) at `/linedle/`. See `CHANGES_UPDATE_91.md`.
+
+> **Update 89:** new game MINEDLE (Sweep-O style letter + number grid, blue/red marks, Letter bank, green/yellow/grey clues; 1 point for solving) at `/minedle/`. See `CHANGES_UPDATE_89.md`.
+
+> **Update 88:** BETWEENDLE: the word-length panel is fully customizable (Settings -> Look & sound -> Word length panel): its title, the texts for fixed and random length (several parts separated by "|"), number of rows, text size, alignment, colors, corners, border, and show/hide of the panel box. Random length never reveals the round's exact length. See `CHANGES_UPDATE_88.md`.
+
+> **Update 87:** BETWEENDLE: when the word length is random, the word-length panel shows the host's range ("Random: 4 - 12") and the toolbar badge shows the range too - never the round's exact length. See `CHANGES_UPDATE_87.md`.
+
+> **Update 86:** BETWEENDLE: the word-length strip is now a panel of its own styled like the legend's; it only says how many letters (e.g. "6 letters") or "Random" - no small boxes, no range, never the round's exact length. See `CHANGES_UPDATE_86.md`.
+
+> **Update 85:** BETWEENDLE: new word-length strip (letters this round, plus the random range) between the floating message window and the legend; all text inside the panel (legend, hints, status, strip) now adapts automatically to a custom panel color. See `CHANGES_UPDATE_85.md`.
+
+> **Update 84:** BETWEENDLE: optional, customizable panel (the box) behind the three cards; no more result text under the boxes (celebration / winner name / secret word / "You win!"), Play again + countdown centered; winner window uses a crown and the winner's real TikTok picture as a perfect circle; 7 more card designs (14 total); "Sticker" design is now straight and balanced. See `CHANGES_UPDATE_84.md`.
+
+> **Update 83:** BETWEENDLE: the A-Z letter tiles (keyboard) were removed; the three boxes now come in 7 designs (Stitched, Flat, Glass, Neon, Ticket, Sticker, Soft) with customizable colors, font, text size, corners, border, shadow, spacing, captions, distance and animation (Settings -> Look & sound -> Card design, shared by every screen, saved in `data/betweendle-settings.json`); fixed the hidden-word box not getting its own lighter face/seam. See `CHANGES_UPDATE_83.md`.
+
+> **Update 81:** FORBACKLE no longer refuses guesses because of hidden older rows or hint words that did not fit (board shows up to 300 guesses, hints pick fitting words); SHIFTLE's Strict fit now accepts a guess that fits under ANY of the 6 possible color meanings, like ORACLE. See `CHANGES_UPDATE_81.md`.
+
 > **Update 72:** new game FIXLE (Edge-O style: every guess is scored with matching prefix + matching suffix against the secret word; guesses are listed from the highest score to the lowest; a score of twice the word length wins and the winner earns exactly that many points; legend above the board) at `/fixle/`. See `CHANGES_UPDATE_72.md`.
 >
 > **Update 71:** fixed the top toolbar / ribbon being squashed into a thin strip after a round ends (the header parts can no longer shrink; the page scrolls instead). See `CHANGES_UPDATE_71.md`.

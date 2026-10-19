@@ -210,7 +210,7 @@
       findle: ["#6FAA5C", "#4B7D3C"], crossdle: ["#E0724A", "#A84B26"], twistle: ["#E0699C", "#A8446F"],
       oracle: ["#9C6FD1", "#6C459E"], colorblindle: ["#E0724A", "#A84B26"], colordle: ["#2F9E8F", "#1F7A6E"],
       structle: ["#D9822B", "#A85F14"], textle: ["#0E9F45", "#087A32"], rangedle: ["#7B3FE4", "#5A25B8"],
-      codedle: ["#E0699C", "#B8457A"], shapedle: ["#F2799F", "#C94A77"], forbackle: ["#AE8BFF", "#8A63E0"], shiftle: ["#F5A3D0", "#D474A8"], wordle: ["#4FA35A", "#2E7D32"], betweendle: ["#C9A227", "#8F7413"], comparable: ["#5BAEE6", "#2F7FB8"], fixle: ["#4CAF50", "#357A38"]
+      codedle: ["#E0699C", "#B8457A"], shapedle: ["#F2799F", "#C94A77"], forbackle: ["#AE8BFF", "#8A63E0"], shiftle: ["#F5A3D0", "#D474A8"], wordle: ["#4FA35A", "#2E7D32"], betweendle: ["#C9A227", "#8F7413"], comparable: ["#5BAEE6", "#2F7FB8"], minedle: ["#2A5CA8", "#1B3F78"], linedle: ["#5BC0F0", "#2B8FC4"], fixle: ["#4CAF50", "#357A38"]
     };
     var FONT_STACKS = {
       fredoka: '"Fredoka","Baloo 2",cursive',

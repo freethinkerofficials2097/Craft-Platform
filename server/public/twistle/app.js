@@ -883,6 +883,7 @@ function renderHeader(state) {
   el.modeBadge.textContent = state.game.mode.toUpperCase();
   el.modeBadge.className = "modeBadge " + state.game.mode;
   el.lengthBadge.textContent = state.game.status === "idle" ? "— letters" : state.game.wordLength + " letters";
+  if (window.LengthPanel) LengthPanel.update(state.game); // update 90: the shared word length panel
   el.hintBtn.disabled = state.game.status !== "live";
 
   if (state.game.status === "idle") {

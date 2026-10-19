@@ -31,11 +31,11 @@
     ["hints",   /^hints?\b/i],
     ["tools",   /live event|host say|^tools?$/i],
     ["connect", /tiktok|connect|^mode\b|game mode|diagnos|connection|status/i],
-    ["look",    /appearance|theme|title font|colou?r shades|^font|sound|audio|symbols? (look|style)/i],
+    ["look",    /appearance|theme|title font|colou?r shades|card design|word length panel|^font|sound|audio|symbols? (look|style)/i],
     ["scores",  /score|leaderboard|celebration|rejection|reveal\s*&|winner/i]
   ];
   var ICONS = [
-    [/appearance|theme/i, "🎨"], [/title font|^font/i, "🔤"], [/shades/i, "🌈"], [/sound|audio/i, "🔊"],
+    [/appearance|theme/i, "🎨"], [/title font|^font/i, "🔤"], [/shades/i, "🌈"], [/card design/i, "🃏"], [/word length panel/i, "🔡"], [/sound|audio/i, "🔊"],
     [/tiktok|connect/i, "📡"], [/^mode|game mode/i, "🧭"], [/diagnos/i, "🩺"],
     [/word length|trail length/i, "📏"], [/difficulty/i, "🎚️"], [/language/i, "🌐"], [/auto-?continue|between rounds|next round|timing|round (length|clock|setup)/i, "⏱️"],
     [/starter/i, "🎲"], [/strict/i, "🎯"], [/auto-?colou?r/i, "⌨️"], [/symbol/i, "🔣"], [/length hints/i, "🔢"], [/blur/i, "🌫️"],
@@ -43,7 +43,7 @@
     [/live event/i, "📊"], [/host say/i, "🎙️"], [/round control|round controls/i, "🕹️"]
   ];
   // features that only take effect after the host presses Apply (only used on games that have an Apply button)
-  var NEEDS_APPLY = /word length|difficulty|auto-?continue|symbols|length hints|trail length|round (length|setup|timing)|rounds? &|timing|round clock|flag blur/i;
+  var NEEDS_APPLY = /word length(?! panel)|difficulty|auto-?continue|symbols|length hints|trail length|round (length|setup|timing)|rounds? &|timing|round clock|flag blur/i;
 
   /* ------------------------------------------------------------------ helpers */
   function $(s, r) { return (r || document).querySelector(s); }

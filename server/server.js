@@ -25,6 +25,8 @@
 //   /wordle/   - WORDLE    (Socket.IO namespace /wordle)
 //   /betweendle/ - BETWEENDLE (Socket.IO namespace /betweendle)
 //   /comparable/ - COMPARABLE (Socket.IO namespace /comparable)
+//   /minedle/ - MINEDLE (Socket.IO namespace /minedle)
+//   /linedle/ - LINEDLE (Socket.IO namespace /linedle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
@@ -58,6 +60,8 @@ import { mountShiftle } from "./server/shiftle/shiftle-server.js";
 import { mountWordle } from "./server/wordle/wordle-server.js";
 import { mountBetweendle } from "./server/betweendle/betweendle-server.js";
 import { mountComparable } from "./server/comparable/comparable-server.js";
+import { mountMinedle } from "./server/minedle/minedle-server.js";
+import { mountLinedle } from "./server/linedle/linedle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
@@ -70,6 +74,7 @@ import { registerTwistle } from "./server/twistle/twistle.js";
 import { Engagement } from "./server/engagement/engagement-hub.js";
 import { ColorShadesHub } from "./server/shared/color-shades-hub.js";
 import { LegendHub } from "./server/shared/legend-hub.js";
+import { LengthPanelHub } from "./server/shared/length-panel-hub.js";
 import { serveHostAvatar, hostAvatarStatus } from "./server/shared/host-avatar.js";
 import { HostPresence } from "./server/shared/host-presence.js";
 import { mountHomeCards } from "./server/shared/home-cards-store.js";
@@ -154,6 +159,11 @@ ColorShadesHub.init(io);
 // legend (position, size, font, order, texts, rows/columns) and keeps every screen of that game in
 // sync (Socket.IO namespace /legends). See server/shared/legend-hub.js and public/shared/legend.js.
 LegendHub.init(io);
+
+// Platform-wide "Word length panel" (update 90): the panel that tells viewers how long the secret word is, with
+// its own show / hide switch and style settings for every word game (Socket.IO namespace /lenpanel).
+// See server/shared/length-panel-hub.js and public/shared/length-panel.js.
+LengthPanelHub.init(io);
 
 registerFlagle(io);
 registerTravle(io);
@@ -256,6 +266,20 @@ await mountBetweendle(app, io, { mountPath: "/betweendle" });
 // and a legend explains the symbols and colors. Scoring: 1 point per guess on the board, 5 for solving the round.
 // Own Socket.IO namespace /comparable; reuses BLINDLE's word bank + dictionary (loaded once).
 await mountComparable(app, io, { mountPath: "/comparable" });
+
+// MINEDLE is a BLINDLE copy built on the SWEEP-O idea: every round shows a grid of tiles (5x5 for 4-5 letter words, 8x8 for
+// 6-9, 10x10 for 10-20), each tile with a letter and a number = how many touching tiles (diagonals included) hold a letter of the
+// secret word. The host taps tiles blue (in the word) / red (not in the word) / clear; the blue letters fill the Letter bank.
+// Chat guesses real words made of grid letters; letters turn green / yellow / grey. Scoring: 1 point for solving the round.
+// Own Socket.IO namespace /minedle; reuses BLINDLE's word bank + dictionary (loaded once).
+await mountMinedle(app, io, { mountPath: "/minedle" });
+
+// LINEDLE is a BLINDLE copy built on the WAVE-O idea: the board has one vertical PILLAR per letter (5 by default); a light-blue
+// wave-line crosses the pillars at the heights of the secret word's letters (A lowest ... Z highest) and every chat guess is drawn
+// as a white wave-line. Letters also turn green / yellow / grey; the round is won when the white line sits exactly on the blue one.
+// Scoring: 1 point for the guess that solves the round. Own Socket.IO namespace /linedle; reuses BLINDLE's word bank +
+// dictionary (loaded once).
+await mountLinedle(app, io, { mountPath: "/linedle" });
 
 // FIXLE is a BLINDLE copy built on the EDGE-O idea: every guess is scored with MATCHING PREFIX + MATCHING SUFFIX against the
 // secret word (letters that match from the start + letters that match from the end). The board lists the guesses from the
