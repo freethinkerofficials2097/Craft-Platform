@@ -542,6 +542,16 @@ el.settingsBtn.addEventListener("click", () => {
   if (lastState) syncStagedSettingsFromState(lastState.game);
   openDrawer(el.settingsOverlay);
 });
+// 🌊 shortcut: opens Settings straight on the "Wave panel look" card (Look & sound)
+const waveLookBtn = document.getElementById("waveLookBtn");
+if (waveLookBtn) waveLookBtn.addEventListener("click", () => {
+  el.settingsBtn.click();
+  setTimeout(() => {
+    if (window.CraftSettings && window.CraftSettings.goTo) window.CraftSettings.goTo("look");
+    const card = document.getElementById("waveStyleSection");
+    if (card && card.scrollIntoView) card.scrollIntoView({ block: "start" });
+  }, 60);
+});
 el.closeSettings.addEventListener("click", () => closeDrawer(el.settingsOverlay));
 el.settingsOverlay.addEventListener("click", (e) => { if (e.target === el.settingsOverlay) closeDrawer(el.settingsOverlay); });
 
