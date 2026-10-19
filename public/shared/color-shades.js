@@ -115,6 +115,13 @@
       { id: "latest", label: "Dark grey", hint: "the newest-guess row at the top and the score badges", std: "#3C3C40", stdDark: "#28282B", vars: ["--fx-latest"], darkVars: ["--fx-latest-dark"], inkVars: ["--fx-latest-ink"] },
       { id: "found", label: "Green", hint: "the top row once the secret word is found (score = twice the word length)", std: "#4CAF50", stdDark: "#357A38", vars: ["--fx-found"], darkVars: ["--fx-found-dark"], inkVars: ["--fx-found-ink"] }
     ],
+    minedle: [
+      { id: "green", label: "Green", hint: "right letter, right spot (guess tiles & legend)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--mn-green"], darkVars: ["--mn-green-dark"], inkVars: ["--mn-green-ink"] },
+      { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (guess tiles & legend)", std: "#D9A700", stdDark: "#A98200", vars: ["--mn-yellow"], darkVars: ["--mn-yellow-dark"], inkVars: ["--mn-yellow-ink"] },
+      { id: "gray", label: "Grey", hint: "not in the word (guess tiles & legend)", std: "#858589", stdDark: "#606064", vars: ["--mn-gray"], darkVars: ["--mn-gray-dark"], inkVars: ["--mn-gray-ink"] },
+      { id: "blue", label: "Blue", hint: "tiles you mark as IN the word, and the Letter bank (grid & legend)", std: "#2A5CA8", stdDark: "#1B3F78", vars: ["--mn-blue"], darkVars: ["--mn-blue-dark"], inkVars: ["--mn-blue-ink"] },
+      { id: "red", label: "Red", hint: "tiles you mark as NOT in the word (grid & legend)", std: "#B86B6E", stdDark: "#8E4A4D", vars: ["--mn-red"], darkVars: ["--mn-red-dark"], inkVars: ["--mn-red-ink"] }
+    ],
     comparable: [
       { id: "green", label: "Green", hint: "right letter, right spot (tiles, legend & keyboard keys)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--cm-green"], darkVars: ["--cm-green-dark"], inkVars: ["--cm-green-ink"] },
       { id: "gray", label: "Grey", hint: "incorrect letter (tiles, legend & keyboard keys)", std: "#858589", stdDark: "#606064", vars: ["--cm-gray"], darkVars: ["--cm-gray-dark"], inkVars: ["--cm-gray-ink"] },

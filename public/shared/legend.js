@@ -175,6 +175,21 @@
         { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
+    minedle: {
+      title: "What the tiles, marks and colors mean",
+      items: [
+        { id: "num", glyph: "4", label: "Number — how many touching tiles (diagonals too) hold a letter of the secret word", c: { bg: "rgba(60,40,20,.19)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "blue", glyph: "A", label: "Blue (tap once) — the letter IS in the word; every same letter turns blue", c: V("--mn-blue", "#2A5CA8", "#fff", "#1B3F78") },
+        { id: "red", glyph: "A", label: "Red (tap twice) — the letter is NOT in the word", c: V("--mn-red", "#B86B6E", "#fff", "#8E4A4D") },
+        { id: "clear", glyph: "3×", label: "Tap three times — clears the mark (back to plain)", c: { bg: "rgba(60,40,20,.19)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "bank", glyph: "AB", label: "Letter bank — all blue letters in one place; build guesses from them (reuse freely)", c: V("--mn-blue", "#2A5CA8", "#fff", "#1B3F78") },
+        { id: "green", glyph: "A", label: "Green — right letter, right spot", c: V("--mn-green", "#2E7D32", "#F3F1E6", "#1F5E24") },
+        { id: "yellow", glyph: "A", label: "Yellow — in the word, wrong spot", c: V("--mn-yellow", "#D9A700", "#1B1B1F", "#A98200") },
+        { id: "gray", glyph: "A", label: "Grey — not in the word", c: V("--mn-gray", "#858589", "#1B1B1F", "#606064") },
+        { id: "score", glyph: "+1", label: "Score — 1 point for the guess that solves the round", c: V("--mn-green", "#2E7D32", "#F3F1E6", "#1F5E24") },
+        { id: "reset", glyph: "↺", label: "Reset marks — wipes every blue / red mark and empties the Letter bank", c: V("--mn-red", "#B86B6E", "#fff", "#8E4A4D") }
+      ]
+    },
     comparable: {
       title: "What the symbols and colors mean",
       items: [

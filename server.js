@@ -25,6 +25,7 @@
 //   /wordle/   - WORDLE    (Socket.IO namespace /wordle)
 //   /betweendle/ - BETWEENDLE (Socket.IO namespace /betweendle)
 //   /comparable/ - COMPARABLE (Socket.IO namespace /comparable)
+//   /minedle/ - MINEDLE (Socket.IO namespace /minedle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
@@ -58,6 +59,7 @@ import { mountShiftle } from "./server/shiftle/shiftle-server.js";
 import { mountWordle } from "./server/wordle/wordle-server.js";
 import { mountBetweendle } from "./server/betweendle/betweendle-server.js";
 import { mountComparable } from "./server/comparable/comparable-server.js";
+import { mountMinedle } from "./server/minedle/minedle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
@@ -256,6 +258,13 @@ await mountBetweendle(app, io, { mountPath: "/betweendle" });
 // and a legend explains the symbols and colors. Scoring: 1 point per guess on the board, 5 for solving the round.
 // Own Socket.IO namespace /comparable; reuses BLINDLE's word bank + dictionary (loaded once).
 await mountComparable(app, io, { mountPath: "/comparable" });
+
+// MINEDLE is a BLINDLE copy built on the SWEEP-O idea: every round shows a grid of tiles (5x5 for 4-5 letter words, 8x8 for
+// 6-9, 10x10 for 10-20), each tile with a letter and a number = how many touching tiles (diagonals included) hold a letter of the
+// secret word. The host taps tiles blue (in the word) / red (not in the word) / clear; the blue letters fill the Letter bank.
+// Chat guesses real words made of grid letters; letters turn green / yellow / grey. Scoring: 1 point for solving the round.
+// Own Socket.IO namespace /minedle; reuses BLINDLE's word bank + dictionary (loaded once).
+await mountMinedle(app, io, { mountPath: "/minedle" });
 
 // FIXLE is a BLINDLE copy built on the EDGE-O idea: every guess is scored with MATCHING PREFIX + MATCHING SUFFIX against the
 // secret word (letters that match from the start + letters that match from the end). The board lists the guesses from the
