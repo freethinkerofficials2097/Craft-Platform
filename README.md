@@ -1,3 +1,5 @@
+> **Update 92:** LINEDLE wave panel is fully customizable (Settings -> Wave panel look): colors, line thickness, show / hide the horizontal letter lines and the A-Z letters on the left, pillars, dots, trails, 5 ready looks. See `CHANGES_UPDATE_92.md`.
+
 > **Update 91:** new game LINEDLE (pillars + a light-blue secret wave-line and a white guess wave-line, height = letter from A (low) to Z (high); green/yellow/grey clues; 1 point for solving) at `/linedle/`. See `CHANGES_UPDATE_91.md`.
 
 > **Update 89:** new game MINEDLE (Sweep-O style letter + number grid, blue/red marks, Letter bank, green/yellow/grey clues; 1 point for solving) at `/minedle/`. See `CHANGES_UPDATE_89.md`.
