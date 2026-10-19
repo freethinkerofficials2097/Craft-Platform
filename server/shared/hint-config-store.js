@@ -47,7 +47,7 @@ export const HINT_CATALOG = {
 };
 const FAMILY = { flagle: "flagle", travle: "travle", findle: "findle", crossdle: "crossdle" };
 export function catalogFor(gameId) { return HINT_CATALOG[FAMILY[gameId] || "word"]; }
-const AUTO_GAMES = new Set(["blindle", "oracle", "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable", "fixle", "twistle", "crossdle"]);
+const AUTO_GAMES = new Set(["blindle", "oracle", "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable", "minedle", "fixle", "twistle", "crossdle"]);
 export function supportsAuto(gameId) { return AUTO_GAMES.has(gameId); }
 
 function defaults(gameId) {

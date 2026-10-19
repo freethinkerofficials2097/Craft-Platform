@@ -50,8 +50,8 @@ function scheduleSave() {
 }
 
 /** Starter word for a game: ON unless the host switched it off. */
-export function getStarterWord(gameId) {
-  return choices.has(gameId) ? choices.get(gameId) : true;
+export function getStarterWord(gameId, fallback = true) {
+  return choices.has(gameId) ? choices.get(gameId) : fallback;
 }
 
 /** Remember the host's choice for a game (true = ON, false = OFF). Returns the stored value. */

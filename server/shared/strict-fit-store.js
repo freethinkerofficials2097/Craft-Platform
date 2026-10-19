@@ -54,8 +54,8 @@ function scheduleSave() {
 }
 
 /** Strict fit for a game: ON unless the host switched it off. */
-export function getStrictFit(gameId) {
-  return choices.has(gameId) ? choices.get(gameId) : true;
+export function getStrictFit(gameId, fallback = true) {
+  return choices.has(gameId) ? choices.get(gameId) : fallback;
 }
 
 /** Remember the host's choice for a game (true = ON, false = OFF). Returns the stored value. */
