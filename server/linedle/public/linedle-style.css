@@ -501,11 +501,9 @@ button { cursor: pointer; }
 .wavePillarLabel { fill: rgba(255, 255, 255, 0.55); font: 700 15px var(--font-display, sans-serif); }
 .wavePillarLabel.revealed { fill: var(--ln-wave); font-size: 20px; font-weight: 800; }
 .waveLine { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.waveTarget { stroke: var(--ln-wave); stroke-width: 6; filter: drop-shadow(0 0 6px rgba(143, 211, 255, 0.75)); }
 .waveTarget.waveWon { filter: drop-shadow(0 0 10px rgba(143, 255, 190, 0.9)); }
 .waveTargetDot { fill: var(--ln-wave); stroke: #0b1530; stroke-width: 2; }
 .waveTrail { stroke: rgba(255, 255, 255, 0.2); stroke-width: 3; stroke-dasharray: 2 7; }
-.waveGuess { stroke: var(--ln-guess); stroke-width: 3.5; filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.7)); }
 .waveGuess.waveDraw { animation: waveDraw 0.7s ease-out forwards; stroke-dashoffset: 1; }
 @keyframes waveDraw { to { stroke-dashoffset: 0; } }
 .waveGuessDot { stroke: #0b1530; stroke-width: 2; }
@@ -959,3 +957,18 @@ body[data-game="linedle"] .toolbarRow .lengthBadge {
 }
 .langRow { cursor: pointer; font-size: 15px; color: var(--text); }
 .langWarn { color: var(--coral, #e5484d); font-weight: 700; }
+
+/* ---- Settings -> Wave panel look (update 92) ---- */
+.waveStylePresets { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.waveStyleBtn { font-size: 12px; padding: 5px 10px; }
+.waveStyleGroup { border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; margin: 0 0 10px; }
+.waveStyleGroup h5 { margin: 0 0 6px; font-size: 13px; }
+.waveStyleRow { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+.waveStyleLabel { flex: 1 1 auto; min-width: 0; }
+.waveStyleVal { flex: 0 0 auto; min-width: 42px; text-align: right; opacity: .8; font-variant-numeric: tabular-nums; }
+.waveStyleInput[type="range"] { flex: 0 0 120px; }
+.waveStyleInput[type="color"] { flex: 0 0 38px; height: 26px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none; }
+.waveStyleRow.isAuto .waveStyleInput[type="color"] { opacity: .45; }
+.waveStyleInput[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 auto; }
+.waveStyleInput:is(select) { flex: 0 0 auto; max-width: 52%; }
+.waveStyleAuto { border: 1px solid var(--border); background: transparent; color: inherit; border-radius: 999px; font-size: 11px; padding: 2px 8px; cursor: pointer; }

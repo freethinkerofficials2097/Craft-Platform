@@ -171,15 +171,32 @@ el.fullscreenBtn.addEventListener("click", () => {
 // ------------------------------------------------------------
 const SVG_NS = "http://www.w3.org/2000/svg";
 const WAVE_W = 700, WAVE_H = 300, WAVE_TOP = 34, WAVE_BOTTOM = 252, WAVE_PAD_L = 54, WAVE_PAD_R = 22;
-const WAVE_TICKS = [0, 5, 10, 15, 20, 25]; // A F K P U Z
 const CLUE_CLASS = ["clueGreen", "clueYellow", "clueGrey"];
 let lastWaveSignature = "";
+
+// The look of the wave panel (update 92). The defaults below mirror server/shared/linedle-wave-store.js; the server sends the
+// host's real choices as `game.waveStyle`. A color of "" = Auto (follows Color shades).
+const WAVE_DEFAULTS = {
+  bgMode: "gradient", bg1: "#1d3566", bg2: "#0b1530", borderShow: true, borderColor: "#0b1530", radius: 14, maxHeight: 340,
+  pillarsShow: true, pillarColor: "#ffffff", pillarOpacity: 9, pillarWidth: 100, pillarOutline: true,
+  labelsShow: true, labelColor: "#ffffff", labelSize: 15,
+  guideShow: true, guideColor: "#ffffff", guideOpacity: 13, guideThickness: 1, guideStyle: "dotted", guideEvery: "5",
+  scaleShow: true, scaleColor: "#ffffff", scaleOpacity: 72, scaleSize: 13, scaleEvery: "5",
+  blueColor: "", blueThickness: 6, blueGlow: true, targetDotsShow: true, targetDotSize: 7,
+  whiteColor: "", whiteThickness: 3.5, whiteGlow: true, guessDotsShow: true, guessDotSize: 9, dotLettersShow: true,
+  trailShow: true, trailCount: 4, trailThickness: 3, trailOpacity: 20
+};
 
 function svgEl(name, attrs, parent) {
   const node = document.createElementNS(SVG_NS, name);
   for (const k in attrs) node.setAttribute(k, attrs[k]);
   if (parent) parent.appendChild(node);
   return node;
+}
+function hexToRgba(hex, alpha) {
+  const h = String(hex || "#ffffff").replace("#", "");
+  const n = parseInt(h.length === 6 ? h : "ffffff", 16);
+  return "rgba(" + ((n >> 16) & 255) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + alpha + ")";
 }
 function waveX(i, n) {
   return WAVE_PAD_L + ((i + 0.5) * (WAVE_W - WAVE_PAD_L - WAVE_PAD_R)) / n;
@@ -204,73 +221,237 @@ function wavePath(values) {
 function wordWave(word) {
   return String(word).split("").map((ch) => Math.max(0, Math.min(25, ch.charCodeAt(0) - 97)));
 }
+// which letters get a line / a left-side letter: every letter, every 2nd, every 5th (A F K P U Z), or only A and Z
+function tickList(every) {
+  if (every === "ends") return [0, 25];
+  const step = every === "1" ? 1 : every === "2" ? 2 : 5;
+  const list = [];
+  for (let k = 0; k <= 25; k += step) list.push(k);
+  if (25 - list[list.length - 1] >= 3) list.push(25);
+  return list;
+}
+
+// Paints the panel box itself (background, border, corners, height) from the host's look.
+function applyPanelStyle(st) {
+  const box = el.waveSection;
+  box.style.background = st.bgMode === "transparent" ? "transparent" : st.bgMode === "solid" ? st.bg1 : "radial-gradient(120% 120% at 50% 0%, " + st.bg1 + " 0%, " + st.bg2 + " 100%)";
+  box.style.border = st.borderShow ? "1px solid " + st.borderColor : "1px solid transparent";
+  box.style.borderRadius = st.radius + "px";
+  el.waveSvg.style.maxHeight = st.maxHeight + "px";
+}
 
 function renderWave(g) {
   const show = g.status !== "idle" && g.wave && g.wave.target && g.wave.target.length > 0;
   if (el.waveSection.hidden === show) el.waveSection.hidden = !show;
   if (!show) { lastWaveSignature = ""; return; }
 
+  const st = Object.assign({}, WAVE_DEFAULTS, g.waveStyle || {});
   const target = g.wave.target;
   const n = target.length;
   const ended = g.status !== "live";
-  const trail = (g.guesses || []).slice(-5); // the newest guess is the white line, the four before it are faint
+  const trail = (g.guesses || []).slice(-5); // the newest guess is the white line, the guesses before it are faint trails
   const newest = trail.length ? trail[trail.length - 1] : null;
   const won = g.status === "won";
-  const signature = [g.roundNumber, g.status, target.join(","), trail.map((t) => t.word + ":" + (t.clue || []).join("")).join("/"), g.guessesMade].join("|");
+  const signature = [g.roundNumber, g.status, g.guessesMade, target.join(","), trail.map((t) => t.word + ":" + (t.clue || []).join("")).join("/"), JSON.stringify(st)].join("|");
   if (signature === lastWaveSignature) return;
-  const prevCount = lastWaveSignature ? Number((lastWaveSignature.split("|")[4]) || 0) : 0;
-  const prevRound = lastWaveSignature ? lastWaveSignature.split("|")[0] : "";
+  const parts = lastWaveSignature ? lastWaveSignature.split("|") : [];
   lastWaveSignature = signature;
-  const animateNew = prevRound === String(g.roundNumber) && g.guessesMade > prevCount;
+  const animateNew = parts[0] === String(g.roundNumber) && Number(g.guessesMade) > Number(parts[2] || 0) && parts[5] === JSON.stringify(st);
+
+  applyPanelStyle(st);
+  const blue = st.blueColor || "var(--ln-wave, #8FD3FF)";
+  const white = st.whiteColor || "var(--ln-guess, #FFFFFF)";
 
   const svg = el.waveSvg;
   while (svg.firstChild) svg.removeChild(svg.firstChild);
   svg.setAttribute("viewBox", "0 0 " + WAVE_W + " " + WAVE_H);
   svg.setAttribute("aria-label", n + " pillars: the light blue wave is the secret word, the white wave is the latest guess");
 
-  // faint guide lines + the A..Z scale on the left (A at the bottom, Z at the top)
+  // horizontal guide lines (one per chosen letter height) and the A..Z letters on the left side - each can be hidden on its own
+  const guideTicks = st.guideShow ? tickList(st.guideEvery) : [];
+  const scaleTicks = st.scaleShow ? tickList(st.scaleEvery) : [];
+  const dash = st.guideStyle === "solid" ? "none" : st.guideStyle === "dashed" ? "8 6" : st.guideThickness + " " + (st.guideThickness + 5);
   const guides = svgEl("g", { class: "waveGuides" }, svg);
-  WAVE_TICKS.forEach((k) => {
+  guideTicks.forEach((k) => {
     const y = waveY(k);
-    svgEl("line", { x1: WAVE_PAD_L - 8, x2: WAVE_W - WAVE_PAD_R, y1: y, y2: y, class: "waveGuide" }, guides);
-    const t = svgEl("text", { x: WAVE_PAD_L - 16, y: y + 5, class: "waveScale", "text-anchor": "end" }, guides);
+    svgEl("line", { x1: WAVE_PAD_L - 8, x2: WAVE_W - WAVE_PAD_R, y1: y, y2: y, stroke: hexToRgba(st.guideColor, st.guideOpacity / 100), "stroke-width": st.guideThickness, "stroke-dasharray": dash, "stroke-linecap": "round" }, guides);
+  });
+  scaleTicks.forEach((k) => {
+    const t = svgEl("text", { x: WAVE_PAD_L - 16, y: waveY(k) + st.scaleSize * 0.36, "text-anchor": "end", fill: hexToRgba(st.scaleColor, st.scaleOpacity / 100), style: "font:700 " + st.scaleSize + "px var(--font-display, sans-serif)" }, guides);
     t.textContent = String.fromCharCode(65 + k);
   });
 
-  // the pillars
-  const pillarW = Math.max(8, Math.min(22, Math.floor(((WAVE_W - WAVE_PAD_L - WAVE_PAD_R) / n) * 0.34)));
+  // the pillars (and their number / letter labels underneath)
+  const slot = (WAVE_W - WAVE_PAD_L - WAVE_PAD_R) / n;
+  const pillarW = Math.max(4, Math.min(48, Math.floor(Math.max(8, Math.min(22, slot * 0.34)) * st.pillarWidth / 100)));
   const pillars = svgEl("g", { class: "wavePillars" }, svg);
   for (let i = 0; i < n; i++) {
     const x = waveX(i, n);
-    svgEl("rect", { x: x - pillarW / 2, y: WAVE_TOP - 14, width: pillarW, height: WAVE_BOTTOM - WAVE_TOP + 28, rx: pillarW / 2, class: "wavePillar" }, pillars);
-    const label = svgEl("text", { x: x, y: WAVE_BOTTOM + 38, class: "wavePillarLabel" + (ended ? " revealed" : ""), "text-anchor": "middle" }, pillars);
-    label.textContent = ended ? String.fromCharCode(65 + target[i]) : String(i + 1);
+    if (st.pillarsShow) {
+      svgEl("rect", { x: x - pillarW / 2, y: WAVE_TOP - 14, width: pillarW, height: WAVE_BOTTOM - WAVE_TOP + 28, rx: pillarW / 2, fill: hexToRgba(st.pillarColor, st.pillarOpacity / 100), stroke: st.pillarOutline ? hexToRgba(st.pillarColor, 0.22) : "none", "stroke-width": 1.2 }, pillars);
+    }
+    if (st.labelsShow) {
+      const label = svgEl("text", { x: x, y: WAVE_BOTTOM + 38, "text-anchor": "middle", fill: ended ? blue : hexToRgba(st.labelColor, 0.55), style: "font:" + (ended ? 800 : 700) + " " + Math.round(st.labelSize * (ended ? 1.3 : 1)) + "px var(--font-display, sans-serif)" }, pillars);
+      label.textContent = ended ? String.fromCharCode(65 + target[i]) : String(i + 1);
+    }
   }
 
   // older guesses: faint white trails
-  trail.slice(0, -1).forEach((t) => {
-    svgEl("path", { d: wavePath(wordWave(t.word)), class: "waveLine waveTrail" }, svg);
-  });
+  if (st.trailShow && st.trailCount > 0) {
+    trail.slice(0, -1).slice(-st.trailCount).forEach((t) => {
+      svgEl("path", { d: wavePath(wordWave(t.word)), fill: "none", stroke: hexToRgba(st.whiteColor || "#ffffff", st.trailOpacity / 100), "stroke-width": st.trailThickness, "stroke-dasharray": "2 7", "stroke-linecap": "round" }, svg);
+    });
+  }
 
   // the light-blue wave = the secret word
-  svgEl("path", { d: wavePath(target), class: "waveLine waveTarget" + (won ? " waveWon" : "") }, svg);
-  const tdots = svgEl("g", { class: "waveTargetDots" }, svg);
-  for (let i = 0; i < n; i++) svgEl("circle", { cx: waveX(i, n), cy: waveY(target[i]), r: 7, class: "waveTargetDot" }, tdots);
+  const tPath = svgEl("path", { d: wavePath(target), fill: "none", stroke: blue, "stroke-width": st.blueThickness, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg);
+  if (st.blueGlow) tPath.style.filter = won ? "drop-shadow(0 0 10px rgba(143,255,190,.9))" : "drop-shadow(0 0 6px " + (st.blueColor ? st.blueColor : "rgba(143,211,255,.75)") + ")";
+  if (st.targetDotsShow) {
+    const tdots = svgEl("g", { class: "waveTargetDots" }, svg);
+    for (let i = 0; i < n; i++) svgEl("circle", { cx: waveX(i, n), cy: waveY(target[i]), r: st.targetDotSize, fill: blue, stroke: st.bg2, "stroke-width": 2 }, tdots);
+  }
 
   // the white wave = the newest guess, with a clue-colored dot on every pillar
   if (newest) {
     const vals = wordWave(newest.word);
-    const path = svgEl("path", { d: wavePath(vals), class: "waveLine waveGuess" + (animateNew ? " waveDraw" : ""), pathLength: "1" }, svg);
+    const path = svgEl("path", { d: wavePath(vals), fill: "none", stroke: white, "stroke-width": st.whiteThickness, "stroke-linecap": "round", "stroke-linejoin": "round", pathLength: "1", class: animateNew ? "waveGuess waveDraw" : "waveGuess" }, svg);
+    path.style.stroke = white; path.style.strokeWidth = String(st.whiteThickness);
+    if (st.whiteGlow) path.style.filter = "drop-shadow(0 0 4px " + (st.whiteColor ? st.whiteColor : "rgba(255,255,255,.7)") + ")";
     if (animateNew) path.style.strokeDasharray = "1";
-    const gdots = svgEl("g", { class: "waveGuessDots" }, svg);
-    for (let i = 0; i < n; i++) {
-      const c = (newest.clue || [])[i];
-      const dot = svgEl("circle", { cx: waveX(i, n), cy: waveY(vals[i]), r: 9, class: "waveGuessDot " + (CLUE_CLASS[c] || "clueGrey") + (animateNew ? " waveDotIn" : "") }, gdots);
-      if (animateNew) dot.style.animationDelay = (0.15 + i * 0.07) + "s";
-      const letter = svgEl("text", { x: waveX(i, n), y: waveY(vals[i]) + 4, class: "waveDotLetter", "text-anchor": "middle" }, gdots);
-      letter.textContent = newest.word[i].toUpperCase();
+    if (st.guessDotsShow) {
+      const gdots = svgEl("g", { class: "waveGuessDots" }, svg);
+      for (let i = 0; i < n; i++) {
+        const c = (newest.clue || [])[i];
+        const dot = svgEl("circle", { cx: waveX(i, n), cy: waveY(vals[i]), r: st.guessDotSize, stroke: st.bg2, "stroke-width": 2, class: "waveGuessDot " + (CLUE_CLASS[c] || "clueGrey") + (animateNew ? " waveDotIn" : "") }, gdots);
+        if (animateNew) dot.style.animationDelay = (0.15 + i * 0.07) + "s";
+        if (st.dotLettersShow) {
+          const letter = svgEl("text", { x: waveX(i, n), y: waveY(vals[i]) + st.guessDotSize * 0.42, "text-anchor": "middle", class: "waveDotLetter", style: "font:800 " + Math.max(7, Math.round(st.guessDotSize * 1.2)) + "px var(--font-display, sans-serif)" }, gdots);
+          letter.textContent = newest.word[i].toUpperCase();
+        }
+      }
     }
   }
+}
+
+// ---- Settings -> "Wave panel look" (update 92). Built from this list so every control sends one tiny patch to the server;
+// the server saves it and every connected screen repaints at once.
+const WAVE_CONTROLS = [
+  { h: "Panel box", rows: [
+    { k: "bgMode", l: "Background", t: "select", o: [["gradient", "Gradient (2 colors)"], ["solid", "One solid color"], ["transparent", "Transparent"]] },
+    { k: "bg1", l: "Background color 1", t: "color" }, { k: "bg2", l: "Background color 2 (gradient end, dot outlines)", t: "color" },
+    { k: "borderShow", l: "Show the panel border", t: "switch" }, { k: "borderColor", l: "Border color", t: "color" },
+    { k: "radius", l: "Corner roundness", t: "range", min: 0, max: 40, step: 1, u: "px" },
+    { k: "maxHeight", l: "Panel height (max)", t: "range", min: 160, max: 700, step: 10, u: "px" } ] },
+  { h: "Pillars", rows: [
+    { k: "pillarsShow", l: "Show the pillars", t: "switch" }, { k: "pillarColor", l: "Pillar color", t: "color" },
+    { k: "pillarOpacity", l: "Pillar strength", t: "range", min: 0, max: 80, step: 1, u: "%" },
+    { k: "pillarWidth", l: "Pillar width", t: "range", min: 30, max: 260, step: 5, u: "%" },
+    { k: "pillarOutline", l: "Pillar outline", t: "switch" },
+    { k: "labelsShow", l: "Show the numbers / letters under the pillars", t: "switch" }, { k: "labelColor", l: "Number color", t: "color" },
+    { k: "labelSize", l: "Number size", t: "range", min: 8, max: 32, step: 1, u: "px" } ] },
+  { h: "Horizontal letter lines", rows: [
+    { k: "guideShow", l: "Show the horizontal lines", t: "switch" }, { k: "guideColor", l: "Line color", t: "color" },
+    { k: "guideOpacity", l: "Line strength", t: "range", min: 2, max: 100, step: 1, u: "%" },
+    { k: "guideThickness", l: "Line thickness", t: "range", min: 0.5, max: 5, step: 0.5, u: "px" },
+    { k: "guideStyle", l: "Line style", t: "select", o: [["dotted", "Dotted"], ["dashed", "Dashed"], ["solid", "Solid"]] },
+    { k: "guideEvery", l: "Which letters get a line", t: "select", o: [["5", "A F K P U Z"], ["2", "Every 2nd letter"], ["1", "Every letter A-Z"], ["ends", "Only A and Z"]] } ] },
+  { h: "Letters on the left side", rows: [
+    { k: "scaleShow", l: "Show the letters on the left", t: "switch" }, { k: "scaleColor", l: "Letter color", t: "color" },
+    { k: "scaleOpacity", l: "Letter strength", t: "range", min: 10, max: 100, step: 1, u: "%" },
+    { k: "scaleSize", l: "Letter size", t: "range", min: 8, max: 30, step: 1, u: "px" },
+    { k: "scaleEvery", l: "Which letters are shown", t: "select", o: [["5", "A F K P U Z"], ["2", "Every 2nd letter"], ["1", "Every letter A-Z"], ["ends", "Only A and Z"]] } ] },
+  { h: "Light-blue wave (the secret word)", rows: [
+    { k: "blueColor", l: "Color", t: "color", auto: true },
+    { k: "blueThickness", l: "Line thickness", t: "range", min: 1, max: 18, step: 0.5, u: "px" },
+    { k: "blueGlow", l: "Glow", t: "switch" }, { k: "targetDotsShow", l: "Show the dots on the pillars", t: "switch" },
+    { k: "targetDotSize", l: "Dot size", t: "range", min: 3, max: 16, step: 1, u: "px" } ] },
+  { h: "White wave (the guess)", rows: [
+    { k: "whiteColor", l: "Color", t: "color", auto: true },
+    { k: "whiteThickness", l: "Line thickness", t: "range", min: 1, max: 14, step: 0.5, u: "px" },
+    { k: "whiteGlow", l: "Glow", t: "switch" }, { k: "guessDotsShow", l: "Show the green / yellow / grey dots", t: "switch" },
+    { k: "guessDotSize", l: "Dot size", t: "range", min: 4, max: 18, step: 1, u: "px" },
+    { k: "dotLettersShow", l: "Show the letter inside each dot", t: "switch" },
+    { k: "trailShow", l: "Show earlier guesses as faint trails", t: "switch" },
+    { k: "trailCount", l: "How many trails", t: "range", min: 0, max: 4, step: 1, u: "" },
+    { k: "trailThickness", l: "Trail thickness", t: "range", min: 1, max: 8, step: 0.5, u: "px" },
+    { k: "trailOpacity", l: "Trail strength", t: "range", min: 5, max: 80, step: 1, u: "%" } ] }
+];
+const WAVE_PRESETS = [
+  ["Night blue (standard)", {}],
+  ["Clean light", { bgMode: "solid", bg1: "#f4f7fb", bg2: "#ffffff", borderColor: "#c9d3e3", pillarColor: "#1b2a4a", pillarOpacity: 8, guideColor: "#1b2a4a", scaleColor: "#1b2a4a", labelColor: "#1b2a4a", blueColor: "#3aa0e8", whiteColor: "#1b2a4a", blueGlow: false, whiteGlow: false }],
+  ["Neon", { bgMode: "solid", bg1: "#07040f", bg2: "#07040f", borderColor: "#ff2ec4", pillarColor: "#ff2ec4", pillarOpacity: 12, guideColor: "#7a5cff", scaleColor: "#7a5cff", blueColor: "#00e5ff", whiteColor: "#fff700", blueThickness: 7, whiteThickness: 4 }],
+  ["Chalkboard", { bgMode: "solid", bg1: "#24362c", bg2: "#24362c", borderColor: "#8a6b3d", pillarColor: "#f2f0e6", pillarOpacity: 10, guideColor: "#f2f0e6", guideStyle: "dashed", scaleColor: "#f2f0e6", blueColor: "#8fd3ff", whiteColor: "#f7f3d9", blueGlow: false, whiteGlow: false }],
+  ["Minimal (no lines or letters)", { guideShow: false, scaleShow: false, pillarOutline: false }]
+];
+
+function buildWaveSettings() {
+  const body = document.getElementById("waveStyleBody");
+  if (!body || body.dataset.built) return;
+  body.dataset.built = "1";
+  const cur = () => Object.assign({}, WAVE_DEFAULTS, (lastState && lastState.game && lastState.game.waveStyle) || {});
+  const sendPatch = (patch) => send("set_wave_style", patch);
+  const pre = document.createElement("div");
+  pre.className = "waveStylePresets";
+  WAVE_PRESETS.forEach(([name, patch]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn btnGhost waveStyleBtn"; b.textContent = name;
+    b.addEventListener("click", () => { send("reset_wave_style", {}); if (Object.keys(patch).length) sendPatch(patch); });
+    pre.appendChild(b);
+  });
+  body.appendChild(pre);
+  WAVE_CONTROLS.forEach((grp) => {
+    const box = document.createElement("div"); box.className = "waveStyleGroup";
+    const h = document.createElement("h5"); h.textContent = grp.h; box.appendChild(h);
+    grp.rows.forEach((r) => {
+      const row = document.createElement("label"); row.className = "waveStyleRow"; row.dataset.key = r.k;
+      const lab = document.createElement("span"); lab.className = "waveStyleLabel"; lab.textContent = r.l; row.appendChild(lab);
+      let input;
+      if (r.t === "switch") {
+        input = document.createElement("input"); input.type = "checkbox";
+        input.addEventListener("change", () => sendPatch({ [r.k]: input.checked }));
+      } else if (r.t === "color") {
+        input = document.createElement("input"); input.type = "color";
+        input.addEventListener("input", () => sendPatch({ [r.k]: input.value }));
+        if (r.auto) {
+          const au = document.createElement("button"); au.type = "button"; au.className = "waveStyleAuto"; au.textContent = "Auto"; au.title = "Follow Color shades";
+          au.addEventListener("click", (e) => { e.preventDefault(); sendPatch({ [r.k]: "" }); });
+          row.appendChild(au);
+        }
+      } else if (r.t === "range") {
+        input = document.createElement("input"); input.type = "range"; input.min = r.min; input.max = r.max; input.step = r.step;
+        const val = document.createElement("span"); val.className = "waveStyleVal"; row.appendChild(val);
+        input.addEventListener("input", () => { val.textContent = input.value + r.u; });
+        input.addEventListener("change", () => sendPatch({ [r.k]: Number(input.value) }));
+      } else {
+        input = document.createElement("select");
+        r.o.forEach(([v, t]) => { const o = document.createElement("option"); o.value = v; o.textContent = t; input.appendChild(o); });
+        input.addEventListener("change", () => sendPatch({ [r.k]: input.value }));
+      }
+      input.className = "waveStyleInput"; row.appendChild(input);
+      box.appendChild(row);
+    });
+    body.appendChild(box);
+  });
+  const reset = document.createElement("button");
+  reset.type = "button"; reset.className = "btn btnGhost"; reset.textContent = "Reset the wave panel look";
+  reset.addEventListener("click", () => send("reset_wave_style", {}));
+  body.appendChild(reset);
+  body.syncFrom = () => {
+    const st = cur();
+    body.querySelectorAll(".waveStyleRow").forEach((row) => {
+      const k = row.dataset.key, r = WAVE_CONTROLS.flatMap((g) => g.rows).find((x) => x.k === k), input = row.querySelector(".waveStyleInput");
+      if (!r || !input || document.activeElement === input) return;
+      if (r.t === "switch") input.checked = !!st[k];
+      else if (r.t === "color") { input.value = st[k] || (k === "blueColor" ? "#8fd3ff" : "#ffffff"); row.classList.toggle("isAuto", !st[k]); }
+      else { input.value = st[k]; const v = row.querySelector(".waveStyleVal"); if (v) v.textContent = st[k] + r.u; }
+    });
+  };
+  body.syncFrom();
+}
+function syncWaveSettings() {
+  buildWaveSettings();
+  const body = document.getElementById("waveStyleBody");
+  if (body && body.syncFrom) body.syncFrom();
 }
 // the board scales with its box (viewBox), so no measuring is needed on resize.
 
@@ -711,6 +892,7 @@ function render(state) {
   renderModeUI(state.game);
   renderLengthBadge(state.game);
   renderWave(state.game);
+  syncWaveSettings();
   renderTiles(state.game);
   renderHintChips(state.game);
   renderModeNotes(state.game);

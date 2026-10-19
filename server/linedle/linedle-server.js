@@ -33,6 +33,7 @@ import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
 import * as HC from "../shared/hint-config-store.js"; // update 58: three hint types + host hint settings
 import * as WH from "../shared/word-hints.js";
 import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
+import { getWaveStyle, patchWaveStyle, resetWaveStyle } from "../shared/linedle-wave-store.js"; // update 92: wave panel look
 import { dictionaryState, loadDictionary, getWordsOfLength } from "../blindle/blindle-dictionary.js";
 import { buildDifficultyIndex } from "../blindle/blindle-difficulty.js";
 import * as WL from "../shared/word-language.js"; // update 48: word language
@@ -794,6 +795,8 @@ function buildStatePayload() {
       // The LIGHT-BLUE wave of the round: the secret word's letters as heights (A = 0 ... Z = 25), one per pillar. Shown to everyone
       // from the first second (that is the whole game); the secret word itself is only sent when the round ends.
       wave: game.status === "idle" || !game.secretWord ? null : { target: waveOf(game.secretWord) },
+      // update 92: the host's look of the wave panel (colors, thickness, show / hide switches) - shared by every screen.
+      waveStyle: getWaveStyle(),
       streak: game.streak,
       hintsUsed: game.hintsUsed,
       hintSuggestions: game.hintSuggestions,
@@ -915,6 +918,14 @@ function handleClientAction(ws, msg) {
       ws.emit("offline_guess_result", result);
       break;
     }
+    case "set_wave_style":
+      patchWaveStyle(payload);
+      broadcastState();
+      break;
+    case "reset_wave_style":
+      resetWaveStyle();
+      broadcastState();
+      break;
     case "set_starter_word":
       game.starterWord = setStarterWord("linedle", Boolean(payload && payload.on));
       broadcastState();
