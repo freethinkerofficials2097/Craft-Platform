@@ -1,6 +1,0 @@
-# Adjective / state roots that take memper- (memperbaiki, memperbesar ...) and intransitive me- (membesar, menguat ...).
-@M
-baik besar kecil cepat lambat lama panjang pendek tinggi rendah luas sempit lebar tebal tipis berat ringan kuat lemah keras
-lembut halus indah cantik jelas lengkap mudah sulit sukar dalam dangkal hebat erat dekat jauh murah mahal banyak sedikit
-mesra ramah sempurna buruk baru bersih rapi jernih terang gelap hangat dingin panas segar kokoh teguh kasar licin tajam
-tumpul lurus rata padat renggang longgar rapat ketat subur kering basah tenang ramai sepi riang gembira sedih marah
