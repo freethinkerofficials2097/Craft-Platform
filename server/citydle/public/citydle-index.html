@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>CITYDLE — Live City Guessing Game</title>
+<meta name="description" content="A live city-guessing game: guess the secret city. Green = the right city, yellow = right country, orange = right continent, grey = wrong continent - plus a direction arrow and the distance in km. Powered by TikTok LIVE chat." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+<link rel="stylesheet" href="/shared/theme.css" />
+<script src="/shared/theme.js"></script>
+<script src="/shared/session.js"></script>
+<script src="/shared/platform-sync.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="citydle-style.css" />
+<link rel="stylesheet" href="/shared/game-chrome.css" />
+<link rel="stylesheet" href="/shared/hints.css" />
+<link rel="stylesheet" href="/shared/settings-shell.css" />
+<link rel="stylesheet" href="/shared/game-colors.css" />
+<link rel="stylesheet" href="/shared/color-shades.css" />
+<script src="/shared/color-shades.js" data-game="citydle"></script>
+<link rel="stylesheet" href="/shared/legend.css" />
+<script src="/shared/legend.js" data-game="citydle"></script>
+<script src="/shared/title-font.js" defer></script>
+<script src="/shared/score-ticker.js"></script>
+<script src="/shared/hints.js"></script>
+<script src="/shared/settings-shell.js"></script>
+</head>
+<body data-game="citydle">
+  <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
+
+  <div class="app" id="app">
+
+    <div class="heroBand" id="heroBand">
+      <h1 class="heroTitle">CITYDLE</h1>
+      <p class="heroTagline">Guess the secret city! Green = right city, yellow = right country, orange = right continent, grey = wrong continent. Follow the arrow and the distance. Your chat guesses live!</p>
+    </div>
+
+    <header class="topbar">
+      <div class="brandRow">
+        <span class="brandDot" id="brandDot"></span>
+        <div class="brandText">
+          <div class="brandTitle">CITYDLE</div>
+          <div class="brandSubtitle">guess the secret city</div>
+        </div>
+      </div>
+      <div class="toolbarRow">
+        <a href="/" class="iconBtn" id="homeBtn" aria-label="Choose another game">🏠</a>
+        <span class="modeBadge" id="modeBadge">TEST</span>
+        <span class="lengthBadge" id="lengthBadge">🌍 cities</span>
+        <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint">💡</button>
+        <button class="iconBtn" id="helpBtn" type="button" aria-label="How to play">❓</button>
+        <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
+        <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">⚙️</button>
+        <button class="iconBtn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">⛶</button>
+      </div>
+    </header>
+
+    <div class="toastSlot"><div class="rejectionToast" id="rejectionToast" hidden></div></div>
+
+    <main class="stage" id="stage">
+      <section class="round-card">
+
+        <!-- Page order, top to bottom, nothing overlaps: floating message window (.toastSlot above) -> LEGEND
+             (inserted here by /shared/legend.js, right before the board) -> GUESS BOARD -> hints. -->
+        <!-- The guess board: the newest guess in a highlighted top row, then every guess sorted from the NEAREST city to the FARTHEST. Each row = city (colored by country / continent match) + direction arrow + distance in km. -->
+        <section class="fxBoard" id="fxBoard" aria-label="Guess board" hidden>
+          <div class="cdColHead" id="cdColHead" aria-hidden="true"><span class="cdColCity">City</span><span class="cdColDir">Direction</span><span class="cdColKm">Distance</span></div>
+          <div class="tilesWrap" id="tilesWrap"></div>
+          <p class="fxStatus" id="boardStatus" aria-live="polite"></p>
+        </section>
+        <div class="hintChips" id="hintChips"></div>
+        <p class="hintExplainer" id="hintExplainer" hidden>💡 suggests a city that fits every color and distance on the board (never the answer itself), reveals a letter of the city, or rules out letters. Unlimited uses.</p>
+
+        <div class="offlineNote" id="offlineNote" hidden>
+          <p>Solo practice — type your guess in the box below.</p>
+        </div>
+
+        <div class="resultBanner" id="resultBanner" hidden>
+          <p id="resultText"></p>
+          <button class="btn btnGold" id="playAgainBtn" type="button">Play again</button>
+          <p class="autoContinueNote" id="autoContinueNote" hidden></p>
+        </div>
+
+        <div class="idleBanner" id="idleBanner">
+          <p>Open <strong>Settings</strong> (⚙️ top right) to choose a mode and difficulty, then tap Apply to begin.</p>
+        </div>
+
+      </section>
+    </main>
+
+    <footer class="controls" id="controls">
+      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="true" aria-controls="controlsBody">
+        <span>Host controls</span>
+        <span id="handleArrow" class="handleArrow">▾</span>
+      </button>
+
+      <div class="controlsBody" id="controlsBody">
+
+        <div class="modeControls" id="liveControls" hidden>
+          <div class="row">
+            <input
+              id="tiktokUsernameBottom"
+              class="textInput"
+              placeholder="TikTok username (no @)"
+              autocapitalize="off" autocorrect="off" spellcheck="false"
+            />
+            <button id="connectBtnBottom" class="btn btnPrimary" type="button">Connect</button>
+          </div>
+          <div class="row">
+            <input id="setAnswerInputLive" class="textInput" placeholder="Set the secret city…" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="setAnswerBtnLive" class="btn btnGhost" type="button">Set</button>
+          </div>
+          <p class="miniStatus" id="setAnswerErrorLive"></p>
+        </div>
+
+        <div class="modeControls" id="testControls" hidden>
+          <p class="sectionNote">Test Mode is simulating chat automatically — nothing to connect.</p>
+          <div class="row">
+            <input id="setAnswerInputTest" class="textInput" placeholder="Set the secret city…" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="setAnswerBtnTest" class="btn btnGhost" type="button">Set</button>
+          </div>
+          <p class="miniStatus" id="setAnswerErrorTest"></p>
+        </div>
+
+        <div class="modeControls" id="offlineControls" hidden>
+          <div class="row">
+            <input
+              id="offlineGuessInput"
+              class="textInput"
+              placeholder="Type your guess…"
+              autocapitalize="off" autocorrect="off" spellcheck="false"
+            />
+            <button id="offlineGuessBtn" class="btn btnPrimary" type="button">Guess</button>
+          </div>
+          <p class="miniStatus" id="offlineError"></p>
+        </div>
+
+        <button id="giveUpBtn" class="btn btnGhost btnFull" type="button">Give up</button>
+        <p class="miniStatus" id="miniStatus"></p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Settings drawer -->
+  <div class="drawerOverlay" id="settingsOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Settings</h3>
+        <button class="iconBtn" id="closeSettings" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="statusChips">
+        <div class="statusChip" id="modeChip">Mode: —</div>
+        <div class="statusChip" id="connChip">Connection: —</div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Appearance</h4>
+        <p class="sectionNote">This colors the whole platform (hub and every game) — it used to live as a 🎨 icon in the top toolbar; it's here now so that row can stay a single line with every button visible, without shrinking, wrapping, scrolling, or needing to zoom out.</p>
+        <label class="theme-picker">
+          🎨
+          <select data-theme-select aria-label="Platform theme color">
+            <option value="cream">Cream</option>
+            <option value="blue">Sky Blue</option>
+            <option value="green">Meadow Green</option>
+            <option value="pink">Blossom Pink</option>
+            <option value="violet">Lavender Violet</option>
+            <option value="honey">Honey Gold</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Title font</h4>
+        <p class="sectionNote">Pick the font used for the game name at the top of the screen. Saved on this device and shared by every game.</p>
+        <div data-title-font-picker></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Mode</h4>
+        <button class="pickerRow" id="modePickerBtn" type="button">
+          <span id="modePickerLabel">Test — practice, scores not saved</span>
+          <span class="chev">▾</span>
+        </button>
+      </div>
+
+      <div class="drawerSection" id="tiktokSection">
+        <h4>TikTok auto-chat</h4>
+        <p class="sectionNote">
+          Connects to your LIVE room and feeds real chat guesses straight into the game. Only used in Live mode.
+        </p>
+        <label class="fieldLabel">Your TikTok username</label>
+        <input id="tiktokUsername" class="textInput" placeholder="e.g. yourhandle (no @)" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <div class="row">
+          <button id="connectBtn" class="btn btnGold" type="button">Connect</button>
+          <button id="disconnectBtn" class="btn btnGhost" type="button">Disconnect</button>
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Difficulty</h4>
+        <select id="difficultySelect" class="selectInput">
+          <option value="normal">Normal — famous and well-known cities</option>
+          <option value="medium">Medium — well-known and lesser-known cities</option>
+          <option value="hard">Hard — lesser-known cities only</option>
+          <option value="random" selected>Random — any city, fully mixed</option>
+        </select>
+        <p class="sectionNote">Decides how famous the secret city is. The city list covers more than 500 cities on every continent; chat can guess any city on that list (in English, with or without spaces and accents).</p>
+      </div>
+
+      <div class="drawerSection">
+        <label class="switchRow">
+          <input type="checkbox" id="autoContinueToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Auto-continue after each round</span>
+        </label>
+        <div class="row" id="delayRow">
+          <label class="fieldLabel delayLabel">Delay before next round (seconds)</label>
+          <input type="number" id="delayInput" class="textInput selectNarrow" min="3" max="120" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Colors</h4>
+        <p class="sectionNote">Recolor every part of CITYDLE: the four city-tile colors (green, yellow, orange, grey), the direction-arrow badge, the distance (km) badge and the frame around the newest guess. For each one pick a shade from the row of ten, or tap <strong>Pick any color</strong> for any color you like. The legend uses the very same colors: change one here, or on a legend entry (Legend settings), and the other follows right away - no new round needed, and every screen connected to this game follows too.</p>
+        <div id="shadePicker"></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Win celebration</h4>
+        <p class="sectionNote">After a win, the leaderboard pops up automatically, then closes on its own. Auto-continue (above) always waits for this celebration to finish before starting the next round.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show leaderboard for (seconds)</label>
+          <input type="number" id="leaderboardShowInput" class="textInput selectNarrow" min="1" max="30" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Starter city</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="starterWordToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Open every round with an automatic starter city</span>
+        </label>
+        <p class="sectionNote">On (default): one random well-known city is placed on the board for free at the start of each round (worth no points) so chat has a first color, direction and distance to read. Off: every round starts on a blank board. Takes effect at the next round.</p>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Floating message window</h4>
+        <p class="sectionNote">The small window above the legend and the board. It announces each new guess with its score and shows a short message whenever a guess is skipped.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show floating message for (seconds)</label>
+          <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
+        </div>
+      </div>
+
+      <button class="btn btnGold btnFull" id="applyBtn" type="button">Apply settings &amp; start new round</button>
+      <p class="sectionNote">Difficulty, auto-continue and this delay only take effect once you tap Apply. Win-celebration duration applies right away.</p>
+
+      <div class="drawerSection">
+        <h4>
+          Diagnostics
+          <button id="diagToggle" class="linkBtn" type="button" aria-expanded="true">hide</button>
+        </h4>
+        <div class="diagGrid" id="diagGrid"></div>
+      </div>
+
+      <div class="drawerSection" id="hintSettingsSection" data-hint-settings></div>
+
+      <div class="drawerSection">
+        <h4>Scores</h4>
+        <button class="btn btnDanger btnFull" id="resetRoundBtn" type="button">Reset this round's leaderboard</button>
+        <button class="btn btnDanger btnFull" id="resetTotalBtn" type="button">Reset all-time leaderboard</button>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Live event tools</h4>
+        <div data-engagement-tools></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode picker popup -->
+  <div class="pickerOverlay" id="modePickerOverlay" hidden>
+    <div class="pickerSheet">
+      <button class="pickerOption" data-mode="live" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Live</span>
+          <span class="pickerDesc">Counts for the chat leaderboard</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="test" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Test</span>
+          <span class="pickerDesc">Practice — scores not saved</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="offline" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Offline</span>
+          <span class="pickerDesc">Host plays solo</span>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Leaderboard drawer -->
+  <div class="drawerOverlay" id="leaderboardOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Leaderboard</h3>
+        <button class="iconBtn" id="closeLeaderboard" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="tabRow">
+        <button class="tabBtn active" id="tabThisRound" type="button">This round</button>
+        <button class="tabBtn" id="tabAllTime" type="button">All-time</button>
+      </div>
+      <ol class="leaderboard" id="leaderboardList"></ol>
+      <p class="sectionNote" id="leaderboardNote" hidden></p>
+    </div>
+  </div>
+
+  <!-- Win celebration: a sequence of floating windows -->
+  <div class="celebrationOverlay" id="celebrationOverlay" hidden>
+    <div class="celebrationCard" id="celebrationCard">
+      <button class="iconBtn celebrationClose" id="closeCelebration" type="button" aria-label="Close">✕</button>
+      <div class="celebrationBody" id="celebrationBody"></div>
+      <div class="celebrationDots" id="celebrationDots">
+        <span class="celebDot" data-stage="0"></span>
+        <span class="celebDot" data-stage="1"></span>
+        <span class="celebDot" data-stage="2"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- How-to-play modal -->
+  <div class="modalOverlay" id="howToOverlay" hidden>
+    <div class="modal">
+      <div class="modalHead">
+        <h3>How to play</h3>
+        <button class="iconBtn" id="closeHowTo" type="button" aria-label="Close">✕</button>
+      </div>
+      <ul class="howToList">
+        <li>Guess the <strong>secret city</strong>. <strong>Unlimited guesses</strong>, anyone can play, anytime. Type any real city (any size, anywhere in the world).</li>
+        <li>Every guess is colored: <strong>green</strong> = the right city, <strong>yellow</strong> = the right country but the wrong city, <strong>orange</strong> = the right continent but the wrong country, <strong>grey</strong> = the wrong continent (and so the wrong country).</li>
+        <li>Each guess also shows an <strong>arrow</strong> (the direction to guess next, toward the secret city) and the <strong>distance in km</strong> from the secret city.</li>
+        <li>Guesses are listed from the <strong>nearest to the farthest</strong> city. The <strong>newest guess</strong> is repeated in a highlighted row at the very top (it turns green when the city is found).</li>
+        <li>A city already on the board is skipped. The small <strong>floating window</strong> above the legend announces every new guess.</li>
+        <li>The <strong>legend</strong> above the board explains every color and column (the host can customize or hide it).</li>
+        <li><strong>Scoring (Live):</strong> the guess that finds the secret city wins <strong>5 points</strong>. Nothing else scores.</li>
+        <li>💡 unlimited hints: suggest a city that fits every clue on the board, reveal a letter, or rule out letters. Difficulty (Normal/Medium/Hard/Random) sets how famous the secret city is.</li>
+        <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = type guesses yourself.</li>
+      </ul>
+      <button class="btn btnGold" id="closeHowTo2" type="button">Got it</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/engagement.js"></script>
+  <script src="citydle-game.js"></script>
+</body>
+</html>
