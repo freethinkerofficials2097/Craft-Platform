@@ -175,6 +175,22 @@
         { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
+    citydle: {
+      title: "What the colors, arrow and distance mean",
+      items: [
+        { id: "green", glyph: "✓", label: "Green — the right city (round won)", c: V("--cd-green", "#4CAF50", "#FFFFFF", "#357A38") },
+        { id: "yellow", glyph: "A", label: "Yellow — right country, but the wrong city", c: V("--cd-yellow", "#E3B505", "#1B1B1F", "#A98200") },
+        { id: "orange", glyph: "A", label: "Orange — right continent, but the wrong country", c: V("--cd-orange", "#EE7B30", "#1B1B1F", "#B45514") },
+        { id: "gray", glyph: "A", label: "Grey — wrong continent (and so the wrong country)", c: V("--cd-gray", "#8A8A92", "#121214", "#6A6A72") },
+        { id: "arrow", glyph: "↗", label: "Arrow — the direction to guess next, toward the secret city", c: V("--cd-dir", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "km", glyph: "km", label: "Distance — how many kilometers the guessed city is from the secret city", c: V("--cd-km", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "latest", glyph: "NEW", label: "Framed top row — the newest guess", c: V("--cd-frame", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "list", glyph: "↓", label: "Rows below — all guesses, nearest city first", c: V("--cd-gray", "#8A8A92", "#121214", "#6A6A72") },
+        { id: "score", glyph: "+5", label: "Score — 5 points for the guess that finds the secret city", c: V("--cd-green", "#4CAF50", "#FFFFFF", "#357A38") },
+        { id: "starter", glyph: "🎲", label: "Starter city — free first guess, no points", c: { bg: "transparent", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+      ]
+    },
     linedle: {
       title: "What the waves, pillars and colors mean",
       items: [
@@ -231,6 +247,15 @@
       ]
     }
   };
+
+  /* Games whose legend chip colors are the SAME colors as the game (edited through /shared/color-shades.js):
+     legend entry id -> color id. Change a color in the game's "Color shades" settings OR on a legend entry and
+     both follow - they are one color, not two copies. */
+  var SYNC_MAP = {
+    citydle: { green: "green", yellow: "yellow", orange: "orange", gray: "gray", arrow: "dir", km: "km", latest: "latest", list: "gray", score: "green" }
+  };
+  var SYNC = SYNC_MAP[game] || null;
+  function syncId(id) { return SYNC && window.ColorShades && SYNC[id] ? SYNC[id] : null; }
 
   var DEF = DEFAULTS[game];
   if (!DEF) return; // not a game with a legend
@@ -466,6 +491,7 @@
 
   /* ------------------------------------------------------------------ rendering */
   function itemColors(it, d) {
+    if (d && syncId(it.id)) return d.c; // follows the game's own color variables
     if (it.color) return { bg: it.color, fg: inkFor(it.color), bd: darker(it.color) };
     return d ? d.c : { bg: "#888", fg: "#fff", bd: "rgba(0,0,0,.35)" };
   }
@@ -779,7 +805,9 @@
       var d = dm[it.id];
       var li = document.createElement("li");
       li.className = "lgEdit" + (it.enabled ? "" : " off");
-      var colorValue = it.color || (d ? resolveHex(d.c.bg) : "#888888");
+      var sid = d ? syncId(it.id) : null;
+      var colorValue = sid ? resolveHex(d.c.bg) : (it.color || (d ? resolveHex(d.c.bg) : "#888888"));
+      li.setAttribute("data-id", it.id);
       li.innerHTML =
         '<button type="button" class="lgMini lgUp" title="Move up"' + (idx === 0 ? " disabled" : "") + ">↑</button>" +
         '<button type="button" class="lgMini lgDn" title="Move down"' + (idx === S.items.length - 1 ? " disabled" : "") + ">↓</button>" +
@@ -787,7 +815,7 @@
         '<input type="text" class="lgGlyph" maxlength="6" title="Text inside the colored chip" placeholder="chip" value="' + esc(it.glyph) + '">' +
         '<input type="text" class="lgLabel" maxlength="80" title="Text next to the chip" placeholder="Meaning" value="' + esc(it.label) + '">' +
         '<input type="color" class="lgColor" title="Chip color" value="' + colorValue + '">' +
-        (d ? '<button type="button" class="lgMini lgRst" title="Back to the game\'s own color"' + (it.color ? "" : " disabled") + ">↺</button>" : "") +
+        (d ? '<button type="button" class="lgMini lgRst" title="Back to the game\'s own color"' + ((sid ? !window.ColorShades.isStandard(sid) : it.color) ? "" : " disabled") + ">↺</button>" : "") +
         '<button type="button" class="lgMini lgDel" title="Delete this entry">✕</button>';
       ul.appendChild(li);
 
@@ -810,9 +838,15 @@
       li.querySelector(".lgOn").addEventListener("change", function (e) { var c = live(); if (!c) return; c.enabled = e.target.checked; li.classList.toggle("off", !c.enabled); commit(false); });
       li.querySelector(".lgGlyph").addEventListener("input", function (e) { var c = live(); if (!c) return; c.glyph = e.target.value; commit(false); });
       li.querySelector(".lgLabel").addEventListener("input", function (e) { var c = live(); if (!c) return; c.label = e.target.value; commit(false); });
-      li.querySelector(".lgColor").addEventListener("input", function (e) { var c = live(); if (!c) return; c.color = e.target.value; commit(false); var r = li.querySelector(".lgRst"); if (r) r.disabled = false; });
+      li.querySelector(".lgColor").addEventListener("input", function (e) {
+        if (sid) { window.ColorShades.setCustom(sid, e.target.value, true); var r0 = li.querySelector(".lgRst"); if (r0) r0.disabled = false; return; }
+        var c = live(); if (!c) return; c.color = e.target.value; commit(false); var r = li.querySelector(".lgRst"); if (r) r.disabled = false; });
       var rst = li.querySelector(".lgRst");
-      if (rst) rst.addEventListener("click", function () { var c = live(); if (!c) return; delete c.color; commit(true); });
+      if (sid) li.querySelector(".lgColor").addEventListener("change", function (e) { window.ColorShades.setCustom(sid, e.target.value, false); });
+      if (rst) rst.addEventListener("click", function () {
+        if (sid) { window.ColorShades.reset(sid); return; }
+        var c = live(); if (!c) return; delete c.color; commit(true);
+      });
       var del = li.querySelector(".lgDel");
       if (del) del.addEventListener("click", function () {
         for (var k = 0; k < S.items.length; k++) if (S.items[k].id === it.id) { S.items.splice(k, 1); break; }
@@ -825,6 +859,19 @@
     var rs = panelRoot.querySelector("#lgRestore");
     if (rs) { rs.disabled = !(S.removed && S.removed.length); rs.textContent = "Restore removed entries" + (S.removed && S.removed.length ? " (" + S.removed.length + ")" : ""); }
   }
+
+  // When a color changes anywhere (the game's Color shades picker, another screen, or another legend entry),
+  // refresh the color boxes in the legend editor so they show the same color.
+  document.addEventListener("colorshades:change", function () {
+    if (!SYNC || !panelRoot) return;
+    var dm = defMap();
+    Array.prototype.forEach.call(panelRoot.querySelectorAll("#lgItems li.lgEdit"), function (li) {
+      var id = li.getAttribute("data-id"), sid = syncId(id), inp = li.querySelector(".lgColor"), r = li.querySelector(".lgRst");
+      if (!sid || !dm[id] || !inp) return;
+      if (document.activeElement !== inp) inp.value = resolveHex(dm[id].c.bg);
+      if (r) r.disabled = window.ColorShades.isStandard(sid);
+    });
+  });
 
   function wirePanel() {
     function q(id) { return panelRoot.querySelector("#" + id); }

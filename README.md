@@ -1,3 +1,5 @@
+> **Update 94:** new game CITYDLE (guess the secret city: green city / yellow country / orange continent / grey, plus direction arrow and distance in km; nearest guesses first; 5 points) at `/citydle/`. See `CHANGES_UPDATE_94.md`.
+
 > **Update 93:** LINEDLE: the Wave panel look card is now under Settings -> Look & sound and has a 🌊 shortcut button in the top bar. See `CHANGES_UPDATE_93.md`.
 
 > **Update 92:** LINEDLE wave panel is fully customizable (Settings -> Wave panel look): colors, line thickness, show / hide the horizontal letter lines and the A-Z letters on the left, pillars, dots, trails, 5 ready looks. See `CHANGES_UPDATE_92.md`.

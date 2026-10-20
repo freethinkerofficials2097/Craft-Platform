@@ -27,6 +27,7 @@
 //   /comparable/ - COMPARABLE (Socket.IO namespace /comparable)
 //   /minedle/ - MINEDLE (Socket.IO namespace /minedle)
 //   /linedle/ - LINEDLE (Socket.IO namespace /linedle)
+//   /citydle/ - CITYDLE (Socket.IO namespace /citydle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
@@ -62,6 +63,7 @@ import { mountBetweendle } from "./server/betweendle/betweendle-server.js";
 import { mountComparable } from "./server/comparable/comparable-server.js";
 import { mountMinedle } from "./server/minedle/minedle-server.js";
 import { mountLinedle } from "./server/linedle/linedle-server.js";
+import { mountCitydle } from "./server/citydle/citydle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
@@ -280,6 +282,11 @@ await mountMinedle(app, io, { mountPath: "/minedle" });
 // Scoring: 1 point for the guess that solves the round. Own Socket.IO namespace /linedle; reuses BLINDLE's word bank +
 // dictionary (loaded once).
 await mountLinedle(app, io, { mountPath: "/linedle" });
+
+// CITYDLE is a BLINDLE sibling (on the FIXLE board) where chat guesses a secret CITY: green = the city, yellow = right country, orange =
+// right continent, grey = wrong continent, plus a direction arrow and the distance in km. Nearest guesses are listed first.
+// Scoring: 5 points for the guess that finds the secret city. Own Socket.IO namespace /citydle; the city list is built in.
+await mountCitydle(app, io, { mountPath: "/citydle" });
 
 // FIXLE is a BLINDLE copy built on the EDGE-O idea: every guess is scored with MATCHING PREFIX + MATCHING SUFFIX against the
 // secret word (letters that match from the start + letters that match from the end). The board lists the guesses from the

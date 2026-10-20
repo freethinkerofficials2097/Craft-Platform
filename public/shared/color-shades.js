@@ -115,6 +115,15 @@
       { id: "latest", label: "Dark grey", hint: "the newest-guess row at the top and the score badges", std: "#3C3C40", stdDark: "#28282B", vars: ["--fx-latest"], darkVars: ["--fx-latest-dark"], inkVars: ["--fx-latest-ink"] },
       { id: "found", label: "Green", hint: "the top row once the secret word is found (score = twice the word length)", std: "#4CAF50", stdDark: "#357A38", vars: ["--fx-found"], darkVars: ["--fx-found-dark"], inkVars: ["--fx-found-ink"] }
     ],
+    citydle: [
+      { id: "green", label: "City tile: Green", hint: "the right city (found city row, legend, +5 score chip)", std: "#4CAF50", stdDark: "#357A38", vars: ["--cd-green"], darkVars: ["--cd-green-dark"], inkVars: ["--cd-green-ink"] },
+      { id: "yellow", label: "City tile: Yellow", hint: "right country, wrong city", std: "#E3B505", stdDark: "#A98200", vars: ["--cd-yellow"], darkVars: ["--cd-yellow-dark"], inkVars: ["--cd-yellow-ink"] },
+      { id: "orange", label: "City tile: Orange", hint: "right continent, wrong country", std: "#EE7B30", stdDark: "#B45514", vars: ["--cd-orange"], darkVars: ["--cd-orange-dark"], inkVars: ["--cd-orange-ink"] },
+      { id: "gray", label: "City tile: Grey", hint: "wrong continent (and so wrong country)", std: "#8A8A92", stdDark: "#6A6A72", vars: ["--cd-gray"], darkVars: ["--cd-gray-dark"], inkVars: ["--cd-gray-ink"] },
+      { id: "dir", label: "Direction arrow badge", hint: "the arrow column (and the arrow chip in the legend)", std: "#3C3C40", stdDark: "#28282B", vars: ["--cd-dir"], darkVars: ["--cd-dir-dark"], inkVars: ["--cd-dir-ink"] },
+      { id: "km", label: "Distance (km) badge", hint: "the distance column (and the km chip in the legend)", std: "#3C3C40", stdDark: "#28282B", vars: ["--cd-km"], darkVars: ["--cd-km-dark"], inkVars: ["--cd-km-ink"] },
+      { id: "latest", label: "Newest-guess frame", hint: "the frame around the newest guess (and the NEW chip in the legend)", std: "#3C3C40", stdDark: "#28282B", vars: ["--cd-frame", "--fx-latest"], darkVars: ["--cd-frame-dark", "--fx-latest-dark"], inkVars: ["--cd-frame-ink", "--fx-latest-ink"] }
+    ],
     linedle: [
       { id: "green", label: "Green", hint: "right letter, right spot (guess tiles, wave dots & legend)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--ln-green"], darkVars: ["--ln-green-dark"], inkVars: ["--ln-green-ink"] },
       { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (guess tiles, wave dots & legend)", std: "#D9A700", stdDark: "#A98200", vars: ["--ln-yellow"], darkVars: ["--ln-yellow-dark"], inkVars: ["--ln-yellow-ink"] },
@@ -246,11 +255,15 @@
     var v = current[id];
     return typeof v === "number" && v >= 0 && v < SHADE_COUNT ? v : STANDARD;
   }
+  var HEX_RE = /^#[0-9a-fA-F]{6}$/;
+  function isCustom(id) { return typeof current[id] === "string" && HEX_RE.test(current[id]); }
   function hexOf(color) {
+    if (isCustom(color.id)) return current[color.id].toUpperCase(); // a free color picked with the color wheel
     return ramp(color.std)[shadeIndexOf(color.id)];
   }
+  function isStandard(id) { return !isCustom(id) && shadeIndexOf(id) === STANDARD; }
 
-  function applyAll() {
+  function applyAll(skipRender) {
     var root = document.documentElement;
     colors.forEach(function (color) {
       var hex = hexOf(color);
@@ -260,7 +273,7 @@
       (color.glowVars || []).forEach(function (v) { root.style.setProperty(v, glowOf(hex)); });
     });
     try { document.dispatchEvent(new CustomEvent("colorshades:change", { detail: { game: game } })); } catch (e) {}
-    renderAll();
+    if (!skipRender) renderAll();
   }
 
   function cache() {
@@ -270,6 +283,7 @@
     try {
       var raw = JSON.parse(localStorage.getItem(storageKey) || "{}");
       Object.keys(raw).forEach(function (k) {
+        if (typeof raw[k] === "string" && HEX_RE.test(raw[k])) { current[k] = raw[k].toUpperCase(); return; }
         var n = Math.round(Number(raw[k]));
         if (n >= 0 && n < SHADE_COUNT) current[k] = n;
       });
@@ -277,11 +291,26 @@
   }
 
   function setShade(id, shade) {
+    dragging = false;
     current[id] = shade;
     cache();
     applyAll();
     if (socket && socket.connected) socket.emit("shades:set", { game: game, color: id, shade: shade });
   }
+  // A free color from the color wheel. live = true while the wheel is still being dragged (no re-draw of the picker).
+  var emitTimer = null, dragging = false;
+  function setCustom(id, hex, live) {
+    if (!HEX_RE.test(hex)) return;
+    hex = hex.toUpperCase();
+    current[id] = hex;
+    cache();
+    applyAll(!!live);
+    dragging = !!live;
+    function emit() { if (socket && socket.connected) socket.emit("shades:set", { game: game, color: id, shade: hex }); }
+    if (live) { clearTimeout(emitTimer); emitTimer = setTimeout(emit, 120); }
+    else { clearTimeout(emitTimer); emit(); }
+  }
+  function resetOne(id) { setShade(id, STANDARD); }
   function resetAll() {
     current = {};
     cache();
@@ -304,7 +333,7 @@
     box.appendChild(legend);
 
     colors.forEach(function (color) {
-      var steps = ramp(color.std), sel = shadeIndexOf(color.id);
+      var steps = ramp(color.std), custom = isCustom(color.id), sel = custom ? -1 : shadeIndexOf(color.id);
       var row = document.createElement("div");
       row.className = "shadeRow";
 
@@ -315,7 +344,7 @@
       name.textContent = color.label;
       var cur = document.createElement("span");
       cur.className = "shadeCurrent";
-      cur.textContent = SHADE_NAMES[sel] + " · " + (sel + 1) + "/" + SHADE_COUNT;
+      cur.textContent = custom ? "Custom · " + hexOf(color) : SHADE_NAMES[sel] + " · " + (sel + 1) + "/" + SHADE_COUNT;
       head.appendChild(name);
       head.appendChild(cur);
       row.appendChild(head);
@@ -342,6 +371,32 @@
         opts.appendChild(b);
       });
       row.appendChild(opts);
+
+      // Free color: any color from the color wheel (shared by every screen + the legend).
+      var cust = document.createElement("div");
+      cust.className = "shadeCustomRow";
+      var lab = document.createElement("label");
+      lab.className = "shadeCustomLabel";
+      var inp = document.createElement("input");
+      inp.type = "color";
+      inp.className = "shadeCustomInput" + (custom ? " selected" : "");
+      inp.value = hexOf(color).toLowerCase();
+      inp.setAttribute("aria-label", color.label + " custom color");
+      inp.addEventListener("input", function () { setCustom(color.id, inp.value, true); cur.textContent = "Custom · " + inp.value.toUpperCase(); });
+      inp.addEventListener("change", function () { setCustom(color.id, inp.value, false); });
+      var txt = document.createElement("span");
+      txt.textContent = "Pick any color";
+      lab.appendChild(inp);
+      lab.appendChild(txt);
+      cust.appendChild(lab);
+      var one = document.createElement("button");
+      one.type = "button";
+      one.className = "shadeOneReset";
+      one.textContent = "↺ Standard";
+      one.disabled = isStandard(color.id);
+      one.addEventListener("click", function () { resetOne(color.id); });
+      cust.appendChild(one);
+      row.appendChild(cust);
       box.appendChild(row);
     });
 
@@ -370,9 +425,11 @@
       socket.on("connect", function () { socket.emit("shades:join", { game: game }); });
       socket.on("shades:state", function (msg) {
         if (!msg || msg.game !== game) return;
+        if (dragging) return; // the wheel is being dragged on this screen - keep what the host sees
         current = {};
         var s = msg.shades || {};
         Object.keys(s).forEach(function (k) {
+          if (typeof s[k] === "string" && HEX_RE.test(s[k])) { current[k] = s[k].toUpperCase(); return; }
           var n = Math.round(Number(s[k]));
           if (n >= 0 && n < SHADE_COUNT) current[k] = n;
         });
@@ -408,6 +465,11 @@
       for (var i = 0; i < colors.length; i++) if (colors[i].id === id) return hexOf(colors[i]);
       return null;
     },
-    ramp: ramp
+    ramp: ramp,
+    // Used by the legend so its color pickers and this picker edit the SAME color.
+    setCustom: setCustom,
+    reset: resetOne,
+    isStandard: isStandard,
+    isCustom: isCustom
   };
 })();
