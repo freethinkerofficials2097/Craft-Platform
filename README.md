@@ -1,3 +1,5 @@
+> **Update 95:** CITYDLE: City colors card (legend always matches) + 6,300+ cities (and a way to load every city of the world); NEW game EXPANDLE (grow a word one letter per row in 60 s, 1 point per word) at `/expandle/`. See `CHANGES_UPDATE_95.md`.
+
 > **Update 94:** new game CITYDLE (guess the secret city: green city / yellow country / orange continent / grey, plus direction arrow and distance in km; nearest guesses first; 5 points) at `/citydle/`. See `CHANGES_UPDATE_94.md`.
 
 > **Update 93:** LINEDLE: the Wave panel look card is now under Settings -> Look & sound and has a 🌊 shortcut button in the top bar. See `CHANGES_UPDATE_93.md`.

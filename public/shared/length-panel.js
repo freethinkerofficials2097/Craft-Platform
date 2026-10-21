@@ -470,7 +470,7 @@
   function syncControls() { if (!ui) return; for (var k in ui) ui[k](); paintPreviews(); }
 
   function mountPanel() {
-    var picker = document.getElementById("shadePicker") || document.querySelector("[data-color-shades]");
+    var picker = document.getElementById("shadePicker") || document.querySelector("[data-color-shades]") || document.getElementById("exColorsBody") || document.getElementById("cdColorsBody"); // update 99: EXPANDLE / CITYDLE have their own colors card instead of Color shades
     if (!picker || document.getElementById("lengthPanelSettings")) return;
     var host = picker.closest(".drawerSection") || picker.closest(".host-card");
     if (!host) return;

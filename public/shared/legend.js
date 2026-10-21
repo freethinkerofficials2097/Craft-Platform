@@ -183,12 +183,23 @@
         { id: "orange", glyph: "A", label: "Orange — right continent, but the wrong country", c: V("--cd-orange", "#EE7B30", "#1B1B1F", "#B45514") },
         { id: "gray", glyph: "A", label: "Grey — wrong continent (and so the wrong country)", c: V("--cd-gray", "#8A8A92", "#121214", "#6A6A72") },
         { id: "arrow", glyph: "↗", label: "Arrow — the direction to guess next, toward the secret city", c: V("--cd-dir", "#3C3C40", "#F3F1E6", "#28282B") },
-        { id: "km", glyph: "km", label: "Distance — how many kilometers the guessed city is from the secret city", c: V("--cd-km", "#3C3C40", "#F3F1E6", "#28282B") },
-        { id: "latest", glyph: "NEW", label: "Framed top row — the newest guess", c: V("--cd-frame", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "km", glyph: "km", label: "Distance — how far the guessed city is from the secret city (km or miles, chosen in Settings)", c: V("--cd-km", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "latest", glyph: "NEW", label: "Framed top row — the newest guess", c: V("--cd-frame", "#3C3C40", "#FFFFFF", "#28282B") },
         { id: "list", glyph: "↓", label: "Rows below — all guesses, nearest city first", c: V("--cd-gray", "#8A8A92", "#121214", "#6A6A72") },
         { id: "score", glyph: "+5", label: "Score — 5 points for the guess that finds the secret city", c: V("--cd-green", "#4CAF50", "#FFFFFF", "#357A38") },
         { id: "starter", glyph: "🎲", label: "Starter city — free first guess, no points", c: { bg: "transparent", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
         { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+      ]
+    },
+    expandle: {
+      title: "What the colors and rows mean",
+      items: [
+        { id: "tile", glyph: "A", label: "Letter tiles — every letter of every row has this color", c: V("--ex-tile", "#3A7BD5", "#FFFFFF", "#2757A3") },
+        { id: "rule", glyph: "↑", label: "Each row = the row below + exactly ONE new letter, shuffled into a real word (3, 4, 5, 6 letters ...)", c: V("--ex-frame", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "latest", glyph: "NEW", label: "Framed row on top — the newest word; only the first valid word per row counts", c: V("--ex-frame", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "timer", glyph: "60", label: "Clock — the round ends when it reaches zero (turns red in the last 10 seconds)", c: V("--ex-timer", "#2E7D32", "#FFFFFF", "#1F5E24") },
+        { id: "score", glyph: "+1", label: "Score — 1 point for every accepted word", c: V("--ex-tile", "#3A7BD5", "#FFFFFF", "#2757A3") },
+        { id: "float", glyph: "!", label: "Floating window — announces each new word", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
     linedle: {
@@ -247,15 +258,6 @@
       ]
     }
   };
-
-  /* Games whose legend chip colors are the SAME colors as the game (edited through /shared/color-shades.js):
-     legend entry id -> color id. Change a color in the game's "Color shades" settings OR on a legend entry and
-     both follow - they are one color, not two copies. */
-  var SYNC_MAP = {
-    citydle: { green: "green", yellow: "yellow", orange: "orange", gray: "gray", arrow: "dir", km: "km", latest: "latest", list: "gray", score: "green" }
-  };
-  var SYNC = SYNC_MAP[game] || null;
-  function syncId(id) { return SYNC && window.ColorShades && SYNC[id] ? SYNC[id] : null; }
 
   var DEF = DEFAULTS[game];
   if (!DEF) return; // not a game with a legend
@@ -415,6 +417,19 @@
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function hexToRgb(hex) { var n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  // CITYDLE / EXPANDLE: the legend chips of the game's own colors are LINKED to the game (CitydleColors / ExpandleColors).
+  // Changing a chip color here changes the game, and changing it in the game's Settings changes the chip.
+  function linkedApi() { return game === "citydle" ? window.CitydleColors : game === "expandle" ? window.ExpandleColors : null; }
+  function cdLinked(id) { var api = linkedApi(); return api && api.legendKey(id); }
+  if (game === "citydle" || game === "expandle") window.addEventListener(game + "-colors", function () {
+    var api = linkedApi();
+    var lis = document.querySelectorAll("#lgItems li[data-lgid]");
+    for (var i = 0; i < lis.length; i++) {
+      var part = api && api.legendKey(lis[i].dataset.lgid);
+      var inp = lis[i].querySelector(".lgColor");
+      if (part && inp && document.activeElement !== inp) inp.value = api.getPart(part);
+    }
+  });
   function inkFor(hex) {
     var c = hexToRgb(hex);
     function lin(v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
@@ -491,8 +506,7 @@
 
   /* ------------------------------------------------------------------ rendering */
   function itemColors(it, d) {
-    if (d && syncId(it.id)) return d.c; // follows the game's own color variables
-    if (it.color) return { bg: it.color, fg: inkFor(it.color), bd: darker(it.color) };
+    if (it.color && !cdLinked(it.id)) return { bg: it.color, fg: inkFor(it.color), bd: darker(it.color) };
     return d ? d.c : { bg: "#888", fg: "#fff", bd: "rgba(0,0,0,.35)" };
   }
   function buildSection() {
@@ -805,9 +819,8 @@
       var d = dm[it.id];
       var li = document.createElement("li");
       li.className = "lgEdit" + (it.enabled ? "" : " off");
-      var sid = d ? syncId(it.id) : null;
-      var colorValue = sid ? resolveHex(d.c.bg) : (it.color || (d ? resolveHex(d.c.bg) : "#888888"));
-      li.setAttribute("data-id", it.id);
+      var colorValue = cdLinked(it.id) ? linkedApi().getPart(cdLinked(it.id)) : (it.color || (d ? resolveHex(d.c.bg) : "#888888"));
+      li.dataset.lgid = it.id;
       li.innerHTML =
         '<button type="button" class="lgMini lgUp" title="Move up"' + (idx === 0 ? " disabled" : "") + ">↑</button>" +
         '<button type="button" class="lgMini lgDn" title="Move down"' + (idx === S.items.length - 1 ? " disabled" : "") + ">↓</button>" +
@@ -815,7 +828,7 @@
         '<input type="text" class="lgGlyph" maxlength="6" title="Text inside the colored chip" placeholder="chip" value="' + esc(it.glyph) + '">' +
         '<input type="text" class="lgLabel" maxlength="80" title="Text next to the chip" placeholder="Meaning" value="' + esc(it.label) + '">' +
         '<input type="color" class="lgColor" title="Chip color" value="' + colorValue + '">' +
-        (d ? '<button type="button" class="lgMini lgRst" title="Back to the game\'s own color"' + ((sid ? !window.ColorShades.isStandard(sid) : it.color) ? "" : " disabled") + ">↺</button>" : "") +
+        (d ? '<button type="button" class="lgMini lgRst" title="Back to the game\'s own color"' + (it.color || cdLinked(it.id) ? "" : " disabled") + ">↺</button>" : "") +
         '<button type="button" class="lgMini lgDel" title="Delete this entry">✕</button>';
       ul.appendChild(li);
 
@@ -838,15 +851,9 @@
       li.querySelector(".lgOn").addEventListener("change", function (e) { var c = live(); if (!c) return; c.enabled = e.target.checked; li.classList.toggle("off", !c.enabled); commit(false); });
       li.querySelector(".lgGlyph").addEventListener("input", function (e) { var c = live(); if (!c) return; c.glyph = e.target.value; commit(false); });
       li.querySelector(".lgLabel").addEventListener("input", function (e) { var c = live(); if (!c) return; c.label = e.target.value; commit(false); });
-      li.querySelector(".lgColor").addEventListener("input", function (e) {
-        if (sid) { window.ColorShades.setCustom(sid, e.target.value, true); var r0 = li.querySelector(".lgRst"); if (r0) r0.disabled = false; return; }
-        var c = live(); if (!c) return; c.color = e.target.value; commit(false); var r = li.querySelector(".lgRst"); if (r) r.disabled = false; });
+      li.querySelector(".lgColor").addEventListener("input", function (e) { var c = live(); if (!c) return; if (cdLinked(it.id)) { delete c.color; linkedApi().setLegendPart(cdLinked(it.id), e.target.value); commit(false); return; } c.color = e.target.value; commit(false); var r = li.querySelector(".lgRst"); if (r) r.disabled = false; });
       var rst = li.querySelector(".lgRst");
-      if (sid) li.querySelector(".lgColor").addEventListener("change", function (e) { window.ColorShades.setCustom(sid, e.target.value, false); });
-      if (rst) rst.addEventListener("click", function () {
-        if (sid) { window.ColorShades.reset(sid); return; }
-        var c = live(); if (!c) return; delete c.color; commit(true);
-      });
+      if (rst) rst.addEventListener("click", function () { var c = live(); if (!c) return; delete c.color; if (cdLinked(it.id)) linkedApi().resetLegendPart(cdLinked(it.id)); commit(true); });
       var del = li.querySelector(".lgDel");
       if (del) del.addEventListener("click", function () {
         for (var k = 0; k < S.items.length; k++) if (S.items[k].id === it.id) { S.items.splice(k, 1); break; }
@@ -859,19 +866,6 @@
     var rs = panelRoot.querySelector("#lgRestore");
     if (rs) { rs.disabled = !(S.removed && S.removed.length); rs.textContent = "Restore removed entries" + (S.removed && S.removed.length ? " (" + S.removed.length + ")" : ""); }
   }
-
-  // When a color changes anywhere (the game's Color shades picker, another screen, or another legend entry),
-  // refresh the color boxes in the legend editor so they show the same color.
-  document.addEventListener("colorshades:change", function () {
-    if (!SYNC || !panelRoot) return;
-    var dm = defMap();
-    Array.prototype.forEach.call(panelRoot.querySelectorAll("#lgItems li.lgEdit"), function (li) {
-      var id = li.getAttribute("data-id"), sid = syncId(id), inp = li.querySelector(".lgColor"), r = li.querySelector(".lgRst");
-      if (!sid || !dm[id] || !inp) return;
-      if (document.activeElement !== inp) inp.value = resolveHex(dm[id].c.bg);
-      if (r) r.disabled = window.ColorShades.isStandard(sid);
-    });
-  });
 
   function wirePanel() {
     function q(id) { return panelRoot.querySelector("#" + id); }
@@ -928,7 +922,7 @@
 
   function mountPanel() {
     // Same mount points the Color shades picker uses; the legend section goes right after it.
-    var picker = document.getElementById("shadePicker") || document.querySelector("[data-color-shades]");
+    var picker = document.getElementById("shadePicker") || document.querySelector("[data-color-shades]") || document.getElementById("cdColorsBody") || document.getElementById("exColorsBody"); // update 96: CITYDLE / EXPANDLE have no Color shades card - the legend settings go right after their own colors card
     if (!picker) return;
     var host = picker.closest(".drawerSection") || picker.closest(".host-card");
     if (!host || document.getElementById("legendSettings")) return;

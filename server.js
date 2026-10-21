@@ -28,6 +28,7 @@
 //   /minedle/ - MINEDLE (Socket.IO namespace /minedle)
 //   /linedle/ - LINEDLE (Socket.IO namespace /linedle)
 //   /citydle/ - CITYDLE (Socket.IO namespace /citydle)
+//   /expandle/ - EXPANDLE (Socket.IO namespace /expandle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
@@ -64,6 +65,7 @@ import { mountComparable } from "./server/comparable/comparable-server.js";
 import { mountMinedle } from "./server/minedle/minedle-server.js";
 import { mountLinedle } from "./server/linedle/linedle-server.js";
 import { mountCitydle } from "./server/citydle/citydle-server.js";
+import { mountExpandle } from "./server/expandle/expandle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
@@ -287,6 +289,11 @@ await mountLinedle(app, io, { mountPath: "/linedle" });
 // right continent, grey = wrong continent, plus a direction arrow and the distance in km. Nearest guesses are listed first.
 // Scoring: 5 points for the guess that finds the secret city. Own Socket.IO namespace /citydle; the city list is built in.
 await mountCitydle(app, io, { mountPath: "/citydle" });
+
+// EXPANDLE is a BLINDLE sibling (on the FIXLE board): every round starts from a 3-letter word and chat grows it one letter per row (shuffle the
+// letters + ONE new letter = a longer real word) within a 60-second round. 1 point per accepted word. Own Socket.IO namespace /expandle;
+// reuses BLINDLE's dictionary (loaded once).
+await mountExpandle(app, io, { mountPath: "/expandle" });
 
 // FIXLE is a BLINDLE copy built on the EDGE-O idea: every guess is scored with MATCHING PREFIX + MATCHING SUFFIX against the
 // secret word (letters that match from the start + letters that match from the end). The board lists the guesses from the

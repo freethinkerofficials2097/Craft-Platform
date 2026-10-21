@@ -1,20 +1,30 @@
-# Update 95 - CITYDLE: customizable colors, synced with the legend
+# Update 95 - CITYDLE colors + much bigger city book, and the new game EXPANDLE
 
-## What's new
-- **Colors section** in CITYDLE's Settings (replaces "Color shades"). Every part of the game has its own color:
-  - City tile: Green (the right city) / Yellow (right country) / Orange (right continent) / Grey (wrong continent)
-  - Direction arrow badge
-  - Distance (km) badge
-  - Newest-guess frame
-- For each part: the 10-shade row (as before) **plus "Pick any color"** (a free color wheel) and a per-color **↺ Standard** button. "Reset all to standard" still resets everything.
-- **Board and legend share the same colors.** Change a color in Settings > Colors, or on a legend entry (Settings > LEGENDS SETTINGS > the color box next to the entry), and the other follows instantly. Legend entries that describe the same thing share one color (e.g. "Rows below" = Grey, "+5 Score" = Green).
-- Applies immediately, no new round needed; every screen connected to CITYDLE (e.g. OBS) follows. Saved in the browser and on the server (data/color-shades.json).
-- Text color on every tile / badge is chosen automatically (dark or white) so it stays readable on any color you pick.
+## 1) CITYDLE: Settings -> City colors (and a 🎨 button in the top bar)
+- Pick the color of every part: the 4 city tiles (green / yellow / orange / grey) AND their text color, the direction badge, the distance badge,
+  the frame around the newest guess and the ring around the winner. Presets: Classic, Color-blind friendly, High contrast, Soft pastel, Night. Reset buttons per part and for everything.
+- The legend uses the very same colors: change a color in Settings and the legend follows; change a color on a legend chip (legend settings) and the game follows.
+  Every change applies on every connected screen and is remembered (`data/citydle-colors.json`).
+- The newest guess now keeps the exact tile color you picked (it is distinguished by its frame).
+- This replaces CITYDLE's old "Color shades" card.
 
-## Technical
-- `public/shared/color-shades.js` - free colors (`#RRGGBB`) supported next to shade indexes; new API `ColorShades.setCustom / reset / isStandard / isCustom`; new CITYDLE color list (`dir`, `km` added; `latest` = frame). The free color picker appears for every game that uses the shared Color shades.
-- `server/shared/color-shades-hub.js` - stores/broadcasts a hex color as well as a 0-9 shade.
-- `public/shared/legend.js` - CITYDLE legend entries are tied to the game's colors (SYNC_MAP); the legend editor's color boxes edit the same colors.
-- `server/citydle/public/citydle-style.css` - new variables `--cd-dir`, `--cd-km`, `--cd-frame` (+ `-dark`, `-ink`).
-- `server/citydle/public/citydle-index.html` - Colors section text.
-- Other games are unchanged.
+## 2) CITYDLE: a far more comprehensive city book
+- Built-in list grew from 524 to 6,300+ cities (every continent: every capital, big and small cities, towns, regions, tourist places).
+- Viewers can type any of them (accents / spaces / hyphens do not matter). A less famous namesake works as "name + country" (e.g. "newcastle australia").
+- To accept EVERY city of the world: drop a GeoNames file (cities500.txt / cities1000.txt / cities5000.txt / cities15000.txt) into the `data/` folder and restart -
+  see `data/README-cities.txt`. `data/cities-extra.txt` adds your own cities one per line.
+
+## 3) NEW GAME: EXPANDLE (`/expandle/`)
+- Every round starts with a free 3-letter word. Chat shuffles its letters and adds ONE new letter to make a real 4-letter word, then a 5-letter word,
+  and so on (ARE -> TEAR -> STARE -> ...). Only the FIRST valid word for each row is accepted. The newest row is always on top and the words are centered.
+- Timed rounds: 60 seconds by default (Settings -> Round time, 10-600 s). The round also ends if the word cannot grow any further (no longer word exists) or at the maximum length.
+- Score: 1 point for every accepted word (Live). When the round ends: top scorer celebration + round and all-time leaderboards, then auto-continue.
+- Colors: purple = the start word, blue = letters carried over, gold = the NEW letter, framed top row = newest word, green clock (red in the last 10 s).
+  Legend above the board (below the floating guess window), all adjustable in Settings -> Color shades; the legend follows.
+- No keyboard coloring, no number columns. Word languages (English / Indonesian / Malay) work as in the other games. Hints: a word that grows the newest row,
+  a letter you can add, or letters that will not work. The host can set the start word (Offline / Test box) and tap Give up to end a round.
+
+## Files
+- NEW `server/shared/citydle-colors-store.js`, `server/citydle/public/citydle-colors.js`, `server/citydle/cities-data-more.js`, `server/citydle/countries.js`, `data/README-cities.txt`, `data/cities-extra.txt`
+- NEW `server/expandle/` (`expandle-server.js`, `short-words.js`, `public/expandle-index.html`, `expandle-game.js`, `expandle-style.css`)
+- Changed: `server/citydle/*`, `public/shared/legend.js`, `public/shared/color-shades.js`, `public/shared/settings-shell.js`, `server.js`, home cards / registries (`home-cards-store.js`, `hint-config-store.js`, `engagement-hub.js`, `public/index.html`, `home.js`, `home-views.js`, `platform-sync.js`, `records-ui.js`, `game-chrome.css`), `package.json`, `DEPLOY_GUIDE.md`

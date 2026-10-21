@@ -15,7 +15,7 @@
     ["share,share_milestone,room_share_milestone", "🔥 Shares"],
     ["follow,subscribe", "➕ Follows & subs"]
   ];
-  var GAME_NAMES = { flagle: "Flagle", travle: "TRAVLE", blindle: "Blindle", findle: "Findle", crossdle: "CROSSDLE", twistle: "TWISTLE", oracle: "Oracle", colorblindle: "Colorblindle", colordle: "Colordle", structle: "Structle", textle: "Textle", rangedle: "Rangedle", codedle: "Codedle", shapedle: "Shapedle", forbackle: "Forbackle", shiftle: "Shiftle", wordle: "Wordle", betweendle: "Betweendle", comparable: "Comparable", minedle: "Minedle", linedle: "Linedle", citydle: "Citydle", fixle: "Fixle", test: "Test button" };
+  var GAME_NAMES = { flagle: "Flagle", travle: "TRAVLE", blindle: "Blindle", findle: "Findle", crossdle: "CROSSDLE", twistle: "TWISTLE", oracle: "Oracle", colorblindle: "Colorblindle", colordle: "Colordle", structle: "Structle", textle: "Textle", rangedle: "Rangedle", codedle: "Codedle", shapedle: "Shapedle", forbackle: "Forbackle", shiftle: "Shiftle", wordle: "Wordle", betweendle: "Betweendle", comparable: "Comparable", minedle: "Minedle", linedle: "Linedle", citydle: "Citydle", expandle: "Expandle", fixle: "Fixle", test: "Test button" };
 
   var CSS = [
     ".rx{font-family:'Quicksand','Manrope',system-ui,sans-serif;color:var(--theme-ink,#5b4636);text-align:left;font-size:14px;line-height:1.35}",

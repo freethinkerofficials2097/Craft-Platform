@@ -27,6 +27,7 @@
   function rerender() {
     // The games keep their state in page-level variables; ask them to draw again with the new size rule.
     try { if (typeof lastTilesSignature !== "undefined") lastTilesSignature = ""; } catch (e) {}
+    try { if (typeof lastBoardSignature !== "undefined") lastBoardSignature = ""; } catch (e) {} // update 99: EXPANDLE / CITYDLE name their board signature differently
     try { if (typeof renderTiles === "function" && typeof lastState !== "undefined" && lastState && lastState.game) renderTiles(lastState.game); } catch (e) {}
     try { if (typeof applyLayout === "function") applyLayout(); } catch (e) {} // TWISTLE's own layout engine
     listeners.forEach(function (fn) { try { fn(); } catch (e) {} });
@@ -84,7 +85,7 @@
   /* ---------- the two switches in the game's Settings ---------- */
   function mountSettings() {
     if (document.getElementById("tileFitBox")) return;
-    var anchor = document.getElementById("randomLengthNote") || document.getElementById("randomLengthRow") || document.getElementById("fixedLengthRow");
+    var anchor = document.getElementById("tileFitAnchor") || document.getElementById("randomLengthNote") || document.getElementById("randomLengthRow") || document.getElementById("fixedLengthRow");
     if (!anchor) { var sel = document.getElementById("wordLengthSelect"); anchor = sel && sel.parentNode; }
     if (!anchor || !anchor.parentNode) return;
     var box = document.createElement("div");

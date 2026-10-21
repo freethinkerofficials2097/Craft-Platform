@@ -1,0 +1,2 @@
+# CITYDLE extra cities - one per line:  Name, Country, Continent (EU/AS/AF/NA/SA/OC), latitude, longitude
+# Example:  Kampung Baru, Malaysia, AS, 3.17, 101.70
