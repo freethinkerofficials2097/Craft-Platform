@@ -294,9 +294,9 @@
         <label class="switchRow">
           <input type="checkbox" id="strictFitToggle" />
           <span class="switchTrack"><span class="switchThumb"></span></span>
-          <span class="switchLabel">Only accept guesses that fit the earlier colors</span>
+          <span class="switchLabel">Only accept the exact secret word</span>
         </label>
-        <p class="sectionNote">Off (default): any real word of the right length is accepted and colored, so chat can probe freely. On: a guess must also still fit the colors of every guess on the board, otherwise it is skipped with the message below. (A guess must ALWAYS be a real word of the right length.) Your choice is remembered and applies right away.</p>
+        <p class="sectionNote">Off (default): any real word of the right length is accepted and colored, so chat can probe freely. On: ONLY the exact secret word of the round is accepted onto the board as a guess - every other word is skipped with the message below. Your choice is remembered and applies right away.</p>
       </div>
 
       <div class="drawerSection">
@@ -433,7 +433,7 @@
         <li><strong>The lower the line, the closer to A. The higher the line, the closer to Z</strong> (A at the bottom, Z at the very top - see the A to Z scale on the left).</li>
         <li>Chat guesses real words of the right length. Every guess is drawn as a <strong>white wave-line</strong> with the same rule. <strong>The round is won when the white line sits exactly on the blue line.</strong></li>
         <li>After every guess each letter turns <span class="legendTile ln0">Green</span>, <span class="legendTile ln1">Yellow</span> or <span class="legendTile ln2">Grey</span>:<br><strong>Green</strong> — correct letter, <strong>right position</strong>.<br><strong>Yellow</strong> — the letter is in the word but in the <strong>wrong position</strong>.<br><strong>Grey</strong> — the letter is <strong>not in the word</strong>.</li>
-        <li>A word already on the board is skipped. <em>Strict fit</em> is off by default; the host can switch it on in Settings so only guesses that still fit every earlier color are accepted.</li>
+        <li>A word already on the board is skipped. <em>Strict fit</em> is off by default; the host can switch it on in Settings so only the exact secret word of the round is accepted as a guess.</li>
         <li><strong>Scoring (Live):</strong> 1 point for the guess that solves the round.</li>
         <li>💡 unlimited hints suggest a word that fits the clues so far (never the answer). Difficulty (Normal/Medium/Hard/Random) sets how tricky the word itself is.</li>
         <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = just you, type guesses directly.</li>

@@ -402,10 +402,17 @@ button { cursor: pointer; }
   --cd-yellow: #E3B505; --cd-yellow-dark: #A98200; --cd-yellow-ink: #1B1B1F;    /* right country, wrong city */
   --cd-orange: #EE7B30; --cd-orange-dark: #B45514; --cd-orange-ink: #1B1B1F;    /* right continent, wrong country */
   --cd-gray:   #8A8A92; --cd-gray-dark:   #6A6A72; --cd-gray-ink:   #121214;    /* wrong continent */
-  /* update 95: the direction badge, the distance badge and the newest-guess frame each have their own color too */
-  --cd-dir:    #3C3C40; --cd-dir-dark:    #28282B; --cd-dir-ink:    #F3F1E6;    /* direction arrow badge */
-  --cd-km:     #3C3C40; --cd-km-dark:     #28282B; --cd-km-ink:     #F3F1E6;    /* distance (km) badge */
-  --cd-frame:  #3C3C40; --cd-frame-dark:  #28282B; --cd-frame-ink:  #F3F1E6;    /* frame around the newest guess */
+  --cd-dir:    #3C3C40; --cd-dir-dark:    #2B2B2E; --cd-dir-ink:    #F3F1E6;    /* the direction badge */
+  --cd-km:     #3C3C40; --cd-km-dark:     #2B2B2E; --cd-km-ink:     #F3F1E6;    /* the distance badge */
+  --cd-frame:  #3C3C40; --cd-frame-dark:  #2B2B2E; --cd-frame-ink:  #FFFFFF;    /* the frame of the newest guess */
+  --cd-ring:   #FFD700;                                                          /* the ring of the winning row */
+  /* update 96: border, text and shape variables (set by citydle-colors.js from Settings -> City colors) */
+  --cd-green-bd: #357A38; --cd-yellow-bd: #A98200; --cd-orange-bd: #B45514; --cd-gray-bd: #6A6A72; --cd-dir-bd: #2B2B2E; --cd-km-bd: #2B2B2E;
+  --cd-green-sub: #FFFFFF; --cd-yellow-sub: #1B1B1F; --cd-orange-sub: #1B1B1F; --cd-gray-sub: #121214;
+  --cd-green-sub-op: .85; --cd-yellow-sub-op: .85; --cd-orange-sub-op: .85; --cd-gray-sub-op: .85;
+  --cd-head-ink: var(--text); --cd-head-op: .7;
+  --cd-bw: 0px; --cd-radius: 5px; --cd-h: 46px; --cd-gap: 8px; --cd-frame-w: 3px;
+  --cd-city-scale: 1; --cd-country-scale: 1; --cd-weight: 800; --cd-upper: uppercase; --cd-country-display: block;
 }
 
 /* ============================================================
@@ -416,7 +423,7 @@ button { cursor: pointer; }
    Everything is a normal block in the page flow, so nothing can overlap anything else.
    ============================================================ */
 .fxBoard[hidden] { display: none; }
-.tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin: 0 0 10px; }
+.tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: var(--cd-gap, 8px); margin: 0 0 10px; }
 .fxRow {
   display: flex; align-items: stretch; gap: 8px; width: 100%;
   font-family: var(--font-display); font-weight: 800; text-transform: uppercase;
@@ -895,38 +902,63 @@ body[data-game="fixle"] .toolbarRow .lengthBadge {
    First row = the newest guess (a darker shade of its color + an outline), then every guess from the NEAREST to the farthest.
    Normal block flow - nothing overlaps the floating window above, the legend, or the hints below.
    ============================================================ */
-.cdColHead { display: flex; gap: 8px; width: 100%; margin: 0 0 4px; font: 700 11px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--text); opacity: .7; }
+.cdColHead { display: flex; gap: 8px; width: 100%; margin: 0 0 4px; font: 700 11px var(--font-display); letter-spacing: .06em; text-transform: uppercase; color: var(--cd-head-ink); opacity: var(--cd-head-op); }
 .cdColHead[hidden] { display: none; }
 .cdColHead span { text-align: center; }
 .cdColHead .cdColCity { flex: 1 1 auto; min-width: 0; }
 .cdColHead .cdColDir { flex: 0 0 52px; }
 .cdColHead .cdColKm { flex: 0 0 100px; }
-.cdPill { min-height: 46px; padding: 5px 40px; }
+.cdPill { min-height: var(--cd-h); padding: 5px 40px; box-sizing: border-box; border: var(--cd-bw) solid transparent; border-radius: var(--cd-radius); }
 .cdNames { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
 .cdCity { font-size: clamp(14px, 4.4vw, 19px); }
-.cdCountry { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; opacity: .85; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cdLv0 .cdPill, .fxRow.fx-list.cdLv0 .fxPill { background: var(--cd-green);  color: var(--cd-green-ink); }
-.cdLv1 .cdPill, .fxRow.fx-list.cdLv1 .fxPill { background: var(--cd-yellow); color: var(--cd-yellow-ink); }
-.cdLv2 .cdPill, .fxRow.fx-list.cdLv2 .fxPill { background: var(--cd-orange); color: var(--cd-orange-ink); }
-.cdLv3 .cdPill, .fxRow.fx-list.cdLv3 .fxPill { background: var(--cd-gray);   color: var(--cd-gray-ink); }
-/* the newest guess: the darker shade of its own color, with an outline, so it stands out at the very top */
-.cdRow.fx-latest { padding: 3px; border-radius: 9px; background: var(--cd-frame); }
-.cdRow.fx-latest.cdLv0 .fxPill { background: var(--cd-green-dark);  color: var(--cd-green-ink); }
-.cdRow.fx-latest.cdLv1 .fxPill { background: var(--cd-yellow-dark); color: var(--cd-yellow-ink); }
-.cdRow.fx-latest.cdLv2 .fxPill { background: var(--cd-orange-dark); color: var(--cd-orange-ink); }
-.cdRow.fx-latest.cdLv3 .fxPill { background: var(--cd-gray-dark);   color: var(--cd-gray-ink); }
-.cdRow.fx-latest.found { background: var(--cd-green); }
-.cdRow.fx-latest.found .fxPill { background: var(--cd-green); color: var(--cd-green-ink); }
-.cdRow .cdDir { flex: 0 0 52px; min-width: 0; padding: 0; font-size: 26px; line-height: 1; background: var(--cd-dir); color: var(--cd-dir-ink); }
-.cdRow .cdKm { flex: 0 0 100px; min-width: 0; padding: 0 4px; font-size: clamp(12px, 3.6vw, 16px); white-space: nowrap; background: var(--cd-km); color: var(--cd-km-ink); }
-.cdRow.fx-latest .cdDir { background: var(--cd-dir-dark); color: var(--cd-dir-ink); }
-.cdRow.fx-latest .cdKm { background: var(--cd-km-dark); color: var(--cd-km-ink); }
-.cdRow.fx-latest.found .cdDir, .cdRow.fx-latest.found .cdKm { background: var(--cd-green-dark); }
-.cdRow.winner .fxPill { box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.75); }
+.cdCountry { display: var(--cd-country-display); font-size: calc(10.5px * var(--cd-country-scale)); font-weight: 700; letter-spacing: .05em; opacity: .85; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cdLv0 .cdPill, .fxRow.fx-list.cdLv0 .fxPill { background: var(--cd-green); color: var(--cd-green-ink); border-color: var(--cd-green-bd); }
+.cdLv0 .cdCountry { color: var(--cd-green-sub); opacity: var(--cd-green-sub-op); }
+.cdLv1 .cdPill, .fxRow.fx-list.cdLv1 .fxPill { background: var(--cd-yellow); color: var(--cd-yellow-ink); border-color: var(--cd-yellow-bd); }
+.cdLv1 .cdCountry { color: var(--cd-yellow-sub); opacity: var(--cd-yellow-sub-op); }
+.cdLv2 .cdPill, .fxRow.fx-list.cdLv2 .fxPill { background: var(--cd-orange); color: var(--cd-orange-ink); border-color: var(--cd-orange-bd); }
+.cdLv2 .cdCountry { color: var(--cd-orange-sub); opacity: var(--cd-orange-sub-op); }
+.cdLv3 .cdPill, .fxRow.fx-list.cdLv3 .fxPill { background: var(--cd-gray); color: var(--cd-gray-ink); border-color: var(--cd-gray-bd); }
+.cdLv3 .cdCountry { color: var(--cd-gray-sub); opacity: var(--cd-gray-sub-op); }
+/* the newest guess: the SAME tile color as every other row (so the colors are always exactly the ones you picked), with a frame around it */
+.cdRow.fx-latest { padding: var(--cd-frame-w); border-radius: calc(var(--cd-radius) + var(--cd-frame-w)); background: var(--cd-frame); }
+.cdRow.fx-latest.cdLv0 .fxPill { background: var(--cd-green); color: var(--cd-green-ink); border-color: var(--cd-green-bd); }
+.cdRow.fx-latest.cdLv1 .fxPill { background: var(--cd-yellow); color: var(--cd-yellow-ink); border-color: var(--cd-yellow-bd); }
+.cdRow.fx-latest.cdLv2 .fxPill { background: var(--cd-orange); color: var(--cd-orange-ink); border-color: var(--cd-orange-bd); }
+.cdRow.fx-latest.cdLv3 .fxPill { background: var(--cd-gray); color: var(--cd-gray-ink); border-color: var(--cd-gray-bd); }
+.cdRow.fx-latest.found { background: var(--cd-ring); }
+.cdRow .cdDir { flex: 0 0 52px; min-width: 0; padding: 0; font-size: 26px; line-height: 1; }
+.cdRow .cdKm { flex: 0 0 100px; min-width: 0; padding: 0 4px; font-size: clamp(12px, 3.6vw, 16px); white-space: nowrap; }
+.cdRow.winner .fxPill { box-shadow: 0 0 0 var(--cd-frame-w) var(--cd-ring); }
+.cdRow .cdDir { background: var(--cd-dir); color: var(--cd-dir-ink); box-sizing: border-box; border: var(--cd-bw) solid var(--cd-dir-bd); border-radius: var(--cd-radius); }
+.cdRow .cdKm { background: var(--cd-km); color: var(--cd-km-ink); box-sizing: border-box; border: var(--cd-bw) solid var(--cd-km-bd); border-radius: var(--cd-radius); }
 
 /* readability tweaks: long city names wrap instead of being cut, the newest row keeps light text on its darker shade */
 .cdPill { padding: 5px 34px 5px 38px; }
-.cdCity { white-space: normal; text-overflow: clip; overflow: visible; font-size: clamp(13px, 3.9vw, 18px); line-height: 1.1; overflow-wrap: anywhere; }
+.cdCity { white-space: normal; text-overflow: clip; overflow: visible; text-transform: var(--cd-upper); font-weight: var(--cd-weight); font-size: calc(clamp(13px, 3.9vw, 18px) * var(--cd-city-scale)); line-height: 1.1; overflow-wrap: anywhere; }
 .cdRow .cdKm { flex-basis: 88px; font-size: clamp(11px, 3.3vw, 15px); }
 .cdColHead .cdColKm { flex-basis: 88px; }
-.cdRow.fx-latest.cdLv1 .fxPill, .cdRow.fx-latest.cdLv2 .fxPill, .cdRow.fx-latest.cdLv3 .fxPill { color: var(--cd-frame-ink); }
+
+/* Settings -> City colors */
+.cdcPresets { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.cdcBtn { font-size: 12px; padding: 5px 10px; }
+.cdcGroup { border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; margin: 0 0 10px; }
+.cdcGroup h5 { margin: 0 0 6px; font-size: 13px; }
+.cdcRow { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
+.cdcSample { flex: 0 0 38px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font: 800 13px var(--font-display); border: 1px solid rgba(0,0,0,.25); }
+.cdcLabel { flex: 1 1 auto; min-width: 0; }
+.cdcPick { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.cdcPick small { font-size: 10px; opacity: .7; }
+.cdcPick input[type="color"] { width: 38px; height: 24px; padding: 0; border: 1px solid var(--border); border-radius: 6px; background: none; }
+.cdcReset { border: 1px solid var(--border); background: transparent; color: inherit; border-radius: 999px; width: 26px; height: 26px; cursor: pointer; }
+.cdRow.fx-latest.found .cdDir { background: var(--cd-dir); color: var(--cd-dir-ink); }
+.cdRow.fx-latest.found .cdKm { background: var(--cd-km); color: var(--cd-km-ink); }
+
+/* update 96: extra Settings -> City colors controls */
+.cdcRow { flex-wrap: wrap; }
+.cdcRange { flex: 1 1 150px; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cdcRange input[type="range"] { flex: 1 1 auto; min-width: 0; }
+.cdcVal { min-width: 46px; text-align: right; font-size: 12px; opacity: .8; }
+.cdcSwitch { cursor: pointer; }
+.cdcSwitch input { width: 18px; height: 18px; }
+.cdcAutoNote { font-size: 9px; opacity: .6; }

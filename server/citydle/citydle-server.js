@@ -34,6 +34,9 @@ import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-a
 import * as HC from "../shared/hint-config-store.js"; // update 58: three hint types + host hint settings
 import * as WH from "../shared/word-hints.js";
 import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
+import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js"; // update 98: Strict fit
+import { getOption, setOption } from "../shared/game-options-store.js"; // update 98: distance unit + continents
+import { getColors, patchColors, resetColors } from "../shared/citydle-colors-store.js"; // update 95: the host's colors for every part
 
 import { PlatformHub } from "../shared/platform-hub.js";
 function safely(label, fn) {
@@ -128,6 +131,17 @@ const CELEBRATION_STAGE_COUNT = 3;
 // Points: the guess that finds the secret city wins 5 points. Nothing else scores.
 const WIN_POINTS = 5;
 
+const ALL_REGIONS = ["EU", "AS", "AF", "NA", "SA", "OC"];
+function cleanRegions(list) {
+  if (!Array.isArray(list)) return [...ALL_REGIONS];
+  const out = ALL_REGIONS.filter((r) => list.includes(r));
+  return out.length ? out : [...ALL_REGIONS];
+}
+function fmtDist(km) {
+  const n = game.distanceUnit === "mi" ? Math.round(km * 0.621371) : km;
+  return Number(n || 0).toLocaleString("en-US") + (game.distanceUnit === "mi" ? " mi" : " km");
+}
+
 const game = {
   mode: "test",
   status: "idle",
@@ -147,6 +161,12 @@ const game = {
   // true (default): every round opens with one automatic, never-winning starter word.
   // The host can switch it off in Settings (remembered in data/starter-word.json).
   starterWord: getStarterWord("citydle"),
+  // update 98: Strict fit (OFF by default): only a city that agrees with EVERY clue already on the board is accepted.
+  strictFit: getStrictFit("citydle", false),
+  // update 98: "km" (default) or "mi" - only changes how distances are SHOWN, the game maths stays in km.
+  distanceUnit: getOption("citydle", "distanceUnit", "km") === "mi" ? "mi" : "km",
+  // update 98: the continents the SECRET city can come from (default: all six). Chat can still guess any city of the world.
+  regions: cleanRegions(getOption("citydle", "regions", null)),
   // game.guesses = every accepted guess of the round, in the order they came: { word, score, caller, avatarUrl, isStarter }.
   // The page sorts them (highest score first) and repeats the newest one in the darker top row.
   lastGuess: null, // { word, score, caller } - the newest accepted guess
@@ -168,11 +188,15 @@ const game = {
 //   normal = famous + well-known, medium = well-known + lesser-known, hard = lesser-known only, random = everything
 function pickAnswer(difficulty) {
   const tiers = { normal: [1, 2], medium: [2, 3], hard: [3], random: [1, 2, 3] }[difficulty] || [1, 2, 3];
-  let pool = CITIES.filter((c) => tiers.includes(c.tier));
+  // update 98: only the continents the host ticked (if the ticked continents have no city of the tier, fall back to them with any tier)
+  let regionCities = CITIES.filter((c) => game.regions.includes(c.continent));
+  if (regionCities.length === 0) regionCities = CITIES;
+  let pool = regionCities.filter((c) => tiers.includes(c.tier));
+  if (pool.length === 0) pool = regionCities;
   if (difficulty === "random") {
     // keep the famous cities coming often, otherwise the many lesser-known ones would drown them
     const wanted = [1, 1, 2, 2, 3][Math.floor(Math.random() * 5)];
-    const byTier = CITIES.filter((c) => c.tier === wanted);
+    const byTier = regionCities.filter((c) => c.tier === wanted);
     if (byTier.length) pool = byTier;
   }
   const unused = pool.filter((c) => !game.usedWords.has(c.key));
@@ -224,7 +248,22 @@ function attemptGuess(city, caller) {
   const already = game.guesses.find((g) => g.word === city.key);
   if (already) {
     game.lastEvent = { id: ++game.eventSeq, kind: "duplicate", word: city.key, name: city.name, country: city.country, level: already.level, km: already.km, caller, at: Date.now() };
-    return { ok: false, error: `Already guessed: ${city.name} — ${already.km} km away`, duplicate: true };
+    return { ok: false, error: `Already guessed: ${city.name} — ${fmtDist(already.km)} away`, duplicate: true };
+  }
+
+  // update 98: Strict fit - a city is only accepted when, as the secret city, it would have produced the SAME COLOR and a SIMILAR distance
+  // (within 10%, at least 50 km of room) for EVERY guess already on the board. Anything else is skipped with a short message.
+  if (game.strictFit && game.guesses.length > 0) {
+    const bad = game.guesses.find((g) => {
+      if (g.rec.key === game.secretWord) return false; // (never happens: the secret city ends the round)
+      const cl = clueOf(g.rec, city);
+      return cl.level !== g.level || Math.abs(cl.km - g.km) > Math.max(50, g.km * 0.1);
+    });
+    if (bad) {
+      const reason = `Strict fit: ${city.name} doesn't fit the clue of ${bad.rec.name} (${fmtDist(bad.km)})`;
+      game.lastRejection = { word: city.key, reason, at: Date.now() };
+      return { ok: false, error: reason, rejected: true };
+    }
   }
 
   processGuess(city, caller);
@@ -291,6 +330,7 @@ function applySettings(settings) {
     }
   }
   if (["normal", "medium", "hard", "random"].includes(difficulty)) game.difficulty = difficulty;
+  if (Array.isArray(settings.regions)) { game.regions = cleanRegions(settings.regions); setOption("citydle", "regions", game.regions); }
   if (typeof autoContinue === "boolean") game.autoContinue = autoContinue;
   if (autoContinueDelaySeconds !== undefined) {
     const v = Number(autoContinueDelaySeconds);
@@ -645,6 +685,10 @@ function buildStatePayload() {
       mode: game.mode,
       status: game.status,
       difficulty: game.difficulty,
+      strictFit: game.strictFit,
+      distanceUnit: game.distanceUnit,
+      regions: game.regions,
+      allRegions: ALL_REGIONS.map((code) => ({ code, name: CONTINENT_NAMES[code] })),
       secretWord: ended && game.secretCity ? game.secretCity.name : null,
       secretCity: ended && game.secretCity ? { name: game.secretCity.name, country: game.secretCity.country, continent: CONTINENT_NAMES[game.secretCity.continent] } : null,
       // Every guess of the round (the page sorts them nearest first). The automatic starter city shows the LIVE host's profile picture.
@@ -661,6 +705,7 @@ function buildStatePayload() {
       hintConfig: HC.publicHintInfo("citydle", game.hintsUsed, game.hintLastAt),
       hintNote: game.hintNote,
       lastRejection: game.lastRejection,
+      colors: getColors(), // update 95: colors of the tiles / badges / frame - the page AND the legend follow them
       starterWord: game.starterWord,
       lastWinInfo: game.lastWinInfo,
       autoContinue: game.autoContinue,
@@ -778,6 +823,22 @@ function handleClientAction(ws, msg) {
       ws.emit("offline_guess_result", result);
       break;
     }
+    case "set_colors":
+      patchColors(payload);
+      broadcastState(true);
+      break;
+    case "reset_colors":
+      resetColors();
+      broadcastState(true);
+      break;
+    case "set_strict_fit":
+      game.strictFit = setStrictFit("citydle", Boolean(payload && payload.on));
+      broadcastState();
+      break;
+    case "set_distance_unit":
+      game.distanceUnit = setOption("citydle", "distanceUnit", payload && payload.unit === "mi" ? "mi" : "km");
+      broadcastState();
+      break;
     case "set_starter_word":
       game.starterWord = setStarterWord("citydle", Boolean(payload && payload.on));
       broadcastState();

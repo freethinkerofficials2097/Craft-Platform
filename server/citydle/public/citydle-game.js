@@ -71,6 +71,9 @@ const el = {
   connectBtn: document.getElementById("connectBtn"),
   disconnectBtn: document.getElementById("disconnectBtn"),
   difficultySelect: document.getElementById("difficultySelect"),
+  regionBox: document.getElementById("regionBox"),
+  distanceUnitSelect: document.getElementById("distanceUnitSelect"),
+  strictFitToggle: document.getElementById("strictFitToggle"),
   autoContinueToggle: document.getElementById("autoContinueToggle"),
   delayInput: document.getElementById("delayInput"),
   leaderboardShowInput: document.getElementById("leaderboardShowInput"),
@@ -150,6 +153,33 @@ el.fullscreenBtn.addEventListener("click", () => {
 
 let stagedMode = "test";
 
+// update 98: "Secret city region" - one tick box per continent; the ticked ones are staged until the host taps Apply
+function buildRegionBox(g) {
+  if (!el.regionBox || !Array.isArray(g.allRegions)) return;
+  const chosen = new Set(g.regions || []);
+  const sig = g.allRegions.map((r) => r.code).join(",") + "|" + [...chosen].join(",");
+  if (el.regionBox.dataset.sig === sig) return;
+  el.regionBox.dataset.sig = sig;
+  el.regionBox.innerHTML = "";
+  g.allRegions.forEach((r) => {
+    const lab = document.createElement("label");
+    lab.className = "switchRow";
+    const inp = document.createElement("input");
+    inp.type = "checkbox"; inp.value = r.code; inp.checked = chosen.has(r.code);
+    inp.addEventListener("change", () => { // keep at least one continent ticked
+      if (!el.regionBox.querySelector("input:checked")) inp.checked = true;
+    });
+    const track = document.createElement("span"); track.className = "switchTrack";
+    const thumb = document.createElement("span"); thumb.className = "switchThumb"; track.appendChild(thumb);
+    const txt = document.createElement("span"); txt.className = "switchLabel"; txt.textContent = r.name;
+    lab.appendChild(inp); lab.appendChild(track); lab.appendChild(txt);
+    el.regionBox.appendChild(lab);
+  });
+}
+function chosenRegions() {
+  return el.regionBox ? [...el.regionBox.querySelectorAll("input:checked")].map((i) => i.value) : undefined;
+}
+
 function syncStagedSettingsFromState(g) {
   stagedMode = g.mode;
   el.difficultySelect.value = g.difficulty;
@@ -158,6 +188,9 @@ function syncStagedSettingsFromState(g) {
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;
   el.rejectionToastShowInput.value = g.rejectionToastSeconds;
   if (el.starterWordToggle) el.starterWordToggle.checked = g.starterWord !== false; // ON unless the host switched it off
+  if (el.strictFitToggle) el.strictFitToggle.checked = g.strictFit === true; // update 98: OFF unless the host switched it on
+  if (el.distanceUnitSelect) el.distanceUnitSelect.value = g.distanceUnit === "mi" ? "mi" : "km";
+  buildRegionBox(g);
   updateModePickerLabel();
 }
 
@@ -198,6 +231,16 @@ el.leaderboardOverlay.addEventListener("click", (e) => { if (e.target === el.lea
 
 el.helpBtn.addEventListener("click", () => { el.howToOverlay.hidden = false; });
 
+// 🎨 shortcut: opens Settings straight on the "City colors" card
+const cdColorsBtn = document.getElementById("cdColorsBtn");
+if (cdColorsBtn) cdColorsBtn.addEventListener("click", () => {
+  el.settingsBtn.click();
+  setTimeout(() => {
+    if (window.CraftSettings && window.CraftSettings.goTo) window.CraftSettings.goTo("look");
+    const card = document.getElementById("cdColorsSection");
+    if (card && card.scrollIntoView) card.scrollIntoView({ block: "start" });
+  }, 60);
+});
 el.closeHowTo.addEventListener("click", () => { el.howToOverlay.hidden = true; });
 el.closeHowTo2.addEventListener("click", () => { el.howToOverlay.hidden = true; });
 el.howToOverlay.addEventListener("click", (e) => { if (e.target === el.howToOverlay) el.howToOverlay.hidden = true; });
@@ -267,6 +310,7 @@ el.applyBtn.addEventListener("click", () => {
   send("apply_settings", {
     mode: stagedMode,
     difficulty: el.difficultySelect.value,
+    regions: chosenRegions(),
     autoContinue: el.autoContinueToggle.checked,
     autoContinueDelaySeconds: Number(el.delayInput.value) || 3
   });
@@ -285,6 +329,10 @@ el.leaderboardShowInput.addEventListener("change", () => {
 el.rejectionToastShowInput.addEventListener("change", () => {
   send("set_rejection_toast_seconds", { seconds: Number(el.rejectionToastShowInput.value) || 4 });
 });
+
+// update 98: Strict fit and Distance unit apply right away (no new round needed) and are remembered by the server
+if (el.strictFitToggle) el.strictFitToggle.addEventListener("change", () => send("set_strict_fit", { on: el.strictFitToggle.checked }));
+if (el.distanceUnitSelect) el.distanceUnitSelect.addEventListener("change", () => send("set_distance_unit", { unit: el.distanceUnitSelect.value }));
 
 // Starter word: ON by default, remembered by the server, used from the next round.
 if (el.starterWordToggle) el.starterWordToggle.addEventListener("change", () => {
@@ -497,6 +545,7 @@ let lastTilesSignature = "";
 function render(state) {
   lastState = state;
   if (window.ScoreTicker) window.ScoreTicker.update(state); // update 47: scrolling top-scorers ticker
+  if (window.CitydleColors) { CitydleColors.update(state.game.colors, (type, payload) => send(type, payload)); CitydleColors.build(); } // update 95: city colors
   detectWinTransition(state.game);
   renderHeader(state);
   renderModeUI(state.game);
@@ -610,7 +659,11 @@ const LEVEL_NAME = ["green", "yellow", "orange", "grey"];
 const LEVEL_EMOJI = ["🟩", "🟨", "🟧", "⬜"];
 const LEVEL_TEXT = ["the right city", "right country", "right continent", "wrong continent"];
 const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]; // N NE E SE S SW W NW
-function fmtKm(km) { return Number(km || 0).toLocaleString("en-US") + " km"; }
+// update 98: the host can show distances in kilometers (default) or miles (Settings -> Distance unit)
+function fmtKm(km) {
+  const mi = lastState && lastState.game && lastState.game.distanceUnit === "mi";
+  return Number(mi ? Math.round(Number(km || 0) * 0.621371) : km || 0).toLocaleString("en-US") + (mi ? " mi" : " km");
+}
 function arrowIndex(bearing) { return Math.round((Number(bearing) || 0) / 45) % 8; }
 const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
 
@@ -677,7 +730,7 @@ function renderTiles(g) {
   const list = g.guesses || [];
   const signature = [
     g.roundNumber, g.status, list.length,
-    list.map((e) => e.word + ":" + e.level + ":" + e.km + ":" + (e.avatarUrl || "")).join(","),
+    list.map((e) => e.word + ":" + e.level + ":" + e.km + ":" + (e.avatarUrl || "")).join(",") + "|" + ((lastState && lastState.game && lastState.game.distanceUnit) || "km"),
     g.lastWinInfo ? g.lastWinInfo.word : ""
   ].join("|");
   renderBoardStatus(g);

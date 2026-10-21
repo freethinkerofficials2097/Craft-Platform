@@ -14,7 +14,8 @@
 // Scoring: 1 point for the guess that solves the round. Nothing else scores.
 //
 // Guess rule: a guess must (1) be a real word of the right length and (2) with "Strict fit" (OFF by default in LINEDLE, the host
-// can switch it on in Settings) still fit the colors of every guess already on the board. A word already on the board is skipped.
+// can switch it on in Settings - update 96) be EXACTLY the secret word of the round: nothing else is accepted onto the board.
+// A word already on the board is skipped.
 //
 // Transport: its own Socket.IO namespace "/linedle" (NOT a raw WebSocket path), so it can never collide with BLINDLE's
 // WebSocketServer. Mounts at /linedle.
@@ -329,9 +330,11 @@ function attemptGuess(word, caller) {
     return { ok: false, error: "That word is already on the board.", duplicate: true };
   }
 
-  const consistency = game.strictFit ? checkConsistency(word) : { ok: true };
-  if (!consistency.ok) {
-    const reason = `Doesn't fit the colors of guess #${consistency.conflictIndex + 1} (${consistency.conflictWord.toUpperCase()}: ${formatClue(consistency.conflictClue)})`;
+  // update 96: with Strict fit ON only the EXACT secret word of this round is accepted onto the board.
+  // Every other word (even a real word that fits all earlier colors) is skipped, so the board only ever
+  // receives the winning guess.
+  if (game.strictFit && word !== game.secretWord) {
+    const reason = "Strict fit is on: only the exact secret word is accepted";
     game.lastRejection = { word, reason, at: Date.now() };
     return { ok: false, error: reason, rejected: true };
   }

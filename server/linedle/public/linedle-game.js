@@ -283,7 +283,8 @@ function renderWave(g) {
 
   // the pillars (and their number / letter labels underneath)
   const slot = (WAVE_W - WAVE_PAD_L - WAVE_PAD_R) / n;
-  const pillarW = Math.max(4, Math.min(48, Math.floor(Math.max(8, Math.min(22, slot * 0.34)) * st.pillarWidth / 100)));
+  // update 99: pillar width 5% - 600% of the normal width (never wider than its own slot, so neighbours never overlap)
+  const pillarW = Math.max(1, Math.min(slot * 0.96, Math.round(Math.max(8, Math.min(22, slot * 0.34)) * st.pillarWidth / 100 * 10) / 10));
   const pillars = svgEl("g", { class: "wavePillars" }, svg);
   for (let i = 0; i < n; i++) {
     const x = waveX(i, n);
@@ -345,14 +346,14 @@ const WAVE_CONTROLS = [
   { h: "Pillars", rows: [
     { k: "pillarsShow", l: "Show the pillars", t: "switch" }, { k: "pillarColor", l: "Pillar color", t: "color" },
     { k: "pillarOpacity", l: "Pillar strength", t: "range", min: 0, max: 80, step: 1, u: "%" },
-    { k: "pillarWidth", l: "Pillar width", t: "range", min: 30, max: 260, step: 5, u: "%" },
+    { k: "pillarWidth", l: "Pillar width", t: "range", min: 5, max: 600, step: 5, u: "%" },
     { k: "pillarOutline", l: "Pillar outline", t: "switch" },
     { k: "labelsShow", l: "Show the numbers / letters under the pillars", t: "switch" }, { k: "labelColor", l: "Number color", t: "color" },
     { k: "labelSize", l: "Number size", t: "range", min: 8, max: 32, step: 1, u: "px" } ] },
   { h: "Horizontal letter lines", rows: [
     { k: "guideShow", l: "Show the horizontal lines", t: "switch" }, { k: "guideColor", l: "Line color", t: "color" },
     { k: "guideOpacity", l: "Line strength", t: "range", min: 2, max: 100, step: 1, u: "%" },
-    { k: "guideThickness", l: "Line thickness", t: "range", min: 0.5, max: 5, step: 0.5, u: "px" },
+    { k: "guideThickness", l: "Line thickness", t: "range", min: 0.25, max: 12, step: 0.25, u: "px" },
     { k: "guideStyle", l: "Line style", t: "select", o: [["dotted", "Dotted"], ["dashed", "Dashed"], ["solid", "Solid"]] },
     { k: "guideEvery", l: "Which letters get a line", t: "select", o: [["5", "A F K P U Z"], ["2", "Every 2nd letter"], ["1", "Every letter A-Z"], ["ends", "Only A and Z"]] } ] },
   { h: "Letters on the left side", rows: [
@@ -362,18 +363,18 @@ const WAVE_CONTROLS = [
     { k: "scaleEvery", l: "Which letters are shown", t: "select", o: [["5", "A F K P U Z"], ["2", "Every 2nd letter"], ["1", "Every letter A-Z"], ["ends", "Only A and Z"]] } ] },
   { h: "Light-blue wave (the secret word)", rows: [
     { k: "blueColor", l: "Color", t: "color", auto: true },
-    { k: "blueThickness", l: "Line thickness", t: "range", min: 1, max: 18, step: 0.5, u: "px" },
+    { k: "blueThickness", l: "Line thickness", t: "range", min: 0.5, max: 40, step: 0.5, u: "px" },
     { k: "blueGlow", l: "Glow", t: "switch" }, { k: "targetDotsShow", l: "Show the dots on the pillars", t: "switch" },
-    { k: "targetDotSize", l: "Dot size", t: "range", min: 3, max: 16, step: 1, u: "px" } ] },
+    { k: "targetDotSize", l: "Dot size", t: "range", min: 2, max: 40, step: 1, u: "px" } ] },
   { h: "White wave (the guess)", rows: [
     { k: "whiteColor", l: "Color", t: "color", auto: true },
-    { k: "whiteThickness", l: "Line thickness", t: "range", min: 1, max: 14, step: 0.5, u: "px" },
+    { k: "whiteThickness", l: "Line thickness", t: "range", min: 0.5, max: 40, step: 0.5, u: "px" },
     { k: "whiteGlow", l: "Glow", t: "switch" }, { k: "guessDotsShow", l: "Show the green / yellow / grey dots", t: "switch" },
-    { k: "guessDotSize", l: "Dot size", t: "range", min: 4, max: 18, step: 1, u: "px" },
+    { k: "guessDotSize", l: "Dot size", t: "range", min: 2, max: 44, step: 1, u: "px" },
     { k: "dotLettersShow", l: "Show the letter inside each dot", t: "switch" },
     { k: "trailShow", l: "Show earlier guesses as faint trails", t: "switch" },
     { k: "trailCount", l: "How many trails", t: "range", min: 0, max: 4, step: 1, u: "" },
-    { k: "trailThickness", l: "Trail thickness", t: "range", min: 1, max: 8, step: 0.5, u: "px" },
+    { k: "trailThickness", l: "Trail thickness", t: "range", min: 0.5, max: 24, step: 0.5, u: "px" },
     { k: "trailOpacity", l: "Trail strength", t: "range", min: 5, max: 80, step: 1, u: "%" } ] }
 ];
 const WAVE_PRESETS = [

@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="/shared/settings-shell.css" />
 <link rel="stylesheet" href="/shared/game-colors.css" />
 <link rel="stylesheet" href="/shared/color-shades.css" />
-<script src="/shared/color-shades.js" data-game="citydle"></script>
+<script src="citydle-colors.js"></script>
 <link rel="stylesheet" href="/shared/legend.css" />
 <script src="/shared/legend.js" data-game="citydle"></script>
 <script src="/shared/title-font.js" defer></script>
@@ -53,6 +53,7 @@
         <span class="modeBadge" id="modeBadge">TEST</span>
         <span class="lengthBadge" id="lengthBadge">🌍 cities</span>
         <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint">💡</button>
+        <button class="iconBtn" id="cdColorsBtn" type="button" aria-label="Customize colors" title="City colors">🎨</button>
         <button class="iconBtn" id="helpBtn" type="button" aria-label="How to play">❓</button>
         <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
         <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">⚙️</button>
@@ -213,6 +214,19 @@
         </select>
         <p class="sectionNote">Decides how famous the secret city is. The city list covers more than 500 cities on every continent; chat can guess any city on that list (in English, with or without spaces and accents).</p>
       </div>
+      <div class="drawerSection">
+        <h4>Secret city region</h4>
+        <p class="sectionNote">Tick the continents the SECRET city may come from (at least one). Chat can still guess any city in the world. Takes effect when you tap Apply; your choice is remembered.</p>
+        <div id="regionBox"></div>
+      </div>
+      <div class="drawerSection">
+        <h4>Distance unit</h4>
+        <select id="distanceUnitSelect" class="selectInput">
+          <option value="km" selected>Kilometers (km)</option>
+          <option value="mi">Miles (mi)</option>
+        </select>
+        <p class="sectionNote">Only changes how distances are shown on the board, in the floating message and in messages. It applies right away on every screen and is remembered.</p>
+      </div>
 
       <div class="drawerSection">
         <label class="switchRow">
@@ -226,10 +240,10 @@
         </div>
       </div>
 
-      <div class="drawerSection">
-        <h4>Colors</h4>
-        <p class="sectionNote">Recolor every part of CITYDLE: the four city-tile colors (green, yellow, orange, grey), the direction-arrow badge, the distance (km) badge and the frame around the newest guess. For each one pick a shade from the row of ten, or tap <strong>Pick any color</strong> for any color you like. The legend uses the very same colors: change one here, or on a legend entry (Legend settings), and the other follows right away - no new round needed, and every screen connected to this game follows too.</p>
-        <div id="shadePicker"></div>
+      <div class="drawerSection" id="cdColorsSection">
+        <h4>City colors</h4>
+        <p class="sectionNote">Customize every part of the game: for each of the four city tiles its tile color, text color, country-text color and border; the direction and distance badges; the frame around the newest guess and the ring around the winner; the column headings; and the shape and text (border width, roundness, row height, spacing, frame thickness, city-name size and boldness, country line size, show the country, capital letters). Every change applies right away on every connected screen and is remembered. <strong>The legend always shows the same colors</strong> - change a color here or on a legend chip and the other follows.</p>
+        <div id="cdColorsBody"></div>
       </div>
 
       <div class="drawerSection">
@@ -252,8 +266,17 @@
       </div>
 
       <div class="drawerSection">
+        <h4>Strict fit</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="strictFitToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Only accept cities that fit the earlier clues</span>
+        </label>
+        <p class="sectionNote">Off (default): any city of the list is accepted, so chat can probe freely. On: a city must agree with EVERY guess already on the board - the same color and about the same distance (within 10%) as the secret city would have produced - otherwise it is skipped with a message in the floating window. The secret city itself always passes. Applies right away; your choice is remembered.</p>
+      </div>
+      <div class="drawerSection">
         <h4>Floating message window</h4>
-        <p class="sectionNote">The small window above the legend and the board. It announces each new guess with its score and shows a short message whenever a guess is skipped.</p>
+        <p class="sectionNote">The small window above the legend and the board. It announces each new guess with its score and shows a short message whenever a guess is skipped (for example by Strict fit).</p>
         <div class="row">
           <label class="fieldLabel delayLabel">Show floating message for (seconds)</label>
           <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
@@ -352,7 +375,7 @@
       <ul class="howToList">
         <li>Guess the <strong>secret city</strong>. <strong>Unlimited guesses</strong>, anyone can play, anytime. Type any real city (any size, anywhere in the world).</li>
         <li>Every guess is colored: <strong>green</strong> = the right city, <strong>yellow</strong> = the right country but the wrong city, <strong>orange</strong> = the right continent but the wrong country, <strong>grey</strong> = the wrong continent (and so the wrong country).</li>
-        <li>Each guess also shows an <strong>arrow</strong> (the direction to guess next, toward the secret city) and the <strong>distance in km</strong> from the secret city.</li>
+        <li>Each guess also shows an <strong>arrow</strong> (the direction to guess next, toward the secret city) and the <strong>distance</strong> (km or miles - the host's choice) from the secret city.</li>
         <li>Guesses are listed from the <strong>nearest to the farthest</strong> city. The <strong>newest guess</strong> is repeated in a highlighted row at the very top (it turns green when the city is found).</li>
         <li>A city already on the board is skipped. The small <strong>floating window</strong> above the legend announces every new guess.</li>
         <li>The <strong>legend</strong> above the board explains every color and column (the host can customize or hide it).</li>
