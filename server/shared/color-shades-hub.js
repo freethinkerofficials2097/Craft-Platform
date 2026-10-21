@@ -23,13 +23,6 @@ const DATA_FILE = path.join(DATA_DIR, "color-shades.json");
 
 export const SHADE_COUNT = 10; // 0 = lightest ... 9 = darkest
 const ID_RE = /^[a-z0-9_-]{1,32}$/;
-const HEX_RE = /^#[0-9a-fA-F]{6}$/; // a free color picked with the color wheel (stored instead of a 0-9 shade index)
-
-function cleanShade(v) {
-  if (typeof v === "string" && HEX_RE.test(v)) return v.toUpperCase();
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) && n >= 0 && n < SHADE_COUNT ? n : null;
-}
 const MAX_GAMES = 40;
 const MAX_COLORS_PER_GAME = 16;
 
@@ -45,8 +38,8 @@ function load() {
       if (!ID_RE.test(game) || typeof colors !== "object" || !colors) continue;
       const clean = {};
       for (const [id, v] of Object.entries(colors)) {
-        const n = cleanShade(v);
-        if (ID_RE.test(id) && n !== null) clean[id] = n;
+        const n = Math.round(Number(v));
+        if (ID_RE.test(id) && Number.isFinite(n) && n >= 0 && n < SHADE_COUNT) clean[id] = n;
       }
       store.set(game, clean);
     }
@@ -95,10 +88,10 @@ export const ColorShadesHub = {
       socket.on("shades:set", (payload) => {
         const game = payload && payload.game;
         const color = payload && payload.color;
-        const shade = cleanShade(payload && payload.shade);
+        const shade = Math.round(Number(payload && payload.shade));
         if (typeof game !== "string" || !ID_RE.test(game)) return;
         if (typeof color !== "string" || !ID_RE.test(color)) return;
-        if (shade === null) return;
+        if (!Number.isFinite(shade) || shade < 0 || shade >= SHADE_COUNT) return;
         if (!store.has(game) && store.size >= MAX_GAMES) return;
         const cur = { ...(store.get(game) || {}) };
         if (!(color in cur) && Object.keys(cur).length >= MAX_COLORS_PER_GAME) return;

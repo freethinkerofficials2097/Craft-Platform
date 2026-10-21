@@ -32,7 +32,7 @@ export const SPEC = {
   pillarsShow: bool(true),
   pillarColor: color("#ffffff"),
   pillarOpacity: num(9, 0, 80),
-  pillarWidth: num(100, 30, 260),
+  pillarWidth: num(100, 5, 600), // update 99: much more range (5% = a hairline pillar ... 600% = as wide as the slot allows)
   pillarOutline: bool(true),
   labelsShow: bool(true),
   labelColor: color("#ffffff"),
@@ -41,7 +41,7 @@ export const SPEC = {
   guideShow: bool(true),
   guideColor: color("#ffffff"),
   guideOpacity: num(13, 2, 100),
-  guideThickness: num(1, 0.5, 5),
+  guideThickness: num(1, 0.25, 12),
   guideStyle: enm("dotted", ["dotted", "dashed", "solid"]),
   guideEvery: enm("5", ["1", "2", "5", "ends"]),
   // letters on the left side
@@ -52,20 +52,20 @@ export const SPEC = {
   scaleEvery: enm("5", ["1", "2", "5", "ends"]),
   // light-blue wave (the secret word)
   blueColor: color(""),
-  blueThickness: num(6, 1, 18),
+  blueThickness: num(6, 0.5, 40), // update 99: 0.5 (hair-thin) ... 40 (very thick)
   blueGlow: bool(true),
   targetDotsShow: bool(true),
-  targetDotSize: num(7, 3, 16),
+  targetDotSize: num(7, 2, 40),
   // white wave (the guess)
   whiteColor: color(""),
-  whiteThickness: num(3.5, 1, 14),
+  whiteThickness: num(3.5, 0.5, 40),
   whiteGlow: bool(true),
   guessDotsShow: bool(true),
-  guessDotSize: num(9, 4, 18),
+  guessDotSize: num(9, 2, 44),
   dotLettersShow: bool(true),
   trailShow: bool(true),
   trailCount: num(4, 0, 4),
-  trailThickness: num(3, 1, 8),
+  trailThickness: num(3, 0.5, 24),
   trailOpacity: num(20, 5, 80)
 };
 

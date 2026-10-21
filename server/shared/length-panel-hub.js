@@ -33,7 +33,7 @@ const ID_RE = /^[a-z0-9_-]{1,32}$/;
 const MAX_GAMES = 60;
 // every game that has a secret word (used by "apply this look to every game")
 export const WORD_GAMES = ["wordle", "blindle", "textle", "colordle", "colorblindle", "codedle", "fixle", "forbackle", "minedle", "linedle",
-  "oracle", "rangedle", "shapedle", "shiftle", "structle", "comparable", "betweendle", "twistle"];
+  "oracle", "rangedle", "shapedle", "shiftle", "structle", "comparable", "betweendle", "twistle", "expandle"];
 
 const store = new Map();   // gameId -> complete, valid settings object
 let io = null;
@@ -48,6 +48,8 @@ function load() {
   } catch (e) {
     // first run / unreadable file: every game starts with the defaults
   }
+  // update 99: EXPANDLE's panel tells viewers how long the NEXT word has to be (it grows by one letter every row)
+  if (!store.has("expandle")) store.set("expandle", Schema.normalize({ title: "Next word" }));
   // one-time import of BETWEENDLE's old private settings
   if (!store.has("betweendle")) {
     try {
