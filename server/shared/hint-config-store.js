@@ -22,8 +22,14 @@ const WORD_TYPES = [
   { id: "letter", icon: "🔤", label: "Reveal a letter", desc: "Shows one letter of the secret word together with its position." },
   { id: "rule", icon: "🚫", label: "Rule out letters", desc: "Shows three letters that are NOT in the secret word." }
 ];
+const NUMBER_TYPES = [
+  { id: "suggest", icon: "💡", label: "Number idea", desc: "Suggests a number that fits every clue so far (never the answer)." },
+  { id: "letter", icon: "🔢", label: "Reveal a digit", desc: "Shows one digit of the secret number together with its position." },
+  { id: "rule", icon: "🚫", label: "Rule out digits", desc: "Shows up to three digits that are NOT in the secret number." }
+];
 export const HINT_CATALOG = {
   word: WORD_TYPES,
+  number: NUMBER_TYPES,
   flagle: [
     { id: "continent", icon: "🌍", label: "Continent", desc: "Tells chat which continent the country is in." },
     { id: "initial", icon: "🔤", label: "First letter", desc: "Shows the first letter of the country name." },
@@ -45,9 +51,9 @@ export const HINT_CATALOG = {
     { id: "start", icon: "🅰️", label: "Starts with", desc: "Shows the first and last letter of the secret word." }
   ]
 };
-const FAMILY = { flagle: "flagle", travle: "travle", findle: "findle", crossdle: "crossdle" };
+const FAMILY = { flagle: "flagle", travle: "travle", findle: "findle", crossdle: "crossdle", numberblindle: "number" };
 export function catalogFor(gameId) { return HINT_CATALOG[FAMILY[gameId] || "word"]; }
-const AUTO_GAMES = new Set(["blindle", "oracle", "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable", "minedle", "linedle", "citydle", "expandle", "fixle", "twistle", "crossdle"]);
+const AUTO_GAMES = new Set(["blindle", "numberblindle", "oracle", "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable", "minedle", "linedle", "citydle", "expandle", "fixle", "twistle", "crossdle"]);
 export function supportsAuto(gameId) { return AUTO_GAMES.has(gameId); }
 
 function defaults(gameId) {

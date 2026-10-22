@@ -25,7 +25,7 @@ const DATA_FILE = path.join(DATA_DIR, "home-cards.json");
 /** Default order of the cards on HOME (must match public/index.html). */
 export const GAME_IDS = [
   "flagle", "travle", "blindle", "findle", "crossdle", "twistle", "oracle",
-  "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable", "minedle", "linedle", "citydle", "expandle", "fixle",
+  "colorblindle", "colordle", "structle", "textle", "rangedle", "codedle", "shapedle", "forbackle", "shiftle", "wordle", "betweendle", "comparable", "minedle", "linedle", "citydle", "expandle", "fixle", "contexto", "numberblindle",
 ];
 export const BORDER_STYLES = ["solid", "dashed", "dotted", "double", "none"];
 export const FONTS = ["fredoka", "baloo", "quicksand"];

@@ -15,7 +15,7 @@ const DATA_DIR = path.resolve(__dirname, "../../data");
 const DATA_FILE = path.join(DATA_DIR, "expandle-colors.json");
 
 export const DEFAULT_COLORS = {
-  tileBg: "#3a7bd5", tileInk: "#ffffff", tileBd: "#2757a3", // every letter tile
+  tileBg: "#8a8f98", tileInk: "#ffffff", tileBd: "#62666d", // every letter tile
   frame: "#3c3c40",                                          // frame around the newest row
   timerBg: "#2e7d32", timerInk: "#ffffff"                    // the round clock and its bar
 };
