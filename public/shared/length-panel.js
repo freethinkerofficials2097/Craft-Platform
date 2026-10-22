@@ -33,11 +33,17 @@
 
   var script = document.currentScript;
   var game = (script && script.getAttribute("data-game")) || (document.body && document.body.getAttribute("data-game")) || "";
+  // NUMBERBLINDLE shows the same panel as the word games, worded for numbers ("Number length - 6 digits")
+  var NUM = game === "numberblindle";
+  var UNIT = NUM ? "digits" : "letters";
+  var ICON = NUM ? "🔢" : "🔡";
+  var NOUN = NUM ? "number" : "word";
   var noExact = !!(script && script.getAttribute("data-no-exact"));
   var storageKey = "craft.lenpanel." + game;
   var cid = Math.random().toString(36).slice(2, 10);
 
-  var S = Schema.defaults();
+  function baseDefaults() { return NUM ? Schema.normalize({ title: "Number length", fixedText: "{length} digits" }) : Schema.defaults(); }
+  var S = baseDefaults();
   var lastGame = null;
   var el = null;            // the panel on the page
   var btn = null;           // the quick show / hide button
@@ -56,7 +62,7 @@
   /* ------------------------------------------------------------------ cache + settings */
   function fixed(cfg) { if (noExact && cfg.randomShows === "exact") cfg.randomShows = "range"; return cfg; }
   function readCache() {
-    try { var t = localStorage.getItem(storageKey); S = fixed(Schema.normalize(t ? JSON.parse(t) : null)); } catch (e) { S = Schema.defaults(); }
+    try { var t = localStorage.getItem(storageKey); S = fixed(t ? Schema.normalize(JSON.parse(t)) : baseDefaults()); } catch (e) { S = baseDefaults(); }
   }
   function writeCache() { try { localStorage.setItem(storageKey, JSON.stringify(S)); } catch (e) { /* private mode: still works this session */ } }
 
@@ -83,7 +89,7 @@
   function partsFor(template, vals) {
     return String(template || "").split("|").map(function (x) { return x.trim(); }).filter(Boolean).map(function (seg) {
       var h = esc(seg).replace(/\{(length|min|max|range|language)\}/gi, function (m, k) { return '<b class="lpNum">' + esc(String(vals[k.toLowerCase()])) + "</b>"; });
-      return h.replace(/<b class="lpNum">1<\/b>(\s+)letters\b/gi, '<b class="lpNum">1</b>$1letter');
+      return h.replace(/<b class="lpNum">1<\/b>(\s+)letters\b/gi, '<b class="lpNum">1</b>$1letter').replace(/<b class="lpNum">1<\/b>(\s+)digits\b/gi, '<b class="lpNum">1</b>$1digit');
     });
   }
   function infoOf(g) {
@@ -246,7 +252,7 @@
     btn.hidden = !S.toolbarBtn;
     btn.classList.toggle("lpBtnOff", !S.show);
     btn.setAttribute("aria-pressed", String(S.show));
-    btn.title = S.show ? "Hide the word length panel" : "Show the word length panel";
+    btn.title = S.show ? "Hide the " + NOUN + " length panel" : "Show the " + NOUN + " length panel";
     btn.setAttribute("aria-label", btn.title);
   }
   function buildButton() {
@@ -257,7 +263,7 @@
     btn.type = "button";
     btn.id = "lengthPanelBtn";
     btn.className = "iconBtn lpToolbarBtn";
-    btn.textContent = "🔡";
+    btn.textContent = ICON;
     btn.addEventListener("click", function () { change({ show: !S.show }); });
     var settings = document.getElementById("settingsBtn");
     if (settings && settings.parentNode === row) row.insertBefore(btn, settings); else row.appendChild(btn);
@@ -363,9 +369,9 @@
     var r = mk("div", "lpUi");
 
     groupTitle(r, "Show / hide");
-    addSwitch(r, "show", "Show the word length panel to viewers");
+    addSwitch(r, "show", "Show the " + NOUN + " length panel to viewers");
     addSwitch(r, "showIdle", "Also show it before a round has started");
-    addSwitch(r, "toolbarBtn", "Quick show / hide button (🔡) in the top bar");
+    addSwitch(r, "toolbarBtn", "Quick show / hide button (" + ICON + ") in the top bar");
 
     groupTitle(r, "Preview");
     r.appendChild(mk("div", "lpLabel", "When the length is fixed"));
@@ -383,7 +389,7 @@
       b.addEventListener("click", function () {
         // a look = every style field back to the default, then the preset on top (texts and show / hide stay)
         var keep = { show: S.show, showIdle: S.showIdle, toolbarBtn: S.toolbarBtn, title: S.title, fixedText: S.fixedText, randomText: S.randomText, icon: S.icon, randomShows: S.randomShows, position: S.position };
-        var base = Schema.defaults();
+        var base = baseDefaults();
         var patch = {};
         for (var k in base) patch[k] = keep[k] !== undefined ? keep[k] : base[k];
         for (var k2 in p.patch) patch[k2] = p.patch[k2];
@@ -395,11 +401,11 @@
     r.appendChild(mk("div", "lpHint", PRESET_NOTE));
 
     groupTitle(r, "Texts");
-    addText(r, "title", "Title (leave empty for no title)", "Word length");
-    addText(r, "fixedText", "Text when the length is fixed", "{length} letters");
+    addText(r, "title", "Title (leave empty for no title)", NUM ? "Number length" : "Word length");
+    addText(r, "fixedText", "Text when the length is fixed", "{length} " + UNIT);
     addText(r, "randomText", "Text when the length is random", "Random: {range}");
-    addText(r, "icon", "Icon in front of the text (optional)", "🔡");
-    r.appendChild(mk("div", "lpHint", "Put several texts in one line by separating them with | , for example:  {length} letters | {language}  . Each part becomes its own item (\"Rows\" spreads the parts over several rows). Words you can use: {length}  {min}  {max}  {range}  {language}."));
+    addText(r, "icon", "Icon in front of the text (optional)", ICON);
+    r.appendChild(mk("div", "lpHint", "Put several texts in one line by separating them with | , for example:  {length} " + UNIT + (NUM ? " | {range}" : " | {language}") + "  . Each part becomes its own item (\"Rows\" spreads the parts over several rows). Words you can use: {length}  {min}  {max}  {range}" + (NUM ? "." : "  {language}.")));
     if (noExact) {
       r.appendChild(mk("div", "lpHint", "When the length is random, {length} shows the range - never the round's exact length, which would narrow the answer down."));
     } else {
@@ -450,12 +456,12 @@
     var actions = mk("div", "lpActions");
     var reset = mk("button", "btn btnGhost lpBtn", "Reset the look"); reset.type = "button";
     reset.addEventListener("click", function () {
-      var base = Schema.defaults(); base.show = S.show;
+      var base = baseDefaults(); base.show = S.show;
       change(base);
     });
     var all = mk("button", "btn btnGhost lpBtn", "Apply this look to every game"); all.type = "button";
     all.addEventListener("click", function () {
-      if (!window.confirm("Copy this word length panel look (texts, size, colors, rows ...) to every word game? Each game keeps its own show / hide switch and position.")) return;
+      if (!window.confirm(NUM ? "Copy this number length panel look (size, colors, rows ...) to every word game? Each game keeps its own texts, show / hide switch and position." : "Copy this word length panel look (texts, size, colors, rows ...) to every word game? Each game keeps its own show / hide switch and position.")) return;
       flush();
       if (socket && socket.connected) { socket.emit("lp:apply_all", { game: game }); all.textContent = "Applied to every game ✓"; setTimeout(function () { all.textContent = "Apply this look to every game"; }, 2500); }
       else all.textContent = "Not connected - try again";
@@ -474,15 +480,15 @@
     if (!picker || document.getElementById("lengthPanelSettings")) return;
     var host = picker.closest(".drawerSection") || picker.closest(".host-card");
     if (!host) return;
-    var intro = "The panel that tells viewers how long the secret word is. Show or hide it at any time, change its texts, rows (1-8), text size (40-300%), font, colors, box and position, or pick a ready-made look. Every change applies right away on every screen.";
+    var intro = "The panel that tells viewers how long the secret " + NOUN + " is. Show or hide it at any time, change its texts, rows (1-8), text size (40-300%), font, colors, box and position, or pick a ready-made look. Every change applies right away on every screen.";
     var wrap = document.createElement("div");
     wrap.id = "lengthPanelSettings";
     if (host.classList.contains("host-card")) {
       wrap.className = "host-card";
-      wrap.innerHTML = '<div class="host-card-title">🔡 WORD LENGTH PANEL</div><p class="host-note" style="font-size:12px;opacity:.75;margin:0 0 8px">' + esc(intro) + '</p><div class="lpMount"></div>';
+      wrap.innerHTML = '<div class="host-card-title">' + ICON + ' ' + NOUN.toUpperCase() + ' LENGTH PANEL</div><p class="host-note" style="font-size:12px;opacity:.75;margin:0 0 8px">' + esc(intro) + '</p><div class="lpMount"></div>';
     } else {
       wrap.className = "drawerSection";
-      wrap.innerHTML = '<h4>Word length panel</h4><p class="sectionNote">' + esc(intro) + '</p><div class="lpMount"></div>';
+      wrap.innerHTML = '<h4>' + (NUM ? "Number" : "Word") + ' length panel</h4><p class="sectionNote">' + esc(intro) + '</p><div class="lpMount"></div>';
     }
     host.parentNode.insertBefore(wrap, host.nextSibling);
     buildPanel(wrap.querySelector(".lpMount"));

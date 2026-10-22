@@ -202,11 +202,11 @@
     expandle: {
       title: "What the colors and rows mean",
       items: [
-        { id: "tile", glyph: "A", label: "Letter tiles — every letter of every row has this color", c: V("--ex-tile", "#3A7BD5", "#FFFFFF", "#2757A3") },
+        { id: "tile", glyph: "A", label: "Letter tiles — every letter of every row has this color", c: V("--ex-tile", "#8A8F98", "#FFFFFF", "#62666D") },
         { id: "rule", glyph: "↑", label: "Each row = the row below + exactly ONE new letter, shuffled into a real word (3, 4, 5, 6 letters ...)", c: V("--ex-frame", "#3C3C40", "#F3F1E6", "#28282B") },
         { id: "latest", glyph: "NEW", label: "Framed row on top — the newest word; only the first valid word per row counts", c: V("--ex-frame", "#3C3C40", "#F3F1E6", "#28282B") },
         { id: "timer", glyph: "60", label: "Clock — the round ends when it reaches zero (turns red in the last 10 seconds)", c: V("--ex-timer", "#2E7D32", "#FFFFFF", "#1F5E24") },
-        { id: "score", glyph: "+1", label: "Score — 1 point for every accepted word", c: V("--ex-tile", "#3A7BD5", "#FFFFFF", "#2757A3") },
+        { id: "score", glyph: "+1", label: "Score — 1 point for every accepted word", c: V("--ex-tile", "#8A8F98", "#FFFFFF", "#62666D") },
         { id: "float", glyph: "!", label: "Floating window — announces each new word", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
