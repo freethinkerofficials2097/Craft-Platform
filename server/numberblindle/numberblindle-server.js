@@ -434,7 +434,7 @@ function endGame() {
 // ---- HINTS (numbers) ------------------------------------------------------------------------
 // "Number idea": a number that fits EVERY clue on the board (but is never the secret). With up to 12 digits the
 // whole space cannot be listed, so a quick random search with hill-climbing finds a consistent number.
-function consistentCandidate() {
+function findConsistentNumber({ maxEvals = 40000, allowSecret = false, avoid = [] } = {}) {
   const n = game.wordLength;
   const gs = game.guesses;
   const cost = (cand) => {
@@ -447,12 +447,11 @@ function consistentCandidate() {
   };
   const rnd = (m) => Math.floor(Math.random() * m);
   let evals = 0;
-  const MAX_EVALS = 40000;
-  while (evals < MAX_EVALS) {
+  while (evals < maxEvals) {
     let cand = randomDigits(n, true);
     let c = cost(cand);
     evals++;
-    for (let step = 0; step < 400 && c > 0 && evals < MAX_EVALS; step++) {
+    for (let step = 0; step < 400 && c > 0 && evals < maxEvals; step++) {
       const pos = rnd(n);
       const d = DIGITS[rnd(10)];
       if (cand[pos] === d) continue;
@@ -461,9 +460,12 @@ function consistentCandidate() {
       evals++;
       if (nc <= c) { cand = next; c = nc; }
     }
-    if (c === 0 && cand !== game.secretWord && !game.hintSuggestions.includes(cand)) return cand;
+    if (c === 0 && (allowSecret || cand !== game.secretWord) && !avoid.includes(cand)) return cand;
   }
   return null;
+}
+function consistentCandidate() {
+  return findConsistentNumber({ avoid: game.hintSuggestions });
 }
 
 // "Reveal a digit": one digit of the secret number with its position (never reveals the whole number).
@@ -737,28 +739,46 @@ const FAKE_USERNAMES = [
 ];
 const FAKE_JUNK_WORDS = ["hi", "lol", "go team", "so fun", "love this game", "hmm", "wait what", "1st", "i say 7 or 3"];
 
+// TEST MODE chat. The simulated viewers behave like a real audience: most guesses FIT every clue on the board
+// (so the board really fills up and the round gets solved), some are deliberately wrong (to show the strict-fit
+// rejection message), some repeat a number already played, some have the wrong number of digits and some are plain
+// chat. A rare "lucky" viewer types the secret number, so a round always ends in reasonable time.
+function spaced(text) {
+  // sometimes typed with spaces between the digits, the way viewers do
+  return Math.random() < 0.15 ? text.split("").join(" ") : text;
+}
+function testChatText() {
+  const junk = FAKE_JUNK_WORDS[Math.floor(Math.random() * FAKE_JUNK_WORDS.length)];
+  if (game.status !== "live" || !game.secretWord) return junk;
+  const roll = Math.random();
+  if (roll < 0.04) return game.secretWord;
+  if (roll < 0.50) {
+    const fit = findConsistentNumber({ maxEvals: 12000, allowSecret: true });
+    if (fit) return spaced(fit);
+  }
+  if (roll < 0.58) return spaced(randomDigits(game.wordLength, true));
+  if (roll < 0.62 && game.guesses.length) return game.guesses[Math.floor(Math.random() * game.guesses.length)].word;
+  if (roll < 0.66) return randomDigits(game.wordLength < MAX_WORD_LENGTH ? game.wordLength + 1 : game.wordLength - 1, true);
+  return junk;
+}
+
+let testAutoStartPending = false;
 function startTestMode() {
   stopEverything();
   diagnostics.connectionStatus = "test_mode";
   diagnostics.lastErrorMessage = null;
   diagnostics.tiktokUsername = null;
+  testAutoStartPending = game.status === "idle"; // nothing is being played yet: the simulator opens the first round itself
 
   testModeTimer = setInterval(
     safely("test-mode-tick", () => {
       if (game.mode !== "test") return;
-      const username = FAKE_USERNAMES[Math.floor(Math.random() * FAKE_USERNAMES.length)];
-      const roll = Math.random();
-      let text;
-
-      if (game.status === "live" && game.secretWord && roll < 0.06) {
-        text = game.secretWord;
-      } else if (game.status === "live" && roll < 0.4) {
-        text = randomDigits(game.wordLength, true);
-        // sometimes typed with spaces between the digits, the way viewers do
-        if (Math.random() < 0.15) text = text.split("").join(" ");
-      } else {
-        text = FAKE_JUNK_WORDS[Math.floor(Math.random() * FAKE_JUNK_WORDS.length)];
+      if (testAutoStartPending) {
+        testAutoStartPending = false;
+        if (game.status === "idle") { startRound(); return; }
       }
+      const username = FAKE_USERNAMES[Math.floor(Math.random() * FAKE_USERNAMES.length)];
+      const text = testChatText();
 
       const shapeVariant = Math.floor(Math.random() * 3);
       let fakeRaw;
@@ -770,6 +790,11 @@ function startTestMode() {
     }),
     900
   );
+}
+// Test Mode is the default mode: make sure the simulator is really running whenever a page is open in it (it used to
+// start only after "Apply", so a freshly opened game said "simulating chat" while nothing happened).
+function ensureTestSimulator() {
+  if (game.mode === "test" && !testModeTimer) startTestMode();
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1000,6 +1025,7 @@ export async function mountNumberblindle(app, httpServer, options = {}) {
   wss.on(
     "connection",
     safely("ws-connection", (ws) => {
+      ensureTestSimulator();
       ws.send(JSON.stringify({ type: "state", payload: buildStatePayload() }));
       ws.on(
         "message",

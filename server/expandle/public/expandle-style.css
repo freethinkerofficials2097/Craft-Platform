@@ -398,7 +398,7 @@ button { cursor: pointer; }
   --fx-latest: #3C3C40; --fx-latest-dark: #28282B; --fx-latest-ink: #F3F1E6;   /* the newest-guess row + the score badges (dark grey) */
   --fx-found:  #4CAF50; --fx-found-dark:  #357A38; --fx-found-ink:  #FFFFFF;   /* the found secret word (green) */
   /* EXPANDLE colors (update 96): ONE tile color; set by expandle-colors.js from Settings -> Colors, the legend reads the same variables */
-  --ex-tile:    #3A7BD5; --ex-tile-dark:    #2757A3; --ex-tile-ink:    #FFFFFF; --ex-tile-bd: #2757A3;   /* every letter tile */
+  --ex-tile:    #8A8F98; --ex-tile-dark:    #63676D; --ex-tile-ink:    #FFFFFF; --ex-tile-bd: #62666D;   /* every letter tile */
   --ex-frame:   #3C3C40; --ex-frame-dark:   #28282B; --ex-frame-ink:   #F3F1E6;   /* the frame of the newest row */
   --ex-timer:   #2E7D32; --ex-timer-dark:   #1F5E24; --ex-timer-ink:   #FFFFFF;   /* the round clock */
   --ex-bw: 0px; --ex-radius: 7px; --ex-tile-scale: 1;

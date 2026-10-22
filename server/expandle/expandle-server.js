@@ -256,7 +256,7 @@ const game = {
   // update 98: host options (remembered in data/game-options.json)
   startLength: cleanStartLength(getOption("expandle", "startLength", 3)),   // 3, 4 or 5 letters; 0 = a random 3-5 every round
   maxLength: cleanMaxLength(getOption("expandle", "maxLength", 0)),         // 0 = automatic (as long as the dictionary allows)
-  difficulty: cleanDifficulty(getOption("expandle", "difficulty", "random")), // how the start word is picked
+  difficulty: cleanDifficulty(getOption("expandle", "difficulty2", "random")), // how the start word is picked (key "difficulty2": an older saved "Normal" that was only the old default is ignored)
   activeStartLength: START_LENGTH,                                           // the start length of the round that is running
   roundEndsAt: null, // epoch ms - when the running round's clock reaches zero
   roundStartedAt: null,
@@ -301,7 +301,7 @@ function cleanMaxLength(v) {
   if (!Number.isFinite(n) || n <= 0) return 0;
   return Math.max(MIN_MAX_LENGTH, n);
 }
-function cleanDifficulty(v) { return ["normal", "medium", "hard", "random"].includes(v) ? v : "normal"; }
+function cleanDifficulty(v) { return ["normal", "medium", "hard", "random"].includes(v) ? v : "random"; }
 // the longest word of a round: the host's cap (never below start length + 1) or what the dictionary allows
 function effectiveMax() {
   const cap = game.maxLength > 0 ? Math.min(game.maxLength, MAX_WORD_LENGTH) : MAX_WORD_LENGTH;
@@ -473,7 +473,7 @@ function applySettings(settings) {
   if (settings.roundSeconds !== undefined) game.roundSeconds = clampRoundSeconds(settings.roundSeconds);
   if (settings.startLength !== undefined) game.startLength = setOption("expandle", "startLength", cleanStartLength(settings.startLength));
   if (settings.maxLength !== undefined) game.maxLength = setOption("expandle", "maxLength", cleanMaxLength(settings.maxLength));
-  if (settings.difficulty !== undefined) game.difficulty = setOption("expandle", "difficulty", cleanDifficulty(settings.difficulty));
+  if (settings.difficulty !== undefined) game.difficulty = setOption("expandle", "difficulty2", cleanDifficulty(settings.difficulty));
   if (typeof autoContinue === "boolean") game.autoContinue = autoContinue;
   if (autoContinueDelaySeconds !== undefined) {
     const v = Number(autoContinueDelaySeconds);

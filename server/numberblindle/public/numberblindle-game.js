@@ -774,6 +774,7 @@ function renderModeUI(g) {
 
 function renderLengthBadge(g) {
   el.lengthBadge.textContent = g.status === "idle" ? "— digits" : g.wordLength + " digits";
+  if (window.LengthPanel) LengthPanel.update(g); // the shared length panel, worded for numbers ("Number length - 6 digits")
 }
 
 // Tile sizing combines two constraints so guesses always sit on one
