@@ -35,6 +35,10 @@ const MAX_GAMES = 60;
 export const WORD_GAMES = ["wordle", "blindle", "textle", "colordle", "colorblindle", "codedle", "fixle", "forbackle", "minedle", "linedle",
   "oracle", "rangedle", "shapedle", "shiftle", "structle", "comparable", "betweendle", "twistle", "expandle"];
 
+// the texts of the NUMBERBLINDLE panel (its "reset" goes back to these, not to "Word length")
+const NUMBER_TEXTS = { title: "Number length", fixedText: "{length} digits" };
+const NUMBER_GAME = "numberblindle";
+
 const store = new Map();   // gameId -> complete, valid settings object
 let io = null;
 let saveTimer = null;
@@ -50,6 +54,8 @@ function load() {
   }
   // update 99: EXPANDLE's panel tells viewers how long the NEXT word has to be (it grows by one letter every row)
   if (!store.has("expandle")) store.set("expandle", Schema.normalize({ title: "Next word" }));
+  // NUMBERBLINDLE's panel is worded for numbers: "Number length - 6 digits"
+  if (!store.has("numberblindle")) store.set("numberblindle", Schema.normalize(NUMBER_TEXTS));
   // one-time import of BETWEENDLE's old private settings
   if (!store.has("betweendle")) {
     try {
@@ -123,7 +129,7 @@ export const LengthPanelHub = {
         const game = payload && payload.game;
         if (typeof game !== "string" || !ID_RE.test(game)) return;
         const keepShow = current(game).show;
-        store.set(game, Schema.normalize({ show: keepShow }));
+        store.set(game, Schema.normalize(game === NUMBER_GAME ? { ...NUMBER_TEXTS, show: keepShow } : { show: keepShow }));
         scheduleSave();
         broadcast(game, "", "reset");
       });
@@ -132,11 +138,12 @@ export const LengthPanelHub = {
       socket.on("lp:apply_all", (payload) => {
         const game = payload && payload.game;
         if (typeof game !== "string" || !ID_RE.test(game)) return;
-        const src = current(game);
+        const src = { ...current(game) };
+        if (game === NUMBER_GAME) { delete src.title; delete src.fixedText; delete src.randomText; delete src.icon; } // number wording never leaks into the word games
         for (const g of WORD_GAMES) {
           if (g === game) continue;
           const keep = current(g);
-          store.set(g, Schema.normalize({ ...src, show: keep.show, position: keep.position }));
+          store.set(g, Schema.normalize({ ...keep, ...src, show: keep.show, position: keep.position }));
           broadcast(g, "", "apply_all");
         }
         scheduleSave();
