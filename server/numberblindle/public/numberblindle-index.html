@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>NUMBERBLINDLE — Live Number Game</title>
+<meta name="description" content="A live number-deduction game (guess the secret PIN) powered by TikTok LIVE chat." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+<link rel="stylesheet" href="/shared/theme.css" />
+<script src="/shared/theme.js"></script>
+<script src="/shared/session.js"></script>
+<script src="/shared/platform-sync.js"></script>
+<script src="/shared/tile-fit.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="numberblindle-style.css" />
+<link rel="stylesheet" href="/shared/game-chrome.css" />
+<link rel="stylesheet" href="/shared/hints.css" />
+<link rel="stylesheet" href="/shared/settings-shell.css" />
+<link rel="stylesheet" href="/shared/game-colors.css" />
+<link rel="stylesheet" href="/shared/color-shades.css" />
+<script src="/shared/color-shades.js" data-game="numberblindle"></script>
+<link rel="stylesheet" href="/shared/legend.css" />
+<script src="/shared/legend.js" data-game="numberblindle"></script>
+<script src="/shared/title-font.js" defer></script>
+<script src="/shared/score-ticker.js"></script>
+<script src="/shared/hints.js"></script>
+<script src="/shared/settings-shell.js"></script>
+</head>
+<body data-game="numberblindle">
+  <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
+
+  <div class="app" id="app">
+
+    <div class="heroBand" id="heroBand">
+      <h1 class="heroTitle">NUMBERBLINDLE</h1>
+      <p class="heroTagline">Crack the secret number using only color counts, never which digits. Your chat guesses live!</p>
+    </div>
+
+    <header class="topbar">
+      <div class="brandRow">
+        <span class="brandDot" id="brandDot"></span>
+        <div class="brandText">
+          <div class="brandTitle">NUMBERBLINDLE</div>
+          <div class="brandSubtitle">chat-powered number game</div>
+        </div>
+      </div>
+      <div class="toolbarRow">
+        <a href="/" class="iconBtn" id="homeBtn" aria-label="Choose another game">🏠</a>
+        <span class="modeBadge" id="modeBadge">TEST</span>
+        <span class="lengthBadge" id="lengthBadge">— digits</span>
+        <button class="iconBtn" id="keyboardBtn" type="button" aria-label="Show or hide the number keyboard" title="Show / hide the number keyboard" aria-pressed="true">⌨️</button>
+        <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint">💡</button>
+        <button class="iconBtn" id="helpBtn" type="button" aria-label="How to play">❓</button>
+        <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
+        <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">⚙️</button>
+        <button class="iconBtn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">⛶</button>
+      </div>
+    </header>
+
+    <div class="toastSlot"><div class="rejectionToast" id="rejectionToast" hidden></div></div>
+
+    <main class="stage" id="stage">
+      <section class="round-card">
+
+        <!-- Legend (what green / yellow / red mean): built by /shared/legend.js as a normal block of the page flow, at the very
+             top of this card = directly under the floating message window (.toastSlot above) and above the keyboard and the
+             guess board, so nothing can ever overlap. -->
+
+        <div class="keyboardSection" id="keyboardSection" aria-label="Number keyboard, colored by the tiles">
+          <div class="keyboardHead">
+            <span class="keyboardTitle">Number keyboard</span>
+            <span class="keyboardActions">
+              <button class="linkBtn" id="resetColorsBtn" type="button">Reset colors</button>
+              <button class="linkBtn" id="hideKeyboardBtn" type="button">Hide</button>
+            </span>
+          </div>
+          <div class="keyboard" id="keyboard"></div>
+        </div>
+
+        <div class="tilesWrap" id="tilesWrap"></div>
+        <div class="hintChips" id="hintChips"></div>
+        <p class="hintExplainer" id="hintExplainer" hidden>💡 suggests a number that fits every clue so far (never the answer itself). Unlimited uses.</p>
+
+        <div class="offlineNote" id="offlineNote" hidden>
+          <p>Solo practice — type your guess (digits only) in the box below.</p>
+        </div>
+
+        <div class="resultBanner" id="resultBanner" hidden>
+          <p id="resultText"></p>
+          <button class="btn btnGold" id="playAgainBtn" type="button">Play again</button>
+          <p class="autoContinueNote" id="autoContinueNote" hidden></p>
+        </div>
+
+        <div class="idleBanner" id="idleBanner">
+          <p>Open <strong>Settings</strong> (⚙️ top right) to choose a mode and number length, then tap Apply to begin.</p>
+        </div>
+
+      </section>
+    </main>
+
+    <footer class="controls" id="controls">
+      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="true" aria-controls="controlsBody">
+        <span>Host controls</span>
+        <span id="handleArrow" class="handleArrow">▾</span>
+      </button>
+
+      <div class="controlsBody" id="controlsBody">
+
+        <div class="modeControls" id="liveControls" hidden>
+          <div class="row">
+            <input
+              id="tiktokUsernameBottom"
+              class="textInput"
+              placeholder="TikTok username (no @)"
+              autocapitalize="off" autocorrect="off" spellcheck="false"
+            />
+            <button id="connectBtnBottom" class="btn btnPrimary" type="button">Connect</button>
+          </div>
+          <div class="row">
+            <input id="setAnswerInputLive" class="textInput" placeholder="Set the secret number…" inputmode="numeric" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="setAnswerBtnLive" class="btn btnGhost" type="button">Set</button>
+          </div>
+          <p class="miniStatus" id="setAnswerErrorLive"></p>
+        </div>
+
+        <div class="modeControls" id="testControls" hidden>
+          <p class="sectionNote">Test Mode is simulating chat automatically — nothing to connect.</p>
+          <div class="row">
+            <input id="setAnswerInputTest" class="textInput" placeholder="Set the secret number…" inputmode="numeric" autocapitalize="off" autocorrect="off" spellcheck="false" />
+            <button id="setAnswerBtnTest" class="btn btnGhost" type="button">Set</button>
+          </div>
+          <p class="miniStatus" id="setAnswerErrorTest"></p>
+        </div>
+
+        <div class="modeControls" id="offlineControls" hidden>
+          <div class="row">
+            <input
+              id="offlineGuessInput"
+              class="textInput"
+              placeholder="Type your guess (digits)…"
+              inputmode="numeric"
+              autocapitalize="off" autocorrect="off" spellcheck="false"
+            />
+            <button id="offlineGuessBtn" class="btn btnPrimary" type="button">Guess</button>
+          </div>
+          <p class="miniStatus" id="offlineError"></p>
+        </div>
+
+        <button id="giveUpBtn" class="btn btnGhost btnFull" type="button">Give up</button>
+        <p class="miniStatus" id="miniStatus"></p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Settings drawer -->
+  <div class="drawerOverlay" id="settingsOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Settings</h3>
+        <button class="iconBtn" id="closeSettings" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="statusChips">
+        <div class="statusChip" id="modeChip">Mode: —</div>
+        <div class="statusChip" id="connChip">Connection: —</div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Appearance</h4>
+        <p class="sectionNote">This colors the whole platform (hub and every game) — it used to live as a 🎨 icon in the top toolbar; it's here now so that row can stay a single line with every button visible, without shrinking, wrapping, scrolling, or needing to zoom out.</p>
+        <label class="theme-picker">
+          🎨
+          <select data-theme-select aria-label="Platform theme color">
+            <option value="cream">Cream</option>
+            <option value="blue">Sky Blue</option>
+            <option value="green">Meadow Green</option>
+            <option value="pink">Blossom Pink</option>
+            <option value="violet">Lavender Violet</option>
+            <option value="honey">Honey Gold</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Title font</h4>
+        <p class="sectionNote">Pick the font used for the game name at the top of the screen. Saved on this device and shared by every game.</p>
+        <div data-title-font-picker></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Mode</h4>
+        <button class="pickerRow" id="modePickerBtn" type="button">
+          <span id="modePickerLabel">Test — practice, scores not saved</span>
+          <span class="chev">▾</span>
+        </button>
+      </div>
+
+      <div class="drawerSection" id="tiktokSection">
+        <h4>TikTok auto-chat</h4>
+        <p class="sectionNote">
+          Connects to your LIVE room and feeds real chat guesses straight into the game. Only used in Live mode.
+        </p>
+        <label class="fieldLabel">Your TikTok username</label>
+        <input id="tiktokUsername" class="textInput" placeholder="e.g. yourhandle (no @)" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <div class="row">
+          <button id="connectBtn" class="btn btnGold" type="button">Connect</button>
+          <button id="disconnectBtn" class="btn btnGhost" type="button">Disconnect</button>
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Number length</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="randomLengthToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Random length each round</span>
+        </label>
+
+        <div id="fixedLengthRow">
+          <select id="wordLengthSelect" class="selectInput"></select>
+        </div>
+
+        <div id="randomLengthRow" class="row" hidden>
+          <label class="fieldLabel delayLabel">From</label>
+          <select id="lengthMinSelect" class="selectInput selectNarrow"></select>
+          <label class="fieldLabel delayLabel">to</label>
+          <select id="lengthMaxSelect" class="selectInput selectNarrow"></select>
+          <span class="fieldLabel delayLabel">digits</span>
+        </div>
+        <p class="sectionNote" id="randomLengthNote" hidden>Each new round picks a random number of digits in this range (default 5 to 8).</p>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Secret number</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="allowRepeatsToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">The secret number may repeat digits</span>
+        </label>
+        <p class="sectionNote">On (default): digits can appear more than once, like the original Tebak Pin (e.g. 5 9 5 7 9 4 1). Off: every digit of the secret number is different (numbers longer than 10 digits always repeat). Takes effect from the next round, after you tap Apply.</p>
+      </div>
+
+      <div class="drawerSection">
+        <label class="switchRow">
+          <input type="checkbox" id="autoContinueToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Auto-continue after each round</span>
+        </label>
+        <div class="row" id="delayRow">
+          <label class="fieldLabel delayLabel">Delay before next round (seconds)</label>
+          <input type="number" id="delayInput" class="textInput selectNarrow" min="3" max="120" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Number keyboard</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="keyboardShowToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Show the number keyboard (0 - 9)</span>
+        </label>
+        <p class="sectionNote">One row of ten keys. Every key takes the color of its digit on the tiles (green, yellow or red) - mark a digit on a tile or on its key and both change together. You can also show / hide it with the ⌨️ button in the top bar. Saved on this device.</p>
+        <button class="btn btnGhost btnFull" id="resetColorsBtn2" type="button">Reset colors</button>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Color shades</h4>
+        <p class="sectionNote">Choose how strong the green, yellow and red of the tiles, keys, count columns and legend look. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
+        <div id="shadePicker"></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Win celebration</h4>
+        <p class="sectionNote">After a win, the leaderboard pops up automatically, then closes on its own. Auto-continue (above) always waits for this celebration to finish before starting the next round.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show leaderboard for (seconds)</label>
+          <input type="number" id="leaderboardShowInput" class="textInput selectNarrow" min="1" max="30" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Starter number</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="starterWordToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Open every round with an automatic starter number</span>
+        </label>
+        <p class="sectionNote">On (default): one random number is placed on the board for free at the start of each round (worth no points) so chat has green / yellow / red counts to read. Off: every round starts on a blank board. Takes effect from the next round; your choice is remembered.</p>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Strict fit</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="strictFitToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Only accept guesses that fit the earlier clues</span>
+        </label>
+        <p class="sectionNote">On (default): a guess must still fit the green / yellow / red counts of every guess on the board - one that contradicts an earlier clue is skipped with the message below. Off: any number with the right count of digits is accepted and counted, so chat can probe freely. Your choice is remembered and applies right away.</p>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Guess rejection message</h4>
+        <p class="sectionNote">Shown briefly whenever Strict fit skips a guess that conflicts with an earlier clue.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show rejection message for (seconds)</label>
+          <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
+        </div>
+      </div>
+
+      <button class="btn btnGold btnFull" id="applyBtn" type="button">Apply settings &amp; start new round</button>
+      <p class="sectionNote">Number length, repeated digits, auto-continue and this delay only take effect once you tap Apply. Win-celebration duration applies right away.</p>
+
+      <div class="drawerSection">
+        <h4>
+          Diagnostics
+          <button id="diagToggle" class="linkBtn" type="button" aria-expanded="true">hide</button>
+        </h4>
+        <div class="diagGrid" id="diagGrid"></div>
+      </div>
+
+      <div class="drawerSection" id="hintSettingsSection" data-hint-settings></div>
+
+      <div class="drawerSection">
+        <h4>Scores</h4>
+        <button class="btn btnDanger btnFull" id="resetRoundBtn" type="button">Reset this round's leaderboard</button>
+        <button class="btn btnDanger btnFull" id="resetTotalBtn" type="button">Reset all-time leaderboard</button>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Live event tools</h4>
+        <div data-engagement-tools></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode picker popup -->
+  <div class="pickerOverlay" id="modePickerOverlay" hidden>
+    <div class="pickerSheet">
+      <button class="pickerOption" data-mode="live" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Live</span>
+          <span class="pickerDesc">Counts for the chat leaderboard</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="test" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Test</span>
+          <span class="pickerDesc">Practice — scores not saved</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="offline" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Offline</span>
+          <span class="pickerDesc">Host plays solo</span>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Leaderboard drawer -->
+  <div class="drawerOverlay" id="leaderboardOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Leaderboard</h3>
+        <button class="iconBtn" id="closeLeaderboard" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="tabRow">
+        <button class="tabBtn active" id="tabThisRound" type="button">This round</button>
+        <button class="tabBtn" id="tabAllTime" type="button">All-time</button>
+      </div>
+      <ol class="leaderboard" id="leaderboardList"></ol>
+      <p class="sectionNote" id="leaderboardNote" hidden></p>
+    </div>
+  </div>
+
+  <!-- Win celebration: a sequence of floating windows -->
+  <div class="celebrationOverlay" id="celebrationOverlay" hidden>
+    <div class="celebrationCard" id="celebrationCard">
+      <button class="iconBtn celebrationClose" id="closeCelebration" type="button" aria-label="Close">✕</button>
+      <div class="celebrationBody" id="celebrationBody"></div>
+      <div class="celebrationDots" id="celebrationDots">
+        <span class="celebDot" data-stage="0"></span>
+        <span class="celebDot" data-stage="1"></span>
+        <span class="celebDot" data-stage="2"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- How-to-play modal -->
+  <div class="modalOverlay" id="howToOverlay" hidden>
+    <div class="modal">
+      <div class="modalHead">
+        <h3>How to play</h3>
+        <button class="iconBtn" id="closeHowTo" type="button" aria-label="Close">✕</button>
+      </div>
+      <ul class="howToList">
+        <li>Guess the <strong>secret number</strong> (a PIN of 5 to 8 digits by default, set in Settings). Type just the digits in chat. <strong>Unlimited guesses</strong>, anyone can play, anytime. Digits can repeat.</li>
+        <li>Each guess shows number columns to its right. They only reveal <em>counts</em>, never which digits:<br>
+          <span class="legendTile correct">Green</span> = digits that are correct <strong>and in the right position</strong>.<br>
+          <span class="legendTile present">Yellow</span> = digits that are in the secret number but in the <strong>wrong position</strong>.<br>
+          <span class="legendTile absent">Red</span> = digits that are <strong>not in</strong> the secret number.</li>
+        <li>Use the counts to work out the digits, then color them on the tiles: tap a digit to cycle <strong>red → yellow → green → none</strong>. The number keyboard (0 - 9) colors itself to match every tile, and the tiles match the keys. The only automatic color: a guess with <strong>0 green and 0 yellow</strong> turns all its digits red. Everything clears at the start of each new round.</li>
+        <li>With <em>Strict fit</em> on (the default), a guess is only accepted if it still fits every clue so far; one that contradicts an earlier clue flashes a quick reason and is skipped.</li>
+        <li><strong>Scoring (Live):</strong> 1 point for every guess that fits the board, 5 points for the guess that solves the round.</li>
+        <li>💡 unlimited hints: a number that fits the clues (never the answer), a revealed digit, or digits that are not in the number.</li>
+        <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = just you, type guesses directly.</li>
+      </ul>
+      <button class="btn btnGold" id="closeHowTo2" type="button">Got it</button>
+    </div>
+  </div>
+
+  <script>
+    // If you mounted NUMBERBLINDLE with a custom wsPath in mountNumberblindle(...),
+    // set the same value here so the browser connects to the right
+    // WebSocket endpoint. Defaults to "/numberblindle-ws", matching
+    // numberblindle-server.js's default - leave this alone if you didn't
+    // change wsPath.
+    window.NUMBERBLINDLE_CONFIG = window.NUMBERBLINDLE_CONFIG || { wsPath: "/numberblindle-ws" };
+  </script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/engagement.js"></script>
+  <script src="numberblindle-game.js"></script>
+</body>
+</html>
