@@ -1,9 +1,9 @@
 {
   "name": "tiktok-live-game-platform",
-  "version": "2.50.0",
+  "version": "2.51.0",
   "private": true,
   "type": "module",
-  "description": "A TikTok LIVE game platform hosting twenty-four independent games (Flagle Live, TRAVLE Live, Blindle, Findle Live, CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle, Shapedle, Forbackle, Shiftle, Wordle, Betweendle, Comparable, Minedle, Linedle, Citydle, Expandle, Fixle) behind one game-selector screen, each reading real audience chat as guesses. Word games can be played in English, Bahasa Indonesia, Bahasa Melayu (Malaysia) or any mix.",
+  "description": "A TikTok LIVE game platform hosting twenty-five independent games (Flagle Live, TRAVLE Live, Blindle, Findle Live, CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle, Shapedle, Forbackle, Shiftle, Wordle, Betweendle, Comparable, Minedle, Linedle, Citydle, Expandle, Fixle, Contexto) behind one game-selector screen, each reading real audience chat as guesses. Word games can be played in English, Bahasa Indonesia, Bahasa Melayu (Malaysia) or any mix.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -19,6 +19,8 @@
     "express": "^4.21.2",
     "socket.io": "^4.7.5",
     "tiktok-live-connector": "^2.4.4",
+    "wink-lemmatizer": "^3.0.4",
+    "word-list": "^4.0.0",
     "ws": "^8.18.0"
   }
 }

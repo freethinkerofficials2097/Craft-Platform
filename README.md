@@ -507,3 +507,6 @@ SHAPEDLE Settings -> Symbols: tick several symbol sets (new: Flags, Professions,
 
 ## Update 30
 HOME page: the top-left banner now reads **"<HOST NAME> LIVE GAMES"** with the host's round TikTok picture while a TikTok host is connected (any game), and every game card can be restyled from the 🎛️ button (colors, border, corners, 3D edge, font, words, hide, reorder). See `CHANGES_UPDATE_30.md`.
+
+## CONTEXTO (update 101)
+Word-similarity game at `/contexto/`: chat types words, each gets a rank by meaning (#1 = the secret word). See `CHANGES_UPDATE_101.md`. Code: `server/contexto/`.

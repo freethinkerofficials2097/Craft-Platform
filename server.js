@@ -30,6 +30,7 @@
 //   /citydle/ - CITYDLE (Socket.IO namespace /citydle)
 //   /expandle/ - EXPANDLE (Socket.IO namespace /expandle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
+//   /contexto/ - CONTEXTO (Socket.IO namespace /contexto)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -67,6 +68,7 @@ import { mountLinedle } from "./server/linedle/linedle-server.js";
 import { mountCitydle } from "./server/citydle/citydle-server.js";
 import { mountExpandle } from "./server/expandle/expandle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
+import { mountContexto } from "./server/contexto/contexto-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -302,6 +304,12 @@ await mountExpandle(app, io, { mountPath: "/expandle" });
 // Scoring: the guess that finds the secret word wins exactly that word's score (2 x its length). Own Socket.IO namespace /fixle;
 // reuses BLINDLE's word bank + dictionary (loaded once).
 await mountFixle(app, io, { mountPath: "/fixle" });
+
+// CONTEXTO is the word-similarity game: chat types any word and it gets a RANK = how close its meaning is to the secret word (#1 = the
+// secret word itself). Ranks come from a real word-vector model (downloaded once, in the background - the game starts at once with the
+// built-in puzzles), with an online and an offline fallback. Points are for discovering one of the 10 closest words; the viewer who types
+// the secret word wins the round. Own Socket.IO namespace /contexto; reuses the platform's shared dictionary (loaded once).
+await mountContexto(app, io, { mountPath: "/contexto" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
