@@ -256,7 +256,7 @@ const game = {
   // update 98: host options (remembered in data/game-options.json)
   startLength: cleanStartLength(getOption("expandle", "startLength", 3)),   // 3, 4 or 5 letters; 0 = a random 3-5 every round
   maxLength: cleanMaxLength(getOption("expandle", "maxLength", 0)),         // 0 = automatic (as long as the dictionary allows)
-  difficulty: cleanDifficulty(getOption("expandle", "difficulty", "normal")), // how the start word is picked
+  difficulty: cleanDifficulty(getOption("expandle", "difficulty", "random")), // how the start word is picked
   activeStartLength: START_LENGTH,                                           // the start length of the round that is running
   roundEndsAt: null, // epoch ms - when the running round's clock reaches zero
   roundStartedAt: null,

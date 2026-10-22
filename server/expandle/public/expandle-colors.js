@@ -8,7 +8,7 @@
    ========================================================================== */
 (function () {
   "use strict";
-  var DEFAULTS = { tileBg: "#3a7bd5", tileInk: "#ffffff", tileBd: "#2757a3", frame: "#3c3c40", timerBg: "#2e7d32", timerInk: "#ffffff", borderW: 0, radius: 7, tileScale: 100 };
+  var DEFAULTS = { tileBg: "#8a8f98", tileInk: "#ffffff", tileBd: "#62666d", frame: "#3c3c40", timerBg: "#2e7d32", timerInk: "#ffffff", borderW: 0, radius: 7, tileScale: 100 };
   var NUM = { borderW: [0, 6], radius: [0, 20], tileScale: [60, 115] };
   var HEX = /^#[0-9a-f]{6}$/i;
   var cur = {};

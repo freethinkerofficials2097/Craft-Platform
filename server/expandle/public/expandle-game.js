@@ -181,7 +181,7 @@ function syncStagedSettingsFromState(g) {
     }
     if (document.activeElement !== el.maxLengthSelect) el.maxLengthSelect.value = String(g.maxLengthSetting || 0);
   }
-  if (el.difficultySelect && document.activeElement !== el.difficultySelect) el.difficultySelect.value = g.difficulty || "normal";
+  if (el.difficultySelect && document.activeElement !== el.difficultySelect) el.difficultySelect.value = g.difficulty || "random";
   el.autoContinueToggle.checked = g.autoContinue;
   el.delayInput.value = g.autoContinueDelaySeconds;
   el.leaderboardShowInput.value = g.leaderboardShowSeconds;

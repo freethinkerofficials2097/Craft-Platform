@@ -1,0 +1,1569 @@
+// contexto-server.js
+// CONTEXTO - a word-similarity guessing game for TikTok LIVE chat, ported into the platform.
+//
+// The audience types words in TikTok LIVE chat; every word gets a RANK = how close its meaning is to the secret word
+// (#1 = the secret word itself, #2 = its closest neighbour, ... the higher the number, the further away). The rank list is
+// built from a real word-vector model (GloVe, downloaded once - see server/contexto/embeddings.js) with an online
+// (Datamuse) and an offline fallback, so a round can ALWAYS start. Points are for DISCOVERY (first player to find a word
+// in the closest 10); the round is won by the viewer who types the secret word.
+//
+// Platform integration (update 101):
+//   * Own Socket.IO namespace "/contexto" (never collides with BLINDLE's WebSocket path).
+//   * HOME's Offline / Test / Live mode and the ONE shared TikTok connection drive the game (platform-sync.js, PlatformHub).
+//   * Gift / like / share alerts + the Records archive work like in every other game (Engagement.attach).
+//   * The English dictionary is the platform's shared one (loaded once for BLINDLE and friends).
+// Mounts at /contexto.
+
+import "dotenv/config";
+import express from "express";
+import path from "path";
+import fs from "fs";
+import os from "os";
+import { fileURLToPath } from "url";
+import wordListPath from "word-list";
+import lemmatizer from "wink-lemmatizer";
+import { TikTokLiveConnection, WebcastEvent } from "tiktok-live-connector";
+import { createEmbeddings } from "./embeddings.js";
+import { Engagement } from "../engagement/engagement-hub.js";
+import { dictionaryState as PLATFORM_DICTIONARY, loadDictionary as loadPlatformDictionary } from "../blindle/blindle-dictionary.js";
+import { PlatformHub } from "../shared/platform-hub.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT_DATA_DIR = path.resolve(__dirname, "../../data"); // the platform's data folder (saved settings live here)
+const embeddings = createEmbeddings((m) => console.log(m));
+
+
+// ------------------------------------------------------------
+// ENGLISH DICTIONARY
+// Used so that ANY real word a player guesses gets an actual rank, even
+// when it has nothing to do with the target — it just lands far away
+// (red). Text that isn't a recognized word is left unranked ("not a
+// word"). This mirrors how the real Contexto ranks its whole vocabulary
+// rather than only a shortlist of closely related words.
+//
+// The dictionary is merged from several sources:
+//   1. the bundled `word-list` package (about 275,000 words) — loaded
+//      instantly, so the game works the moment the server starts
+//   2. any .txt files you drop into data/dictionaries/ (one word per line)
+//   3. large public word lists, downloaded once when the server starts
+//      (and remembered in a temporary file so restarts are quick)
+// The total is printed in the logs and shown in the status drawer.
+// ------------------------------------------------------------
+const DICTIONARY_TARGET = 250000; // the platform's shared dictionary has ~370,000 words
+const ENGLISH_WORDS = new Set();
+const dictionary = { total: 0, target: DICTIONARY_TARGET, status: 'loading' };
+
+// Words the game will never pick as the SECRET word, even though they're
+// still valid to type as a guess. Keeps a broadcast-safe target word while
+// leaving the guessable dictionary untouched. Add more, one per line, in
+// data/dictionaries/blocklist.txt (see the README) if you find gaps.
+const TARGET_BLOCKLIST = new Set(('nigger nigga fuck fucking fucker fucked shit shitty cunt cock cocks dick dicks ' +
+  'pussy pussies bitch bitches asshole assholes whore whores slut sluts rape raping rapist ' +
+  'faggot faggots fag fags retard retarded nazi nazis hitler molest molester paedophile pedophile ' +
+  'pedo incest bestiality suicide masturbate masturbation orgasm penis vagina semen sperm ejaculate').split(' '));
+
+// ------------------------------------------------------------
+// COMMON VOCABULARY — never pick a proper noun as the SECRET word (still
+// fine as a guess). The dictionary/frequency sources are plain word lists
+// with no part-of-speech tagging, so there's no fully automatic way to
+// detect "this is a name/place/brand" offline. This curated list covers
+// the categories that most often leak through a general-English frequency
+// list: days, months, nationalities/languages ("proper adjectives"),
+// religions/deities, planets, and very common first names / places /
+// brands. It's necessarily incomplete — add more, one per line, to
+// data/word-blocklist.txt (already supported below) if you spot a gap.
+// ------------------------------------------------------------
+const PROPER_NOUN_BLOCKLIST = new Set((
+  'monday tuesday wednesday thursday friday saturday sunday ' +
+  'january february march april may june july august september october november december ' +
+  'english french german spanish italian chinese japanese russian american british irish scottish ' +
+  'african asian european australian canadian mexican indian dutch swedish korean arab ' +
+  'christian muslim jewish hindu buddhist catholic jesus christ god allah buddha ' +
+  'mars venus jupiter saturn mercury neptune uranus pluto ' +
+  'john james mary robert michael david william richard joseph thomas charles mark paul george ' +
+  'america england france germany spain italy china japan russia india canada mexico australia ' +
+  'africa asia europe ' +
+  'london paris tokyo california texas google facebook twitter microsoft ' +
+  'christmas easter halloween thanksgiving').split(' '));
+for (const w of PROPER_NOUN_BLOCKLIST) TARGET_BLOCKLIST.add(w);
+
+const TWO_LETTER_WORDS = new Set(('aa ab ad ae ag ah ai al am an ar as at aw ax ay ba be bi bo by ca ch da de do ' +
+  'ea ed ee ef eh el em en er es ex fa fe fy gi go gu ha he hi hm ho id if in io is it jo ka ki la li lo ma me mi ' +
+  'mm mo mu my na ne no nu od oe of oh oi ok om on oo op or os ou ow ox oy pa pe pi po qi re sh si so st ta te ti ' +
+  'to uh um un up us ut we wo xi xu ya ye yo yu za zo').split(' '));
+
+// Adds every usable word in `text` (one per line) and returns how many
+// were new. Big public lists contain junk (stray letters, capitalised
+// proper names, hyphenated fragments), so entries are filtered: letters
+// a-z only, single letters must be "a" or "i", and 2-letter entries must
+// be real 2-letter words. With `strict`, capitalised entries (proper
+// nouns, acronyms) are skipped too.
+function addWords(text, { strict = false } = {}) {
+  let added = 0;
+  for (const line of text.split(/\r?\n/)) {
+    const raw = line.trim();
+    if (!raw) continue;
+    if (strict && raw !== raw.toLowerCase()) continue;
+    const w = raw.toLowerCase();
+    if (!/^[a-z]+$/.test(w)) continue;
+    if (w.length === 1 && w !== 'a' && w !== 'i') continue;
+    if (w.length === 2 && !TWO_LETTER_WORDS.has(w)) continue;
+    if (!ENGLISH_WORDS.has(w)) { ENGLISH_WORDS.add(w); added++; }
+  }
+  dictionary.total = ENGLISH_WORDS.size;
+  return added;
+}
+
+const DICT_DIR = path.join(__dirname, 'data', 'dictionaries');
+const DICT_CACHE_FILE = path.join(os.tmpdir(), 'contexto-english-words.v1.txt');
+const BLOCKLIST_FILE = path.join(__dirname, 'data', 'word-blocklist.txt');
+
+// ------------------------------------------------------------
+// SAVED DEFAULT SETTINGS ("Save & Apply as Default")
+// Lets the host set everything up once (mode, speed, timings, etc.) and
+// have every future visit — this device or any other, even after a
+// redeploy — start from those same settings instead of the hard-coded
+// ones. Saved to a plain JSON file on disk so it survives server
+// restarts; kept out of the data folder's word files so it's easy to
+// spot. Only a known, small set of fields is ever written here (see
+// handleClientMessage's 'save_default_settings' case) — never anything
+// arbitrary a client happens to send.
+// ------------------------------------------------------------
+const DEFAULT_SETTINGS_FILE = path.join(ROOT_DATA_DIR, 'contexto-default-settings.json');
+function loadDefaultSettings() {
+  try {
+    if (fs.existsSync(DEFAULT_SETTINGS_FILE)) {
+      return JSON.parse(fs.readFileSync(DEFAULT_SETTINGS_FILE, 'utf8'));
+    }
+  } catch (err) {
+    console.warn('[default-settings] could not read saved defaults:', err.message);
+  }
+  return null;
+}
+function saveDefaultSettings(obj) {
+  try {
+    fs.mkdirSync(ROOT_DATA_DIR, { recursive: true });
+    fs.writeFileSync(DEFAULT_SETTINGS_FILE, JSON.stringify(obj, null, 2));
+  } catch (err) {
+    console.warn('[default-settings] could not save defaults (read-only disk?):', err.message);
+  }
+}
+
+// Optional: add your own words to never use as a secret word, one per line.
+try {
+  if (fs.existsSync(BLOCKLIST_FILE)) {
+    for (const line of fs.readFileSync(BLOCKLIST_FILE, 'utf8').split(/\r?\n/)) {
+      const w = line.trim().toLowerCase();
+      if (w) TARGET_BLOCKLIST.add(w);
+    }
+  }
+} catch { /* optional file — ignore if missing/unreadable */ }
+
+// 1) bundled list  2) your own .txt files  3) list remembered from last download
+try {
+  addWords(fs.readFileSync(wordListPath, 'utf8'));
+} catch (err) {
+  console.error('[dictionary] could not load the bundled word list:', err.message);
+}
+try {
+  for (const file of fs.readdirSync(DICT_DIR)) {
+    if (!/\.txt$/i.test(file)) continue;
+    const added = addWords(fs.readFileSync(path.join(DICT_DIR, file), 'utf8'));
+    console.log(`[dictionary] data/dictionaries/${file}: +${added.toLocaleString('en-US')} words`);
+  }
+} catch { /* no data/dictionaries folder — that's fine */ }
+try {
+  if (fs.existsSync(DICT_CACHE_FILE)) {
+    const added = addWords(fs.readFileSync(DICT_CACHE_FILE, 'utf8'));
+    console.log(`[dictionary] remembered download: +${added.toLocaleString('en-US')} words`);
+  }
+} catch { /* ignore an unreadable cache */ }
+
+function finishDictionary() {
+  dictionary.total = ENGLISH_WORDS.size;
+  dictionary.status = 'ready';
+  const n = dictionary.total.toLocaleString('en-US');
+  if (dictionary.total >= DICTIONARY_TARGET) {
+    console.log(`[CONTEXTO] dictionary ready: ${n} words`);
+  } else {
+    console.warn(`[CONTEXTO] dictionary ready, but only ${n} words (goal: ${DICTIONARY_TARGET.toLocaleString('en-US')}).`);
+  }
+}
+
+// Merges the platform's shared dictionary (the same ~370,000 words BLINDLE and the other word games check guesses with)
+// into this game's word set. No extra download is needed any more - the platform loads it once for every game.
+async function loadRemoteDictionaries() {
+  try {
+    await loadPlatformDictionary();
+    let added = 0;
+    for (const w of PLATFORM_DICTIONARY.words) {
+      if (typeof w !== 'string' || !/^[a-z]+$/.test(w)) continue;
+      if (w.length === 1 && w !== 'a' && w !== 'i') continue;
+      if (w.length === 2 && !TWO_LETTER_WORDS.has(w)) continue;
+      if (!ENGLISH_WORDS.has(w)) { ENGLISH_WORDS.add(w); added++; }
+    }
+    console.log(`[CONTEXTO] platform dictionary merged: +${added.toLocaleString('en-US')} words`);
+  } catch (err) {
+    console.warn('[CONTEXTO] could not merge the platform dictionary:', err && err.message);
+  }
+  finishDictionary();
+  pushState();
+}
+
+if (dictionary.total >= DICTIONARY_TARGET) finishDictionary();
+
+// ============================================================
+// 0/1. TRANSPORT - the platform's Socket.IO namespace "/contexto"
+//   server -> page:  "state"  = the whole public state (also what platform-sync.js reads: game.mode + diagnostics)
+//                    "msg"    = one event ({ type: 'guess' | 'hint' | 'win' | 'give_up' | 'game_started' | 'server_error' | 'raw_event', ... })
+//   page -> server:  "action" = { type, payload }
+// (The platform already installs the crash-protection handlers, so none are added here.)
+// ============================================================
+let nsp = null;
+
+function safeMsg(e) {
+  try { return (e && e.message) ? e.message : String(e); } catch { return 'unknown error'; }
+}
+function broadcast(obj) {
+  if (!nsp) return;
+  try { nsp.emit('msg', obj); } catch (e) { console.error('[CONTEXTO] broadcast error', e); }
+}
+function pushState() {
+  if (!nsp) return;
+  try { nsp.emit('state', getPublicState()); } catch (e) { console.error('[CONTEXTO] state broadcast error', e); }
+}
+// the connection status in the words every platform game uses (platform-sync.js / HOME read this)
+function platformConnStatus() {
+  const s = state.connection.status;
+  return s === 'connected' ? 'live' : s;
+}
+
+// ============================================================
+// 2. GLOBAL STATE
+// ============================================================
+const state = {
+  connection: { status: 'idle', message: 'Not connected yet.', username: null },
+  mode: null, // mode of the current / last round: 'live' | 'test' | 'offline'
+  viewerCount: null,
+  autoplay: { running: false, speed: 'normal', ticks: 0 }, // Test mode's simulated chat
+  diagnostics: {
+    rawEventCount: 0,
+    lastReceived: null,
+    rawSamples: [],
+  },
+  game: {
+    active: false,
+    targetWord: null,
+    board: new Map(),           // word -> best entry (one row per distinct ranked word)
+    allGuessedWords: new Map(), // word -> { user } first player to find it (points + repeat tags)
+    totalGuesses: 0,
+    latest: null,               // the most recent guess, shown in the "Latest" line
+    winner: null,
+    result: null,               // { word, winner, gaveUp, guesses, players, points, total, topScorers } once the round ends
+    startedAt: null,
+    uniquePlayers: new Set(),
+    extendedRankMap: new Map(), // word -> rank, for valid English words outside the core semantic list
+    nextExtendedRank: null,     // next rank to hand out to such a word
+    roundScores: new Map(),     // user -> points earned so far THIS round
+    roundAvatars: new Map(),    // user -> latest known avatar URL, for THIS round's top scorers
+    hintedWords: new Set(),     // words already revealed via a hint this round
+  },
+  leaderboard: {}, // username -> { score, wins, guesses } — all-time session totals, kept on the server
+  defaultSettings: null, // host's saved "always start with these settings" — see SETTINGS DEFAULTS below
+};
+state.defaultSettings = loadDefaultSettings();
+
+const MODES = ['live', 'test', 'offline'];
+let rankMap = new Map();
+let currentEngine = null;   // 'embeddings' | 'datamuse' | 'fallback'
+let closedVocab = false;    // true: only words in the ranked vocabulary are valid guesses
+let orderedWords = [];
+let testAutoplayTimer = null;
+
+// All-time leaderboard entries, highest score first. No cap by default —
+// the client shows the top 20 at a glance and scrolls for the rest, so the
+// full list (everyone who has ever scored this session) is always sent.
+function topLeaderboard(n = Infinity) {
+  return Object.entries(state.leaderboard)
+    .map(([user, d]) => ({ user, score: d.score, wins: d.wins, avatar: d.avatar || null }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n);
+}
+
+function getPublicState() {
+  return {
+    connection: state.connection,
+    mode: state.mode,
+    viewerCount: state.viewerCount,
+    autoplay: state.autoplay,
+    diagnostics: { ...state.diagnostics, connectionStatus: platformConnStatus(), tiktokUsername: state.connection.username },
+    dictionary,
+    engine: { name: currentEngine, embeddings: embeddings.status, source: embeddings.source, vocab: embeddings.words.length, error: embeddings.error },
+    wordChoices: WORD_CHOICES,
+    leaderboardTop: topLeaderboard(),
+    defaultSettings: state.defaultSettings,
+    game: {
+      mode: state.mode,
+      active: state.game.active,
+      winner: state.game.winner,
+      result: state.game.result,
+      uniquePlayers: state.game.uniquePlayers.size,
+      totalGuesses: state.game.totalGuesses,
+      latest: state.game.latest,
+      board: boardEntries(150),
+      hintsAvailable: hintsRemaining(),
+    },
+  };
+}
+
+// One row per distinct ranked word, closest first.
+function boardEntries(n) {
+  return Array.from(state.game.board.values())
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, n);
+}
+
+// ============================================================
+// 3. WORD DATA / PUZZLE BUILDING
+// ============================================================
+const WORD_BANK = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'words.json'), 'utf8'));
+const FALLBACK_PUZZLES = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'fallback-puzzles.json'), 'utf8'));
+// Small curated pool, used only when the full dictionary isn't ready yet
+// (the first instant after a cold start) — see pickBalancedTargetWord().
+const ALL_LIVE_WORDS = Array.from(new Set([...(WORD_BANK.easy || []), ...(WORD_BANK.medium || []), ...(WORD_BANK.hard || [])]));
+// Words the host can pick from in Test and Offline mode (built-in, no internet needed).
+// Curated answer list: common, everyday, root-form words (like the real Contexto's
+// daily answers). Every mode draws its random secret word from here.
+let ANSWER_WORDS = [];
+try { ANSWER_WORDS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'answers.json'), 'utf8')); } catch (e) { console.warn('[answers] could not read data/answers.json:', e.message); }
+const WORD_CHOICES = Array.from(new Set([...ANSWER_WORDS, ...Object.keys(FALLBACK_PUZZLES)])).sort();
+
+function normalize(w) {
+  return (w || '').toLowerCase().trim().replace(/[^a-z]/g, '');
+}
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// The secret word's length is never fixed or user-selectable — it can be
+// anywhere from 4 to 12 letters, and the UI never hints at how many
+// letters it is. This range is purely a sanity bound (very short words are
+// mostly function words / too easy to brute-force; very long words are
+// mostly obscure compounds), not a difficulty setting.
+const TARGET_LENGTHS_MIN = 4;
+const TARGET_LENGTHS_MAX = 12;
+
+function isGoodLiveTarget(w) {
+  // Real, single, unbroken word; never something we've explicitly excluded
+  // from being a secret word (still fine as something a player can guess).
+  return !TARGET_BLOCKLIST.has(w);
+}
+
+// ------------------------------------------------------------
+// ROOT-WORD (LEMMA) ONLY — the SECRET word must already be its own base
+// dictionary form: never a plural noun ("cars"), never a conjugated or
+// tensed verb, and never a participle ("jumping", "jumped", "runs").
+// This only restricts what can be picked as the answer — guesses are
+// unaffected and still rank against the full dictionary as before.
+//
+// A simple suffix rule (reject anything ending in "s"/"ed"/"ing") would
+// wrongly reject perfectly good base words like "bus", "glass", "bed",
+// "speed", "ring", or "king". wink-lemmatizer already knows the many
+// English exceptions to those patterns, so it's used here instead of
+// hand-written suffix-stripping: a word is only rejected if lemmatizing
+// it as a noun, a verb, OR an adjective actually changes it (meaning it
+// was a plural, a conjugated/tensed verb, a participle, or a comparative
+// / superlative like "bigger" / "biggest").
+// ------------------------------------------------------------
+function isBaseFormWord(w) {
+  try {
+    if (lemmatizer.noun(w) !== w) return false;
+    if (lemmatizer.verb(w) !== w) return false;
+    if (typeof lemmatizer.adjective === 'function' && lemmatizer.adjective(w) !== w) return false;
+  } catch { /* never let an odd input crash target selection */ }
+  return true;
+}
+
+// Filters a list of candidate words down to base-form-only, but never
+// returns an empty list — if every candidate happens to get filtered out
+// (frequency band still tiny at cold start, etc.) the unfiltered list is
+// used instead so a round can always start.
+function baseFormOnly(words) {
+  const kept = words.filter(isBaseFormWord);
+  return kept.length ? kept : words;
+}
+
+// ------------------------------------------------------------
+// LIVE-MODE SECRET WORD POOL — BALANCED DIFFICULTY, ALWAYS RANDOM
+//
+// Picking the target from the entire loaded dictionary (400k+ words)
+// meant it could land on genuinely obscure or technical words that only
+// happen to clear the "150 semantic neighbors" bar in buildSemanticCore().
+// That made rounds swing wildly between "too easy" and "unfairly hard".
+//
+// Instead, the target is drawn from a word-frequency list (how often each
+// word is actually used in real English), downloaded once at startup —
+// the same pattern already used for the dictionary itself, see
+// REMOTE_DICTIONARIES above. Words are kept only if they fall in a middle
+// frequency band:
+//   - the very top of the frequency list (mostly "the/of/have/with"-style
+//     function words) is skipped — those make dull, low-signal targets
+//   - anything past a generous cutoff further down the list is dropped —
+//     that's where genuinely rare/technical words live
+// What's left is a large pool (thousands of words) that skews toward
+// everyday nouns/verbs/adjectives but still reaches into less common,
+// genuinely challenging vocabulary — enough range for a fast, casual
+// guesser and a sharp, word-savvy one to both have a fair round, without
+// a difficulty knob and without ever repeating the same tiny shortlist.
+// No length filter is applied beyond the 4-12 sanity bound above — the
+// pool is never split or chosen by length.
+// ------------------------------------------------------------
+const FREQUENCY_LIST_URL = 'https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_50k.txt';
+const FREQ_CACHE_FILE = path.join(os.tmpdir(), 'contexto-frequency-words.v1.txt');
+// Skip the most frequent entries (function words, "have/that/with/from"
+// style words with little semantic content) and stop well short of the
+// tail (the rarest, least-recognizable end of the list).
+const FREQ_BAND_SKIP_TOP = 300;
+// Narrowed from 15,000 → 7,000: the lower this is, the more the target
+// word pool skews toward words a casual TikTok LIVE audience recognizes
+// instantly, at the cost of some variety. 7,000 still leaves thousands of
+// everyday nouns/verbs/adjectives to draw from without reaching into the
+// more technical/less-familiar tail of the frequency list.
+const FREQ_BAND_MAX_RANK = 7000;
+
+let frequencyOrder = [];       // words, most-to-least frequent, raw from the source
+let balancedWordPool = [];     // filtered + banded pool actually drawn from
+let balancedPoolBuiltFromSize = 0;
+let balancedPoolBuiltFromFreqLen = 0;
+
+// word -> index in frequencyOrder (0 = most frequent). Built once the
+// frequency list is loaded; used both for the target pool above and to
+// bias the semantic neighbor ranking below toward familiar words. Empty
+// (size 0) means "no frequency data yet" — every lookup below treats
+// that as "don't adjust anything" rather than guessing.
+let frequencyRankOf = new Map();
+function rebuildFrequencyRankMap() {
+  const m = new Map();
+  frequencyOrder.forEach((w, i) => { if (!m.has(w)) m.set(w, i); });
+  frequencyRankOf = m;
+}
+
+// How much to favor/penalize a word's commonness when it's competing for
+// a near-target rank with roughly similar semantic scores. This only
+// nudges close calls — a word with a much stronger semantic signal still
+// outranks a merely-more-common one — but across many near-ties it steers
+// the ranks the audience actually sees (2nd, 3rd, 10th, ...) toward
+// familiar vocabulary instead of technical/rare co-occurrences.
+function commonnessMultiplier(w) {
+  if (!frequencyRankOf.size) return 1; // no frequency data loaded yet
+  const r = frequencyRankOf.get(w);
+  if (r === undefined) return 0.45;  // not even in the top 50k — likely obscure
+  if (r < 5000) return 1.3;          // everyday word — nudge up
+  if (r < 15000) return 1.0;         // still common — no change
+  if (r < 30000) return 0.7;         // getting uncommon — mild nudge down
+  return 0.5;                        // rare tail of the list — nudge down more
+}
+
+function rebuildBalancedWordPool() {
+  const source = frequencyOrder.length ? frequencyOrder : [];
+  const banded = source.slice(FREQ_BAND_SKIP_TOP, FREQ_BAND_MAX_RANK);
+  const pool = [];
+  for (const w of banded) {
+    if (w.length < TARGET_LENGTHS_MIN || w.length > TARGET_LENGTHS_MAX) continue;
+    if (!isGoodLiveTarget(w)) continue;
+    // Keep only words we can actually rank against (present in the loaded
+    // dictionary) — filters out any stray noise in the frequency source.
+    if (ENGLISH_WORDS.size && !ENGLISH_WORDS.has(w)) continue;
+    if (!isBaseFormWord(w)) continue; // root words only — see isBaseFormWord above
+    pool.push(w);
+  }
+  balancedWordPool = pool;
+  balancedPoolBuiltFromSize = ENGLISH_WORDS.size;
+  balancedPoolBuiltFromFreqLen = frequencyOrder.length;
+}
+
+function currentBalancedWordPool() {
+  if (balancedPoolBuiltFromSize !== ENGLISH_WORDS.size || balancedPoolBuiltFromFreqLen !== frequencyOrder.length) {
+    rebuildBalancedWordPool();
+  }
+  return balancedWordPool;
+}
+
+function parseFrequencyList(text) {
+  const words = [];
+  for (const line of text.split(/\r?\n/)) {
+    const raw = line.trim();
+    if (!raw) continue;
+    // Lines look like "word 12345678" (word, then a frequency count).
+    const w = raw.split(/\s+/)[0].toLowerCase();
+    if (!/^[a-z]+$/.test(w)) continue;
+    words.push(w);
+  }
+  return words;
+}
+
+async function loadFrequencyList() {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 60000);
+    const res = await fetch(FREQUENCY_LIST_URL, { signal: ctrl.signal });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    clearTimeout(timer);
+    frequencyOrder = parseFrequencyList(text);
+    try { fs.writeFileSync(FREQ_CACHE_FILE, frequencyOrder.join('\n')); } catch { /* read-only disk: skip */ }
+    console.log(`[frequency] loaded ${frequencyOrder.length.toLocaleString('en-US')} ranked words for balanced word selection`);
+  } catch (err) {
+    console.warn(`[frequency] could not download frequency list: ${err.message}`);
+    try {
+      if (fs.existsSync(FREQ_CACHE_FILE)) {
+        frequencyOrder = fs.readFileSync(FREQ_CACHE_FILE, 'utf8').split(/\r?\n/).filter(Boolean);
+        console.log(`[frequency] using remembered download: ${frequencyOrder.length.toLocaleString('en-US')} ranked words`);
+      }
+    } catch { /* ignore an unreadable cache */ }
+  }
+  rebuildFrequencyRankMap();
+  rebuildBalancedWordPool();
+  pushState();
+}
+
+const recentTargets = [];
+function pickBalancedTargetWord() {
+  // Secret words come from the curated answer list (common, everyday words),
+  // never repeating the last ~150 rounds. When the embedding model is loaded,
+  // the word must also exist in its vocabulary.
+  let pool = ANSWER_WORDS.filter((w) => isGoodLiveTarget(w) && isBaseFormWord(w));
+  if (embeddings.status === 'ready') pool = pool.filter((w) => embeddings.has(w));
+  if (!pool.length) pool = ALL_LIVE_WORDS.length ? ALL_LIVE_WORDS : Object.keys(FALLBACK_PUZZLES);
+  const fresh = pool.filter((w) => !recentTargets.includes(w));
+  const w = pickRandom(fresh.length ? fresh : pool);
+  recentTargets.push(w);
+  if (recentTargets.length > 150) recentTargets.shift();
+  return w;
+}
+
+// ------------------------------------------------------------
+// RANKING ENGINE
+//
+// Real Contexto ranks words with a proprietary semantic-similarity model
+// (word embeddings such as word2vec/GloVe): every word in its vocabulary
+// gets a fixed cosine-distance-based rank to the target the moment the
+// puzzle is built, #1 is always the target itself, and a word's rank
+// never changes based on who guesses it or when. We approximate that in
+// two stages so every round — Live, Test, or Offline — can rank the
+// ENTIRE loaded dictionary (hundreds of thousands of words), fully
+// deterministically (the same word always lands on the same rank within
+// a round, no matter the guess order):
+//
+//   STAGE 1 — SEMANTIC CORE (tried first, in every mode — Live, Test, and
+//   Offline all reach for this before anything else):
+//   Query Datamuse across eleven relation types (meaning, synonyms,
+//   co-occurrence triggers, modifier pairs, hypernyms/hyponyms,
+//   holonyms/meronyms, collocations) and merge them with Reciprocal
+//   Rank Fusion (RRF) — the same multi-source rank-merging technique
+//   search engines use — weighted so the strongest semantic signals
+//   dominate. This is what a single richer embedding model would give
+//   you, approximated from several narrower ones. This needs the
+//   server to have internet access (which a hosted deploy always
+//   does) — it's the ONLY stage that actually knows what words mean.
+//
+//   STAGE 2 — LEXICAL-AFFINITY EXTENSION (fallback + gap-filler):
+//   Everything the semantic core doesn't cover gets a deterministic rank
+//   from a bigram-overlap / shared-prefix / length-closeness score
+//   against the target, computed once per round over the full loaded
+//   dictionary and sorted. This is a purely orthographic (spelling-based)
+//   proxy, not a semantic one — it's what's left of the board once you
+//   run out of real "means like" data, so words on it can be unrelated
+//   in meaning despite a close-looking rank. No network needed, so it's
+//   also what every mode falls back to, in full, if Stage 1 is ever
+//   unreachable — Test and Offline still work with zero internet, just
+//   with noticeably weaker ranking quality in that one edge case.
+// ------------------------------------------------------------
+
+// How many total ranked words a single round guarantees (target + core +
+// extension). This covers the ENTIRE loaded dictionary (hundreds of
+// thousands of words) rather than stopping at a fixed count. Real Contexto
+// gives every word in its vocabulary a fixed, deterministic rank the
+// instant the round starts, based purely on distance from the target —
+// never on who guessed what, or when. Capping the extension at a fixed
+// number used to mean that anything past the cutoff (often perfectly
+// reasonable, related words) fell through to resolveRank()'s "extended"
+// fallback below, which — because it only assigns a rank the first time a
+// word happens to be guessed — made ranks order-of-guessing dependent
+// instead of similarity dependent: two hosts guessing the same words in a
+// different order could see different ranks, and two different words that
+// are guessed one after another always come out as adjacent ranks even
+// when they aren't actually similar. Setting no cap here means the
+// lexical-affinity pass below (which already scores the full dictionary
+// every round; see extendOrderWithLexicalAffinity) keeps ALL of that
+// work instead of throwing most of it away, so essentially every real
+// word gets a genuine, stable rank up front. resolveRank()'s fallback
+// still exists as a safety net for the rare case where a word enters the
+// dictionary mid-round (the background download in loadRemoteDictionaries
+// finishing after the round already started).
+const EXTENDED_RANK_LIMIT = Infinity;
+
+// Each Datamuse relation code, and how much it should count for in the
+// fused ranking. "ml" (meaning) and "syn" (synonyms) are the strongest
+// semantic signals; the rest fill in the kind of associative neighbors a
+// human player would also reach for (e.g. "barista" for "coffee").
+const RELATION_WEIGHTS = {
+  ml: 1.00,   // means like — primary semantic closeness
+  syn: 0.90,  // synonyms
+  trg: 0.65,  // triggers — statistically co-occurring words
+  jja: 0.45,  // nouns commonly modified by this adjective
+  jjb: 0.45,  // adjectives commonly used to modify this noun
+  spc: 0.40,  // "kind of" (more specific)
+  gen: 0.40,  // "kind of", inverse (more general)
+  com: 0.35,  // comprises / holonyms
+  par: 0.35,  // part of / meronyms
+  bga: 0.25,  // frequent followers
+  bgb: 0.25,  // frequent predecessors
+};
+const RELATION_MAX = 1000;   // Datamuse's practical per-query result cap
+const RRF_K = 60;            // Reciprocal Rank Fusion smoothing constant
+
+function datamuseUrl(code, word, max) {
+  const q = code === 'ml' ? `ml=${encodeURIComponent(word)}` : `rel_${code}=${encodeURIComponent(word)}`;
+  return `https://api.datamuse.com/words?${q}&max=${max}`;
+}
+async function fetchDatamuseRelation(code, word, max) {
+  // Hard 5-second limit per request: a slow or blocked network must never
+  // freeze the game (this used to hang "Start round" forever).
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 5000);
+  try {
+    const res = await fetch(datamuseUrl(code, word, max), { signal: ctrl.signal });
+    if (!res.ok) throw new Error('Datamuse ' + code + ' responded with status ' + res.status);
+    return await res.json();
+  } finally { clearTimeout(timer); }
+}
+
+// Resolves with the promise's value, or rejects after `ms` — used so a round
+// always starts within a few seconds, whatever the network is doing.
+function withTimeout(promise, ms, label) {
+  let timer;
+  const t = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error((label || 'operation') + ' timed out')), ms); });
+  return Promise.race([promise, t]).finally(() => clearTimeout(timer));
+}
+
+// Fetches every relation in parallel (a single slow/failed relation never
+// blocks the others — Promise.allSettled) and fuses them with weighted
+// Reciprocal Rank Fusion: a word that appears near the top of several
+// relations outranks one that only appears once, even far down a single
+// list. This is the "utmost professional" approximation of a full
+// semantic-similarity model available without training/hosting one.
+async function buildSemanticCore(target) { // resolves to Map(word -> score)
+  const codes = Object.keys(RELATION_WEIGHTS);
+  const settled = await Promise.allSettled(codes.map((code) => fetchDatamuseRelation(code, target, RELATION_MAX)));
+
+  const fused = new Map(); // word -> fused score
+  let anyOk = false;
+  settled.forEach((res, i) => {
+    if (res.status !== 'fulfilled' || !Array.isArray(res.value)) return;
+    anyOk = true;
+    const weight = RELATION_WEIGHTS[codes[i]];
+    res.value.forEach((item, listRank) => {
+      // Datamuse occasionally returns multi-word phrases (e.g. "ice cream")
+      // or hyphenated compounds for some relations — skip those rather than
+      // mangling them into a fake single word via normalize().
+      if (/[\s-]/.test(item.word)) return;
+      const w = normalize(item.word);
+      if (!w || w === target || isTrivialVariant(target, w)) return;
+      // Keep proper nouns and blocked words out of the near-target ranks
+      // too, not just out of target selection — an audience shouldn't see
+      // a name/brand sitting at rank #4.
+      if (TARGET_BLOCKLIST.has(w)) return;
+      const contribution = (weight / (RRF_K + listRank + 1)) * commonnessMultiplier(w);
+      fused.set(w, (fused.get(w) || 0) + contribution);
+    });
+  });
+  // Require a genuinely rich set of neighbors before accepting this word as
+  // a puzzle target — not just "found something". A word with only a
+  // handful of Datamuse hits (typically an obscure or oddly-formed compound
+  // like "peabrain" or "hotfoot") makes for a target where almost nothing a
+  // normal player would guess is anywhere close, which feels broken rather
+  // than challenging. Real Contexto draws its secret words from a curated
+  // list of common, well-connected words for exactly this reason. 150 is a
+  // practical stand-in for "well-connected enough to be fair" — ordinary
+  // words like "coffee" or "ocean" clear it by a wide margin.
+  if (!anyOk || fused.size < 150) throw new Error('Not enough semantic neighbors found for "' + target + '"');
+
+  return fused; // Map word -> fused score
+}
+
+// Skips near-duplicate inflections of the target (plurals, -ing/-ed forms)
+// so the game doesn't hand out a trivially "close" rank-2 slot to a word
+// that's really just the same word with a suffix.
+function isTrivialVariant(target, candidate) {
+  if (candidate === target) return false; // handled separately
+  const shorter = target.length <= candidate.length ? target : candidate;
+  const longer = target.length <= candidate.length ? candidate : target;
+  if (longer.startsWith(shorter) && longer.length - shorter.length <= 2) return true;
+  return false;
+}
+
+// ------------------------------------------------------------
+// Datamuse backup engine (used only if the embedding model isn't loaded).
+// 1) fuse 11 relation lists for the target, 2) expand: ask Datamuse for the
+// neighbours of the target's closest neighbours and add their votes, which
+// stretches the meaningful ranking from ~1,000 to several thousand words.
+// Everything past that gets a stable pseudo-random rank (never spelling-based).
+// ------------------------------------------------------------
+const EXPAND_SEEDS = 30;
+async function expandSemanticCore(target, fused) {
+  const seeds = Array.from(fused.entries()).sort((a, b) => b[1] - a[1]).slice(0, EXPAND_SEEDS).map(([w]) => w);
+  const extra = new Map();
+  for (let i = 0; i < seeds.length; i += 10) {
+    const batch = seeds.slice(i, i + 10);
+    const results = await Promise.allSettled(batch.map((w) => fetchDatamuseRelation('ml', w, 600)));
+    results.forEach((res, k) => {
+      if (res.status !== 'fulfilled' || !Array.isArray(res.value)) return;
+      const seedW = 1 / (1 + (i + k) * 0.08);
+      res.value.forEach((item, r) => {
+        if (/[\s-]/.test(item.word)) return;
+        const w = normalize(item.word);
+        if (!w || w === target || TARGET_BLOCKLIST.has(w) || !ENGLISH_WORDS.has(w)) return;
+        extra.set(w, (extra.get(w) || 0) + 0.12 * seedW / (RRF_K + r + 1));
+      });
+    });
+  }
+  const merged = new Map(fused);
+  for (const [w, v] of extra) merged.set(w, (merged.get(w) || 0) + v * commonnessMultiplier(w));
+  return merged;
+}
+
+// Suffix forms of the target (plural, -ed, -ing...) belong right next to it,
+// exactly as in the real game ("dogs" is a very close #2-#4 for "dog").
+function inflectionsOf(target) {
+  const cands = [target + 's', target + 'es', target + 'ed', target + 'd', target + 'ing', target.replace(/y$/, 'ies'), target.replace(/e$/, 'ing')];
+  return Array.from(new Set(cands)).filter((w) => w !== target && ENGLISH_WORDS.has(w));
+}
+
+async function buildPuzzleFromDatamuse(word) {
+  const target = normalize(word);
+  let fused = await buildSemanticCore(target);
+  try { fused = await expandSemanticCore(target, fused); } catch (e) { console.warn('[datamuse] expansion skipped:', e.message); }
+  const core = Array.from(fused.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([w]) => w);
+  const infl = inflectionsOf(target).filter((w) => !fused.has(w));
+  const order = [target, ...infl.slice(0, 3), ...core.filter((w) => !infl.includes(w))];
+  return finalizePuzzle(target, order, 'datamuse');
+}
+
+function buildPuzzleFromFallback(word) {
+  const target = normalize(word);
+  if (!target) return null;
+  const curated = FALLBACK_PUZZLES[target];
+  const list = curated ? curated.map(normalize).filter((w) => w && w !== target) : [];
+  return finalizePuzzle(target, [target, ...list], 'fallback');
+}
+
+// Real embedding ranking: the whole vocabulary, ordered by cosine similarity.
+function buildPuzzleFromEmbeddings(word) {
+  const target = normalize(word);
+  const order = embeddings.rankAll(target);
+  if (!order) throw new Error('"' + target + '" is not in the word-vector vocabulary.');
+  const map = new Map();
+  order.forEach((w, i) => map.set(w, i + 1));
+  return { target, map, order, engine: 'embeddings', closed: true };
+}
+
+function finalizePuzzle(target, order, engine) {
+  const seen = new Set();
+  order = order.filter((w) => (seen.has(w) ? false : (seen.add(w), true)));
+  const map = new Map();
+  order.forEach((w, i) => map.set(w, i + 1));
+  return { target, map, order, engine, closed: false, tailSeed: target };
+}
+
+// Words the ranked list doesn't cover: a stable pseudo-random rank far from
+// the target (past the ranked list), identical for every guesser and guess order.
+function fnv(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function tailRank(word) {
+  const base = Math.max(orderedWords.length, 1500);
+  return base + 1 + (fnv(word + '|' + state.game.targetWord) % 40000);
+}
+
+// ============================================================
+// 4. GAME LOGIC
+// ============================================================
+async function startGame(mode, opts = {}) {
+  try {
+    const custom = normalize(opts.word || '');
+    let puzzle;
+
+    // Every mode now tries the real semantic-similarity service first —
+    // not just Live. Test and Offline used to always use the small
+    // hand-curated word list plus the bigram-overlap approximation below,
+    // which is a purely orthographic (letter-pattern) proxy, not a
+    // semantic one: it can rank obscure words that merely share letter
+    // sequences with the target (e.g. "bedraggle", "bedrizzle") far above
+    // genuinely related common words ("bed", "room", "furniture"), which
+    // isn't how Contexto ranks anything. Datamuse's "means like" relation
+    // is a real semantic signal, so every mode reaches for it first now;
+    // the offline bigram approximation only kicks in as a last resort if
+    // the service is unreachable, so Test/Offline still always work even
+    // with no network at all — they just won't rank as richly in that
+    // rare case.
+    if (opts.word && custom.length < 3) throw new Error('The secret word needs at least 3 letters.');
+    const useEmb = embeddings.status === 'ready';
+    if (custom) {
+      if (useEmb && embeddings.has(custom)) {
+        puzzle = buildPuzzleFromEmbeddings(custom);
+      } else if (useEmb) {
+        throw new Error('"' + custom + '" is not in the game\'s word vocabulary. Try a more common word, or leave it empty for a random one.');
+      } else {
+        try {
+          puzzle = await withTimeout(buildPuzzleFromDatamuse(custom), 9000, 'word-similarity service');
+        } catch (err) {
+          console.error('[DATAMUSE FAILED]', err.message);
+          if (!FALLBACK_PUZZLES[custom] && !ENGLISH_WORDS.has(custom)) {
+            throw new Error(`Could not build a ranking for "${custom}". Check the spelling, or leave the secret word empty for a random one.`);
+          }
+          puzzle = buildPuzzleFromFallback(custom);
+        }
+      }
+    } else if (useEmb) {
+      puzzle = buildPuzzleFromEmbeddings(pickBalancedTargetWord());
+    } else {
+      // Word-vector model still loading (or unavailable): try the online
+      // similarity service for at most ~9 seconds in total, then use the
+      // built-in offline puzzles so the round ALWAYS starts.
+      const deadline = Date.now() + 9000;
+      const word = pickBalancedTargetWord();
+      try {
+        puzzle = await withTimeout(buildPuzzleFromDatamuse(word), Math.max(1000, deadline - Date.now()), 'word-similarity service');
+      } catch (err) {
+        console.error('[DATAMUSE FAILED]', err.message);
+      }
+      if (!puzzle) puzzle = buildPuzzleFromFallback(pickRandom(baseFormOnly(Object.keys(FALLBACK_PUZZLES))));
+    }
+
+    if (!puzzle) throw new Error('Could not build a puzzle for that word.');
+
+    clearInterval(testAutoplayTimer);
+    state.autoplay.running = false;
+
+    rankMap = puzzle.map;
+    orderedWords = puzzle.order;
+    currentEngine = puzzle.engine;
+    closedVocab = !!puzzle.closed;
+
+    const g = state.game;
+    state.mode = mode;
+    g.active = true;
+    g.targetWord = puzzle.target;
+    g.board = new Map();
+    g.allGuessedWords = new Map();
+    g.totalGuesses = 0;
+    g.latest = null;
+    g.winner = null;
+    g.result = null;
+    g.startedAt = Date.now();
+    g.uniquePlayers = new Set();
+    g.extendedRankMap = new Map();
+    g.roundScores = new Map();
+    g.roundAvatars = new Map();
+    g.hintedWords = new Set();
+    // Unrelated-but-real words are always ranked past 1500 (the red zone), even
+    // when the built-in list for a word is short — otherwise they'd land in
+    // the green zone and earn points they haven't earned.
+    g.nextExtendedRank = Math.max(orderedWords.length + 1, 1501);
+
+    broadcast({ type: 'game_started', mode });
+    pushState();
+
+    if (mode === 'test' && opts.autoplay) toggleTestAutoplay(true, opts.speed);
+  } catch (err) {
+    console.error('[START GAME ERROR]', err);
+    broadcast({ type: 'server_error', message: 'Could not start the game: ' + safeMsg(err) });
+  }
+}
+
+function giveUp() {
+  if (!state.game.active) return;
+  const g = state.game;
+  const word = g.targetWord;
+  // Put the answer on the board as the #1 row, so the finished list reads
+  // top-down from the answer and stays on screen until the next round.
+  const answer = {
+    user: 'Answer', word, rank: 1, isHost: false, isHint: false, isWin: true, isReveal: true,
+    ts: Date.now(), isRepeat: false, repeatOf: null, points: 0, total: 0, avatar: null,
+  };
+  g.board.set(word, answer);
+  finishRound(null, { gaveUp: true });
+  broadcast({ type: 'give_up', word, entry: answer, result: g.result });
+  pushState();
+}
+
+function finishRound(winnerUser, opts = {}) {
+  clearInterval(testAutoplayTimer);
+  state.autoplay.running = false;
+  const g = state.game;
+  g.active = false;
+  g.winner = winnerUser;
+  // Every player who scored this round — no cap. The floating window
+  // scrolls if the list is long, but nobody who earned points is left off.
+  const topScorers = Array.from(g.roundScores.entries())
+    .map(([user, points]) => ({ user, points, avatar: g.roundAvatars.get(user) || null }))
+    .sort((a, b) => b.points - a.points);
+  g.result = {
+    word: g.targetWord,
+    winner: winnerUser,
+    gaveUp: !!opts.gaveUp,
+    guesses: g.totalGuesses,
+    players: g.uniquePlayers.size,
+    points: opts.points || 0,
+    total: opts.total || 0,
+    topScorers,
+    leaderboardTop: topLeaderboard(),
+  };
+}
+
+// ------------------------------------------------------------
+// POINTS — deliberately small.
+//
+// Points are for DISCOVERY: a player earns them only when they are the
+// first to find a word in a round. Repeating a word someone already
+// found earns nothing, so pasting good words over and over can't farm
+// points. Only the closest ten words score at all:
+//   - the secret word (rank 1) is worth the most: 5 points
+//   - ranks 2 to 10 earn 4 down to 1 point, the closer the better
+//   - anything past rank 10 earns nothing
+//
+// Format: [highest rank that still earns this many points, points].
+// Tweak the numbers below to re-balance the game.
+// ------------------------------------------------------------
+const POINTS_BY_RANK = [
+  [1, 5],      // the secret word itself
+  [2, 4],
+  [3, 3],
+  [5, 2],      // ranks 4-5
+  [10, 1],     // ranks 6-10
+  // rank 11 and beyond earns 0
+];
+
+function pointsForRank(rank) {
+  if (rank == null) return 0;
+  for (const [maxRank, pts] of POINTS_BY_RANK) {
+    if (rank <= maxRank) return pts;
+  }
+  return 0;
+}
+
+function ensureLeaderboardEntry(user, avatar) {
+  if (!state.leaderboard[user]) state.leaderboard[user] = { score: 0, wins: 0, guesses: 0, avatar: avatar || null };
+  else if (avatar) state.leaderboard[user].avatar = avatar;
+  return state.leaderboard[user];
+}
+
+// Ranks a guessed word no matter how far it is from the target:
+//  - on the precomputed semantic shortlist -> that rank
+//  - not on the shortlist, but a real English word -> a rank appended
+//    just past the shortlist (always lands in the red zone, but it's
+//    still a real, stable number instead of a dead end)
+//  - not a recognized English word at all -> null ("not a word")
+function resolveRank(word) {
+  if (rankMap.has(word)) return rankMap.get(word);
+  if (closedVocab) return null;              // embeddings: unknown word, like the real game
+  if (ENGLISH_WORDS.has(word)) return tailRank(word);
+  return null;
+}
+
+function handleGuess(user, rawText, isHost = false, avatar = null) {
+  const g = state.game;
+  if (!g.active) return;
+  const word = normalize((rawText || '').split(/\s+/)[0]);
+  if (!word) return;
+
+  const rank = resolveRank(word);
+  const prior = g.allGuessedWords.get(word); // first player to find it (host tests never count)
+  const isRepeat = !!prior; // someone already guessed this exact word this round
+  const isWin = rank === 1;
+
+  let points = 0;
+  let total = 0;
+  if (!isHost) {
+    const lb = ensureLeaderboardEntry(user, avatar);
+    lb.guesses += 1;
+    if (avatar) g.roundAvatars.set(user, avatar);
+    if (!prior && rank != null) {
+      points = pointsForRank(rank);
+      lb.score += points;
+      if (points > 0) g.roundScores.set(user, (g.roundScores.get(user) || 0) + points);
+    }
+    if (isWin) lb.wins += 1;
+    total = lb.score;
+    if (!prior) g.allGuessedWords.set(word, { user });
+    g.uniquePlayers.add(user);
+  }
+
+  const entry = {
+    user, word, rank, isHost, isHint: false, isWin, ts: Date.now(),
+    isRepeat,
+    repeatOf: isRepeat ? prior.user : null,
+    points,
+    total,
+    avatar: avatar || null,
+  };
+
+  g.totalGuesses += 1;
+  g.latest = entry;
+
+  // One row per distinct word; a real player's find replaces a host/hint test entry.
+  if (rank != null) {
+    const existing = g.board.get(word);
+    if (!existing || ((existing.isHost || existing.isHint) && !isHost)) g.board.set(word, entry);
+  }
+
+  broadcast({ type: 'guess', entry, totalGuesses: g.totalGuesses, players: g.uniquePlayers.size });
+
+  if (isWin) {
+    finishRound(user, { points, total });
+    broadcast({ type: 'win', user, word: g.targetWord, guessesUsed: g.totalGuesses, points, total, result: g.result });
+    pushState();
+  }
+}
+
+// If nobody has found or been hinted anything yet this round, the very
+// first hint anchors here instead of handing out the globally best word
+// (rank 2) outright — keeps the opening hint meaningful rather than a
+// near-spoiler.
+const INITIAL_HINT_ANCHOR = 250;
+
+// The best (lowest, i.e. closest-to-1) rank currently sitting on the
+// board, across both real finds and previous hints. Infinity if the
+// board is empty.
+function currentBestBoardRank() {
+  let best = Infinity;
+  for (const entry of state.game.board.values()) {
+    if (entry.rank != null && entry.rank < best) best = entry.rank;
+  }
+  return best;
+}
+
+// The upper end of the "between the current best guess and #1" window a
+// hint is drawn from. For the very first hint of the round this is always
+// capped at INITIAL_HINT_ANCHOR, no matter how far away the current best
+// guess on the board is — otherwise, if every guess so far happened to be
+// a bad one (e.g. stuck in the tens of thousands), the first hint would
+// anchor to that bad guess and reveal something only marginally better,
+// instead of a genuinely useful hundreds-range word. Once at least one
+// hint has been given, later hints anchor to the actual best rank on the
+// board, so each one lands roughly halfway between that and the answer.
+function hintAnchor() {
+  const g = state.game;
+  const bestRank = currentBestBoardRank();
+  const cap = Math.min(INITIAL_HINT_ANCHOR, orderedWords.length);
+  if (g.hintedWords.size === 0) return Math.min(bestRank, cap);
+  return bestRank;
+}
+
+// How many more hints are realistically left. Since each hint now roughly
+// halves the remaining gap to the answer (see giveHint below), the count
+// simulates that halving down to rank 2 rather than assuming a step of 1.
+// Approximate (doesn't account for already-hinted ranks in between) — it's
+// only used to size the Hint button's remaining count, not to pick ranks.
+function hintsRemaining() {
+  const g = state.game;
+  if (!g.active || !orderedWords.length) return 0;
+  let anchor = hintAnchor();
+  let count = 0;
+  while (anchor > 2 && count < 100) {
+    anchor = Math.max(2, Math.round((anchor + 1) / 2));
+    count++;
+  }
+  return count;
+}
+
+// Reveals a word ranked BETWEEN the current best guess on the board and the
+// answer itself (rank 1) — never the answer, and never something that isn't
+// actually closer than what's already been found. Rather than crawling one
+// rank at a time, each hint aims for the midpoint of that gap (e.g. best
+// guess is #250 -> hint lands near #125 -> next hint near #63, and so on),
+// so every hint is a meaningful, evenly-spaced step closer instead of a
+// barely-noticeable nudge. If the exact midpoint rank has already been
+// found or hinted, it searches outward from the midpoint (checking the
+// rank just above and just below alternately) until it finds one that's
+// still available, always staying strictly between 1 and the anchor.
+function giveHint() {
+  const g = state.game;
+  if (!g.active) { broadcast({ type: 'server_error', message: 'Start a round before asking for a hint.' }); return; }
+
+  const anchor = hintAnchor(); // current best rank on the board (or the opening cap)
+  if (anchor <= 2) {
+    broadcast({ type: 'server_error', message: 'No better hint available right now — your guesses are already this close!' });
+    return;
+  }
+
+  const midpoint = Math.max(2, Math.round((anchor + 1) / 2));
+
+  for (let offset = 0; offset < anchor - 1; offset++) {
+    const candidates = offset === 0 ? [midpoint] : [midpoint - offset, midpoint + offset];
+    for (const r of candidates) {
+      if (r < 2 || r >= anchor) continue; // must stay strictly between #1 and the current best
+      const w = orderedWords[r - 1];
+      if (!w || g.board.has(w)) continue; // already found or already hinted
+      const rank = rankMap.get(w);
+      const entry = {
+        user: 'Hint', word: w, rank, isHost: false, isHint: true, isWin: false, ts: Date.now(),
+        isRepeat: false, repeatOf: null, points: 0, total: 0, avatar: null,
+      };
+      g.board.set(w, entry);
+      g.hintedWords.add(w);
+      broadcast({ type: 'hint', entry });
+      pushState();
+      return;
+    }
+  }
+  broadcast({ type: 'server_error', message: 'No better hint available right now — your guesses are already this close!' });
+}
+
+// ============================================================
+// 5. TIKTOK LIVE CONNECTION
+// ============================================================
+let tiktokConn = null;
+let retryTimer = null;
+
+function updateConnStatus(status, message, username) {
+  state.connection.status = status;
+  state.connection.message = message;
+  if (username !== undefined) state.connection.username = username;
+  pushState();
+}
+
+function extractUsername(data) {
+  return (
+    data?.user?.uniqueId ||
+    data?.uniqueId ||
+    data?.user?.nickname ||
+    data?.nickname ||
+    data?.user?.username ||
+    data?.username ||
+    (data?.user?.userId ? `user_${data.user.userId}` : null) ||
+    (data?.userId ? `user_${data.userId}` : null) ||
+    'unknown_user'
+  );
+}
+function extractText(data) {
+  return data?.comment || data?.text || data?.content || data?.message || '';
+}
+function extractViewerCount(data) {
+  return data?.viewerCount ?? data?.memberCount ?? data?.count ?? null;
+}
+// Best-effort profile picture URL — different library versions expose it
+// under different shapes, so we try the plausible ones and fall back to
+// null (the client then shows a colored initial instead).
+function extractAvatar(data) {
+  return (
+    data?.user?.profilePicture?.url?.[0] ||
+    data?.user?.profilePicture?.urls?.[0] ||
+    data?.user?.avatarThumb?.url_list?.[0] ||
+    data?.user?.avatarThumb?.urlList?.[0] ||
+    data?.user?.avatarLarger?.url_list?.[0] ||
+    data?.profilePictureUrl ||
+    null
+  );
+}
+
+// ------------------------------------------------------------
+// Connection manager.
+//  - Every connection gets a generation number; events from an older
+//    connection (or one the host cancelled) are ignored, so a stale
+//    "disconnected" can never overwrite a fresh "connected".
+//  - connect() can't hang forever: it times out and retries.
+//  - If TikTok drops the connection mid-stream, it reconnects by itself.
+//  - If the account isn't LIVE yet, it keeps waiting and connects the
+//    moment the stream starts (up to ~10 minutes), instead of giving up.
+//  - Clear, plain-English reasons for each kind of failure; a bad
+//    username or sign key is reported at once instead of retried.
+// ------------------------------------------------------------
+const CONN_TUNING = {
+  connectTimeoutMs: 40000,
+  retryDelaysMs: [3000, 6000, 12000, 20000, 30000, 30000], // general failures
+  offlineRetryMs: 15000, offlineMaxRetries: 40,            // waiting for the stream to start
+  dropReconnectMs: 2500, dropMaxRetries: 10,               // mid-stream drops
+};
+let connGen = 0;
+let wantedUsername = null; // set while the host wants to be connected
+
+function classifyConnectError(err) {
+  const name = String((err && err.name) || '');
+  const msg = safeMsg(err);
+  const m = (name + ' ' + msg).toLowerCase();
+  if (/useroffline|not.*live|is offline|isn.t live|hostnotonline|room.*(ended|not found)|live has ended|offline/.test(m)) return { kind: 'offline', text: 'is not LIVE right now' };
+  if (/invaliduniqueid|invalid.*(unique|user)|user.*not found|no such user|404/.test(m)) return { kind: 'user', text: 'username not found — check the spelling (no @)' };
+  if (/sign.*(key|api)|api.?key|unauthori|forbidden|401|403|invalid key|key.*(invalid|expired)/.test(m)) return { kind: 'key', text: 'the sign key was rejected — check TIKTOK_SIGN_API_KEY on Render' };
+  if (/rate.?limit|429|too many/.test(m)) return { kind: 'rate', text: 'TikTok/EulerStream is rate-limiting requests — wait a minute' };
+  if (/timed out|timeout|etimedout|econnreset|enotfound|econnrefused|network|fetch failed|socket/.test(m)) return { kind: 'network', text: 'network problem reaching TikTok' };
+  return { kind: 'other', text: msg };
+}
+
+function signKey() {
+  return process.env.EULERSTREAM_API_KEY || process.env.TIKTOK_SIGN_API_KEY || process.env.EULER_API_KEY || process.env.SIGN_API_KEY || '';
+}
+
+function dropConnection() {
+  const old = tiktokConn;
+  tiktokConn = null;
+  if (old) {
+    try { old.removeAllListeners && old.removeAllListeners(); } catch {}
+    try { old.on && old.on('error', () => {}); } catch {}   // swallow late errors from the dead connection
+    try { old.disconnect(); } catch {}
+  }
+}
+
+function scheduleRetry(username, gen, attempt, delayMs, message) {
+  updateConnStatus('retrying', message, username);
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => { if (gen === connGen && wantedUsername) connectTikTok(username, attempt, { gen }); }, delayMs);
+}
+
+async function connectTikTok(username, attempt = 1, opts = {}) {
+  clearTimeout(retryTimer);
+  const isRetry = !!opts.gen;
+  const gen = isRetry ? opts.gen : ++connGen;
+  if (!isRetry) { dropConnection(); wantedUsername = username; }
+  if (gen !== connGen) return;
+  const mode = opts.mode || 'start';   // 'start' | 'drop' (reconnect after a drop)
+
+  try {
+    dropConnection();
+    const ConnClass = TikTokLiveConnection;
+    const EVT = { CHAT: WebcastEvent.CHAT, DISCONNECTED: WebcastEvent.DISCONNECTED, ROOM_USER: WebcastEvent.ROOM_USER };
+    const CE = { ERROR: WebcastEvent.ERROR };
+
+    const options = {
+      processInitialData: false,     // don't replay old chat history as guesses
+      enableExtendedGiftInfo: false,
+    };
+    if (signKey()) options.signApiKey = signKey();
+
+    const conn = new ConnClass(username, options);
+    tiktokConn = conn;
+    let dropBase = mode === 'drop' ? (opts.dropAttempt || 0) : 0;
+    const current = () => gen === connGen && tiktokConn === conn;
+
+    conn.on(EVT.CHAT, (data) => {
+      if (!current()) return;
+      try {
+        state.diagnostics.rawEventCount += 1;
+        if (state.diagnostics.rawSamples.length < 5) {
+          state.diagnostics.rawSamples.push(JSON.stringify(data, null, 2).slice(0, 4000));
+        }
+        const user = extractUsername(data);
+        const text = extractText(data);
+        const avatar = extractAvatar(data);
+        state.diagnostics.lastReceived = { user, text };
+        broadcast({
+          type: 'raw_event',
+          rawEventCount: state.diagnostics.rawEventCount,
+          lastReceived: state.diagnostics.lastReceived,
+          rawSamples: state.diagnostics.rawSamples,
+        });
+        // Chat only counts as guesses during a Live round.
+        if (state.mode === 'live') handleGuess(user, text, false, avatar);
+      } catch (err) {
+        console.error('[CHAT HANDLER ERROR]', err);
+      }
+    });
+
+    conn.on(EVT.ROOM_USER, (data) => {
+      if (!current()) return;
+      try {
+        const vc = extractViewerCount(data);
+        if (vc != null) { state.viewerCount = vc; pushState(); }
+      } catch (err) { console.error('[ROOM_USER HANDLER ERROR]', err); }
+    });
+
+    // Errors on an open connection must never crash the server.
+    conn.on(CE.ERROR || 'error', (err) => {
+      if (!current()) return;
+      console.error('[TIKTOK ERROR EVENT]', safeMsg(err));
+    });
+
+    const onDrop = (why) => {
+      if (!current() || !wantedUsername) return;
+      state.viewerCount = null;
+      const dropAttempt = dropBase + 1;
+      dropConnection();
+      if (dropAttempt > CONN_TUNING.dropMaxRetries) {
+        updateConnStatus('error', `Lost the connection to @${username} and could not restore it. Tap Connect to try again.`, username);
+        return;
+      }
+      scheduleRetryDrop(username, gen, dropAttempt, why);
+    };
+    conn.on(EVT.DISCONNECTED, () => onDrop('The connection dropped'));
+    conn.on(WebcastEvent.STREAM_END, () => onDrop('The live stream ended'));
+
+    updateConnStatus('connecting', mode === 'drop'
+      ? `Reconnecting to @${username}…`
+      : `Connecting to @${username} (attempt ${attempt})…`, username);
+
+    let timer;
+    await Promise.race([
+      conn.connect(),
+      new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('Timed out waiting for TikTok to respond')), CONN_TUNING.connectTimeoutMs); }),
+    ]).finally(() => clearTimeout(timer));
+
+    if (!current()) { try { conn.disconnect(); } catch {} return; } // cancelled while connecting
+    dropBase = 0; // healthy again: a later drop starts counting from scratch
+    try { Engagement.attach(conn, { game: 'contexto', tiktokUsername: username }); } catch (err) { console.error('[CONTEXTO] Engagement.attach failed', err); }
+    updateConnStatus('connected', `Connected to @${username}. Waiting for chat messages...`, username);
+  } catch (err) {
+    if (gen !== connGen) return;           // host cancelled or started another connection
+    console.error('[TIKTOK CONNECT ERROR]', err);
+    dropConnection();
+    const info = classifyConnectError(err);
+
+    if (info.kind === 'user' || info.kind === 'key') {
+      wantedUsername = null;
+      updateConnStatus('error', `Could not connect to @${username}: ${info.text}.`, username);
+    } else if (info.kind === 'offline') {
+      if (attempt > CONN_TUNING.offlineMaxRetries) {
+        wantedUsername = null;
+        updateConnStatus('error', `@${username} still isn't LIVE after waiting 10 minutes. Go LIVE, then tap Connect.`, username);
+      } else {
+        scheduleRetry(username, gen, attempt + 1, CONN_TUNING.offlineRetryMs,
+          `@${username} ${info.text}. Waiting for the stream to start — it will connect by itself…`);
+      }
+    } else {
+      const delays = CONN_TUNING.retryDelaysMs;
+      if (attempt > delays.length) {
+        wantedUsername = null;
+        updateConnStatus('error', `Could not connect to @${username} after ${attempt} tries (${info.text}). Check your internet/sign key, then tap Connect.`, username);
+      } else {
+        const d = delays[attempt - 1];
+        scheduleRetry(username, gen, attempt + 1, d,
+          `Could not connect (${info.text}). Retrying in ${Math.round(d / 1000)}s… (attempt ${attempt + 1})`);
+      }
+    }
+  }
+}
+
+function scheduleRetryDrop(username, gen, dropAttempt, why) {
+  updateConnStatus('retrying', `${why}. Reconnecting… (try ${dropAttempt})`, username);
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => {
+    if (gen === connGen && wantedUsername) connectTikTok(username, 1, { gen, mode: 'drop', dropAttempt });
+  }, CONN_TUNING.dropReconnectMs * Math.min(dropAttempt, 4));
+}
+
+function disconnectTikTok() {
+  connGen++;                 // invalidates every pending retry/handler
+  wantedUsername = null;
+  clearTimeout(retryTimer);
+  dropConnection();
+  updateConnStatus('idle', 'Disconnected.', null);
+  state.viewerCount = null;
+}
+
+// ============================================================
+// 6. TEST MODE SIMULATOR — no login, no external connection
+// ============================================================
+const FAKE_USERS = ['viewer_247', 'wordwiz', 'contexto_fan', 'guess_master', 'nightowl', 'tiktoker99', 'lurker_lisa', 'chatty_chris'];
+const AUTOPLAY_MS = { slow: 2600, normal: 1400, fast: 700 };
+
+function simulateChatMessage(username, text) {
+  state.diagnostics.rawEventCount += 1;
+  state.diagnostics.lastReceived = { user: username, text };
+  broadcast({
+    type: 'raw_event',
+    rawEventCount: state.diagnostics.rawEventCount,
+    lastReceived: state.diagnostics.lastReceived,
+    rawSamples: state.diagnostics.rawSamples,
+  });
+  handleGuess(username, text, false);
+}
+
+// "Play until finished": every tick the chance that the bots land on the
+// exact secret word climbs a little higher, on top of the small flat base
+// chance. That means autoplay always converges on a win within a bounded,
+// predictable number of ticks instead of (rarely, but possibly) running for
+// a very long time on bad luck — the round-ending guess is guaranteed to
+// happen, not just likely.
+const AUTOPLAY_BASE_WIN_CHANCE = 0.06;
+const AUTOPLAY_WIN_CHANCE_STEP = 0.015; // added per tick since the round started
+const AUTOPLAY_MAX_TICKS_BEFORE_FORCE = 45; // by this many ticks, the chance is 100%
+
+function autoplayTick() {
+  if (!state.game.active) {
+    clearInterval(testAutoplayTimer);
+    state.autoplay.running = false;
+    return;
+  }
+  state.autoplay.ticks = (state.autoplay.ticks || 0) + 1;
+  // Prefer words nobody has guessed yet so the board keeps filling up.
+  // Bots guess like people: mostly far-off words early, closer ones as the round goes on.
+  const maxR = Math.min(orderedWords.length, 8000);
+  const closeness = Math.min(1, state.autoplay.ticks / 40);
+  const fresh = [];
+  for (let k = 0; k < 6; k++) {
+    const hi = Math.log(maxR), lo = Math.log(2);
+    const r = Math.floor(Math.exp(lo + (hi - lo) * Math.pow(Math.random(), 1 + closeness * 2.5)));
+    const w = orderedWords[Math.max(1, Math.min(maxR - 1, r))];
+    if (w && !state.game.allGuessedWords.has(w)) fresh.push(w);
+  }
+  const winChance = Math.min(1, AUTOPLAY_BASE_WIN_CHANCE + state.autoplay.ticks * AUTOPLAY_WIN_CHANCE_STEP);
+  const forceWin = state.autoplay.ticks >= AUTOPLAY_MAX_TICKS_BEFORE_FORCE;
+  const guess = (!fresh.length || forceWin || Math.random() < winChance) ? state.game.targetWord : pickRandom(fresh);
+  simulateChatMessage(pickRandom(FAKE_USERS), guess);
+}
+
+function toggleTestAutoplay(on, speed) {
+  clearInterval(testAutoplayTimer);
+  state.autoplay.running = false;
+  if (AUTOPLAY_MS[speed]) state.autoplay.speed = speed;
+  if (on && state.game.active && state.mode === 'test') {
+    state.autoplay.running = true;
+    state.autoplay.ticks = 0; // fresh countdown to a guaranteed win each time it (re)starts
+    testAutoplayTimer = setInterval(autoplayTick, AUTOPLAY_MS[state.autoplay.speed]);
+  }
+  pushState();
+}
+
+
+// ============================================================
+// 7. PAGE -> SERVER ACTIONS
+// ============================================================
+function handleClientMessage(msg, socket) {
+  const fail = (message) => { try { socket.emit('msg', { type: 'server_error', message }); } catch { /* ignore */ } };
+  switch (msg.type) {
+    case 'connect_tiktok':
+      if (!msg.username) return fail('Please enter a TikTok username first.');
+      connectTikTok(String(msg.username).replace(/^@/, '').trim());
+      break;
+    case 'disconnect_tiktok':
+      disconnectTikTok();
+      break;
+    // Platform: HOME's mode (Offline / Test / Live) is applied the moment the game opens - same action every platform game has.
+    // It always starts a round in that mode (Test: with the simulated chat running), unless that mode is already running.
+    case 'apply_settings': {
+      const m = MODES.includes(msg.mode) ? msg.mode : null;
+      if (!m) break;
+      if (m !== 'live' && state.connection.status !== 'idle') disconnectTikTok(); // Test / Offline never keep a TikTok link open
+      if (state.mode !== m || !state.game.active) {
+        startGame(m, { word: msg.word, autoplay: m === 'test', speed: state.autoplay.speed });
+      } else {
+        pushState();
+      }
+      break;
+    }
+    case 'start_game':
+      startGame(MODES.includes(msg.mode) ? msg.mode : 'live', {
+        word: msg.word,
+        autoplay: !!msg.autoplay,
+        speed: msg.speed,
+      });
+      break;
+    case 'give_up':
+      giveUp();
+      break;
+    case 'request_hint':
+      giveHint();
+      break;
+    case 'host_guess':
+      // Offline rounds: the host types guesses on behalf of real players,
+      // so they are named and scored. Live/Test: a host entry is a test
+      // guess that never scores.
+      if (state.mode === 'offline') {
+        handleGuess(String(msg.name || '').trim().slice(0, 24) || 'Player', msg.text, false);
+      } else {
+        handleGuess('HOST', msg.text, true);
+      }
+      break;
+    case 'simulate_chat':
+      simulateChatMessage(msg.username || pickRandom(FAKE_USERS), msg.text);
+      break;
+    case 'test_autoplay':
+      toggleTestAutoplay(!!msg.on, msg.speed);
+      break;
+    case 'reset_leaderboard':
+      // Manual, host-triggered wipe of the all-time session leaderboard.
+      // Does not touch the current round in progress.
+      state.leaderboard = {};
+      pushState();
+      break;
+    case 'save_default_settings': {
+      // "Save & Apply as Default" - only ever writes this known, small
+      // whitelist of fields, straight from the Settings panel, never
+      // anything else a message might carry.
+      const s = msg.settings || {};
+      const allowed = [
+        'mode', 'username', 'autoplay', 'speed', 'playerName', 'autoNextRound',
+        'timingAnswerSeconds', 'timingLeaderboardSeconds', 'timingPopupSeconds', 'timingAutoNextSeconds',
+      ];
+      const clean = {};
+      for (const key of allowed) if (Object.prototype.hasOwnProperty.call(s, key)) clean[key] = s[key];
+      state.defaultSettings = clean;
+      saveDefaultSettings(clean);
+      pushState();
+      break;
+    }
+    default:
+      fail('Unknown action: ' + msg.type);
+  }
+}
+
+// ============================================================
+// 8. MOUNTING INTO THE PLATFORM
+// ============================================================
+//   import { mountContexto } from "./server/contexto/contexto-server.js";
+//   await mountContexto(app, io, { mountPath: "/contexto" });
+// Call once per process. The slow parts (the word-vector model, the frequency list) load in the background: a round can
+// start at once with the built-in offline puzzles, and the status drawer says which ranking engine is active.
+export async function mountContexto(app, io, options = {}) {
+  const mountPath = options.mountPath || '/contexto';
+
+  app.use(mountPath, express.static(path.join(__dirname, 'public'), {
+    setHeaders(res, filePath) { if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache'); },
+  }));
+  app.get(mountPath, (req, res) => {
+    if (!req.path.endsWith('/')) return res.redirect(301, mountPath + '/'); // the page links its files relatively
+    res.sendFile(path.join(__dirname, 'public', 'contexto-index.html'));
+  });
+  app.get(mountPath + '/health', (req, res) => res.json({ ok: true, embeddings: embeddings.status, gameActive: !!state.game.active }));
+
+  nsp = io.of('/contexto');
+  nsp.on('connection', (socket) => {
+    try { socket.emit('state', getPublicState()); } catch (err) { console.error('[CONTEXTO] could not send state', err); }
+    socket.on('action', (msg) => {
+      try {
+        if (!msg || typeof msg !== 'object') return;
+        const body = msg.payload && typeof msg.payload === 'object' ? msg.payload : {};
+        handleClientMessage({ ...body, type: String(msg.type || '') }, socket);
+      } catch (err) {
+        console.error('[CONTEXTO] action error', err);
+        try { socket.emit('msg', { type: 'server_error', message: 'Could not read that action: ' + safeMsg(err) }); } catch { /* ignore */ }
+      }
+    });
+  });
+
+  // background loads (never block the platform's start-up)
+  loadRemoteDictionaries()
+    .then(() => embeddings.load((w) => ENGLISH_WORDS.has(w)))
+    .then(() => pushState())
+    .catch((err) => console.error('[CONTEXTO] word-vector model error:', err));
+  loadFrequencyList().catch((err) => console.error('[CONTEXTO] frequency list error:', err));
+
+  console.log(`[CONTEXTO] Mounted at ${mountPath} (Socket.IO namespace /contexto). The word-vector model loads in the background.`);
+  return { mountPath };
+}
+
+// The HOME page's shared TikTok connection links this game by itself - no need to open the game and press Connect.
+// Uses the same actions the game's own buttons send (switch to Live, then connect), only when not linked yet.
+PlatformHub.registerGame(
+  'contexto',
+  (username) => {
+    const sock = { emit() {} };
+    if (state.mode !== 'live') handleClientMessage({ type: 'apply_settings', mode: 'live' }, sock);
+    handleClientMessage({ type: 'connect_tiktok', username }, sock);
+  },
+  (username) => {
+    const u = String(username || '').replace(/^@/, '').toLowerCase();
+    const cur = String(state.connection.username || '').replace(/^@/, '').toLowerCase();
+    return state.mode === 'live' && ['connected', 'connecting', 'retrying'].includes(state.connection.status) && (!cur || cur === u);
+  }
+);

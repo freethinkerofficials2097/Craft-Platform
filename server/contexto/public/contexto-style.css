@@ -1,0 +1,982 @@
+/* ============================================================
+   Tokens
+   ============================================================ */
+:root {
+  --bg: #0b0d14;
+  --bg-2: #0f1220;
+  --panel: #161a2a;
+  --panel-2: #1d2238;
+  --line: #2a2f47;
+  --text: #f0f1fb;
+  --muted: #8b90ad;
+
+  --brand-cyan: #25f4ee;
+  --brand-pink: #fe2c55;
+  --brand-pink-2: #ff6b8b;
+  --gold: #ffc24b;
+
+  /* Authentic Contexto rank tiers: 2-50 dark green, 51-300 green,
+     301-1500 orange, 1501+ / not found red. Rank 1 = gold "exact". */
+  --tier-exact: #ffc24b;
+  --tier-dark-green: #16a34a;
+  --tier-green: #4ade80;
+  --tier-orange: #fb923c;
+  --tier-blue: #4da3ff;
+  --tier-purple: #a970ff;
+  --tier-pink: #ff5fa8;
+  --tier-red: #f43f5e;
+
+  /* Mode accents */
+  --mode-live: var(--brand-pink);
+  --mode-test: var(--brand-cyan);
+  --mode-offline: var(--gold);
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --vh: 1vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* ============================================================
+   Color themes — every token above is redefined per theme, and
+   because the rest of this file is built entirely on those tokens
+   (plus color-mix() for tinted chips/backgrounds), picking a theme
+   re-colors the whole game: text, panels, buttons, status chips,
+   rank badges, banners, everything. Text/muted/accent colors are
+   each chosen dark and saturated enough to stay easy to read on
+   their theme's light panels.
+   ============================================================ */
+:root[data-theme="cream"] {
+  --bg: #faf5ea; --bg-2: #f2e9d8; --panel: #fffdf9; --panel-2: #efe6d2; --line: #ddd0b0;
+  --text: #2c2417; --muted: #7d7059;
+  --brand-cyan: #0d7d78; --brand-pink: #c23a63; --brand-pink-2: #e0698d; --gold: #a8720d;
+  --tier-exact: #a8720d; --tier-dark-green: #1f7a3d; --tier-green: #2f9e52; --tier-orange: #bd611a; --tier-red: #c03a3a;
+}
+:root[data-theme="sky"] {
+  --bg: #eaf4fb; --bg-2: #dcecf7; --panel: #ffffff; --panel-2: #d7e9f5; --line: #b7d7ec;
+  --text: #132c42; --muted: #557791;
+  --brand-cyan: #0072a8; --brand-pink: #c93f72; --brand-pink-2: #e0699a; --gold: #a97313;
+  --tier-exact: #a97313; --tier-dark-green: #157a45; --tier-green: #1f9d5c; --tier-orange: #bd611a; --tier-red: #c03a4d;
+}
+:root[data-theme="meadow"] {
+  --bg: #eff8ea; --bg-2: #e1f1d9; --panel: #ffffff; --panel-2: #daecce; --line: #b9dca5;
+  --text: #1c3714; --muted: #587a4b;
+  --brand-cyan: #0d7d78; --brand-pink: #bf3c66; --brand-pink-2: #dd6b93; --gold: #93720f;
+  --tier-exact: #93720f; --tier-dark-green: #1c7a3d; --tier-green: #2f9e52; --tier-orange: #b5601c; --tier-red: #b93b3b;
+}
+:root[data-theme="blossom"] {
+  --bg: #fdf1f4; --bg-2: #fbe3ea; --panel: #ffffff; --panel-2: #f6d9e3; --line: #f0bccf;
+  --text: #4a1a2c; --muted: #966078;
+  --brand-cyan: #0d7d80; --brand-pink: #bd3d76; --brand-pink-2: #e26a9c; --gold: #a97313;
+  --tier-exact: #a97313; --tier-dark-green: #1c7a3d; --tier-green: #2f9e52; --tier-orange: #b5601c; --tier-red: #bd3358;
+}
+:root[data-theme="lavender"] {
+  --bg: #f4f0fb; --bg-2: #e9e0f6; --panel: #ffffff; --panel-2: #e3d6f3; --line: #cbb3e6;
+  --text: #2c1d49; --muted: #6f5f8f;
+  --brand-cyan: #0d7d80; --brand-pink: #a83a8e; --brand-pink-2: #c569ac; --gold: #93720f;
+  --tier-exact: #93720f; --tier-dark-green: #1c7a3d; --tier-green: #2f9e52; --tier-orange: #b5601c; --tier-red: #a83a6a;
+}
+:root[data-theme="honey"] {
+  --bg: #fdf6e3; --bg-2: #faecc1; --panel: #fffdf5; --panel-2: #f5e2a0; --line: #e3c876;
+  --text: #463608; --muted: #8a7135;
+  --brand-cyan: #0d7d78; --brand-pink: #bd3a62; --brand-pink-2: #dd6a8e; --gold: #8f6108;
+  --tier-exact: #8f6108; --tier-dark-green: #1c7a3d; --tier-green: #2f9e52; --tier-orange: #b5601c; --tier-red: #b93b3b;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html {
+  scroll-padding-top: var(--safe-top);
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  background:
+    radial-gradient(ellipse 900px 500px at 15% -5%, color-mix(in srgb, var(--brand-pink) 10%, transparent), transparent 60%),
+    radial-gradient(ellipse 800px 500px at 85% 0%, color-mix(in srgb, var(--brand-cyan) 8%, transparent), transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  transition: background-color .2s ease, color .2s ease;
+}
+body { min-height: calc(var(--vh) * 100); }
+
+h1, h2, h3 { font-family: 'Baloo 2', 'Inter', sans-serif; margin: 0; }
+button { font-family: inherit; }
+
+#app { display: flex; flex-direction: column; min-height: calc(var(--vh) * 100); }
+
+.hidden { display: none !important; }
+
+/* ============================================================
+   Diagnostics / status header
+   ============================================================ */
+#diagnostics {
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(8px);
+  transition: background-color .2s ease, height .2s ease, padding-top .2s ease;
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding-top: var(--safe-top);
+}
+/* ============================================================
+   Single-row top bar (item 3): status word + every control,
+   including fullscreen, in one compact, horizontally-scrollable
+   row — nothing wraps to a second line, which is what frees up
+   the extra vertical space for the game itself.
+   ============================================================ */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px calc(10px + var(--safe-right)) 8px calc(10px + var(--safe-left));
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.top-bar::-webkit-scrollbar { display: none; }
+.top-bar > * { flex-shrink: 0; }
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.icon-btn:hover { color: var(--text); }
+.icon-btn[aria-pressed="true"], .icon-btn[aria-expanded="true"] { color: var(--brand-cyan); border-color: var(--brand-cyan); }
+.icon-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.dot-idle { background: var(--muted); }
+.dot-connecting, .dot-retrying { background: var(--gold); animation: pulse 1.2s infinite; }
+.dot-connected { background: var(--tier-dark-green); }
+.dot-error { background: var(--brand-pink); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* One colored word carries the entire status: live / connecting /
+   error / not connected, or the current test/offline mode. */
+.status-word {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  padding: 6px 11px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.status-word.status-idle { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); border: 1px solid var(--line); }
+.status-word.status-live { background: color-mix(in srgb, var(--tier-dark-green) 16%, transparent); color: var(--tier-dark-green); border: 1px solid var(--tier-dark-green); }
+.status-word.status-connecting { background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold); border: 1px solid var(--gold); animation: pulse 1.2s infinite; }
+.status-word.status-error { background: color-mix(in srgb, var(--brand-pink) 16%, transparent); color: var(--brand-pink); border: 1px solid var(--brand-pink); }
+.status-word.status-test { background: color-mix(in srgb, var(--mode-test) 14%, transparent); color: var(--mode-test); border: 1px solid var(--mode-test); }
+.status-word.status-offline { background: color-mix(in srgb, var(--mode-offline) 14%, transparent); color: var(--mode-offline); border: 1px solid var(--mode-offline); }
+
+.viewer-chip {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.diag-panel { padding: 4px 14px 14px; font-size: 13px; }
+.diag-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; color: var(--muted); }
+.diag-row strong { color: var(--text); font-weight: 600; text-align: right; max-width: 60%; overflow-wrap: anywhere; }
+.raw-samples { margin-top: 6px; color: var(--muted); }
+.raw-samples summary { cursor: pointer; }
+.diag-row strong.warn { color: var(--gold); }
+#diagRaw {
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 11px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ============================================================
+   Icon-pill controls (settings / hint / enter-a-word / leaderboard)
+   and the primary round button — all live inside .top-bar now, one
+   single row alongside the fullscreen button. Small footprint by
+   design: this is what keeps the game screen clean and uncluttered.
+   ============================================================ */
+.icon-pill {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+.icon-pill:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.icon-pill:disabled { opacity: .35; cursor: not-allowed; }
+.icon-pill:active:not(:disabled) { transform: scale(.94); }
+.icon-pill[aria-expanded="true"] { border-color: var(--brand-cyan); color: var(--brand-cyan); }
+.mode-pip {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  border: 1.5px solid var(--panel-2);
+}
+.mode-pip.mode-live { background: var(--mode-live); }
+.mode-pip.mode-test { background: var(--mode-test); }
+.mode-pip.mode-offline { background: var(--mode-offline); }
+#hintBtn.pulse { animation: hintPulse 1.4s ease-in-out infinite; }
+@keyframes hintPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,194,75,.5); }
+  50% { box-shadow: 0 0 0 5px rgba(255,194,75,0); }
+}
+.top-bar .btn { flex: 0 0 auto; min-width: 108px; padding: 8px 14px; margin-left: 4px; text-align: center; }
+
+/* ============================================================
+   Theme picker — button shows only the current theme's symbol;
+   the dropdown (opened on tap) is the only place a full theme
+   name appears.
+   ============================================================ */
+.theme-picker { position: relative; }
+#themeToggle span { font-size: 17px; line-height: 1; }
+.theme-menu {
+  /* Fixed (not absolute) because .top-bar scrolls horizontally, which
+     would otherwise clip a menu positioned relative to it — position is
+     computed in JS from the button's on-screen location when it opens. */
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  box-shadow: 0 14px 34px -12px rgba(0,0,0,.5);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.theme-menu.hidden { display: none; }
+.theme-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.theme-option:hover, .theme-option:focus-visible { background: var(--panel-2); outline: none; }
+.theme-option .swatch { font-size: 16px; line-height: 1; flex-shrink: 0; width: 20px; text-align: center; }
+.theme-option .name { flex: 1; }
+.theme-option .check { color: var(--brand-cyan); font-weight: 800; opacity: 0; flex-shrink: 0; }
+.theme-option[aria-selected="true"] { background: var(--panel-2); }
+.theme-option[aria-selected="true"] .check { opacity: 1; }
+
+/* ============================================================
+   Collapse the whole top toolbar into a single reveal button, to
+   free up maximum vertical space for the game itself.
+   ============================================================ */
+/* Collapsing to height:0 (rather than just hiding) actually reclaims the
+   vertical space for the game below, which is the point of hiding it. */
+#diagnostics.toolbar-collapsed {
+  height: 0;
+  min-height: 0;
+  padding-top: 0;
+  overflow: hidden;
+  border-bottom-width: 0;
+  pointer-events: none;
+}
+.toolbar-reveal {
+  position: fixed;
+  top: calc(8px + var(--safe-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: 34px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 0 0 12px 12px;
+  border: 1px solid var(--line);
+  border-top: none;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: 0 6px 16px -8px rgba(0,0,0,.4);
+}
+.toolbar-reveal:hover { color: var(--text); }
+.toolbar-reveal.hidden { display: none; }
+
+/* ============================================================
+   Main game area
+   ============================================================ */
+#game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 16px calc(24px + var(--safe-bottom));
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hero { text-align: center; padding: 6px 0 16px; }
+.wordmark { font-size: 32px; font-weight: 800; letter-spacing: .3px; }
+.wordmark span {
+  background: linear-gradient(90deg, var(--brand-pink), var(--brand-pink-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-sub { color: var(--muted); font-size: 14px; margin: 6px 0 0; }
+
+.stats-row {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dot-sep { opacity: .5; }
+.diff-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.diff-chip.diff-live { background: color-mix(in srgb, var(--mode-live) 15%, transparent); color: var(--mode-live); }
+.diff-chip.diff-test { background: color-mix(in srgb, var(--mode-test) 14%, transparent); color: var(--mode-test); }
+.diff-chip.diff-offline { background: color-mix(in srgb, var(--mode-offline) 14%, transparent); color: var(--mode-offline); }
+
+/* ============================================================
+   Shared controls
+   ============================================================ */
+.btn {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:active:not(:disabled) { transform: scale(.97); }
+.btn-primary { background: var(--brand-pink); color: #fff; }
+.btn-outline { background: transparent; border: 1px solid var(--brand-cyan); color: var(--brand-cyan); }
+.btn-ghost { background: var(--panel-2); color: var(--text); }
+.btn.armed { background: color-mix(in srgb, var(--brand-pink) 18%, transparent); color: var(--brand-pink); box-shadow: inset 0 0 0 1px var(--brand-pink); }
+
+.input, .select {
+  width: 100%;
+  min-width: 0;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 11px 12px;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+}
+.select { font-size: 14px; }
+.input::placeholder { color: var(--muted); opacity: .8; }
+.input:focus, .select:focus { outline: 2px solid var(--brand-cyan); outline-offset: 1px; }
+.input:disabled { opacity: .55; }
+.select:disabled { opacity: .5; }
+
+/* ============================================================
+   BOTTOM SHEETS — Settings and Enter-a-word both live here. Kept
+   out of the normal page flow entirely so the game screen stays
+   clean; each opens on demand from its icon in the action bar and
+   closes itself, the backdrop, a swipe-down-style tap, or Esc.
+   ============================================================ */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(5,6,10,0);
+  transition: background .22s ease;
+}
+.sheet-backdrop.hidden { display: none; }
+.sheet-backdrop.open { background: rgba(5,6,10,.62); }
+.sheet {
+  width: 100%;
+  max-width: 640px;
+  max-height: min(82vh, 640px);
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -20px 50px -20px rgba(0,0,0,.8);
+  transform: translateY(100%);
+  transition: transform .24s cubic-bezier(.32,.72,0,1);
+  padding-bottom: calc(18px + var(--safe-bottom));
+}
+.sheet-backdrop.open .sheet { transform: translateY(0); }
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  margin: 10px auto 2px;
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 4px;
+}
+.sheet-head h2 { font-size: 16px; font-weight: 800; }
+.sheet-close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: none;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+.sheet-close:active { transform: scale(.94); }
+.sheet-close:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.sheet-body { padding: 12px 16px 4px; }
+
+/* Mode switch */
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.seg-btn {
+  padding: 9px 6px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.seg-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.seg-btn[aria-selected="true"] { background: var(--panel-2); color: var(--text); box-shadow: inset 0 0 0 1px currentColor; }
+.seg-btn[data-mode="live"][aria-selected="true"] { color: var(--mode-live); }
+.seg-btn[data-mode="test"][aria-selected="true"] { color: var(--mode-test); }
+.seg-btn[data-mode="offline"][aria-selected="true"] { color: var(--mode-offline); }
+
+.mode-hint { margin: 10px 2px 12px; font-size: 13px; color: var(--muted); }
+
+/* Fields */
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.inline { display: flex; gap: 8px; }
+.field-note { margin: 0; font-size: 12px; color: var(--muted); }
+.field-note:empty { display: none; }
+
+/* Switch */
+.switch { position: relative; display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font-size: 14px; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch .track {
+  position: relative;
+  width: 40px; height: 24px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  transition: background .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.switch .track::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform .15s, background .15s;
+}
+.switch input:checked + .track { background: color-mix(in srgb, var(--brand-cyan) 18%, transparent); border-color: var(--brand-cyan); }
+.switch input:checked + .track::after { transform: translateX(16px); background: var(--brand-cyan); }
+.switch input:focus-visible + .track { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.dock-form { display: flex; gap: 8px; }
+.input-name { flex: 0 0 34%; }
+
+/* Auto next round — always visible in Settings, independent of mode tabs */
+.round-tools {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.round-tools .field-note { margin-top: 6px; }
+
+/* Timing controls (item 1) — every floating window's on-screen duration,
+   plus the auto-next-round countdown, each independently adjustable. */
+.timing-tools {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.timing-tools-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand-cyan);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.link-btn:active { opacity: .7; }
+.link-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.timing-input-row { display: flex; gap: 6px; }
+.timing-input-row .input { text-align: left; }
+.reset-mini-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+}
+.reset-mini-btn:active { transform: scale(.94); }
+.reset-mini-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.timing-tools .field-note { margin-top: 2px; }
+
+/* Auto-next-round countdown, shown inside the leaderboard floating window */
+.overlay-countdown {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--brand-cyan);
+}
+
+/* Leaderboard tools (item 7) — manual view + reset, always visible in Settings */
+.leaderboard-tools {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.leaderboard-tools .btn { flex: 1; text-align: center; }
+#resetLeaderboardBtn.armed { background: color-mix(in srgb, var(--brand-pink) 18%, transparent); color: var(--brand-pink); box-shadow: inset 0 0 0 1px var(--brand-pink); }
+
+/* Save & Apply tools — confirm settings on this device, or push them to
+   every device as the default. */
+.save-apply-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.save-apply-tools .btn { flex: 1 1 auto; min-width: 140px; text-align: center; }
+.save-apply-tools .field-note { flex-basis: 100%; margin: 2px 0 0; }
+
+/* ---------- Win / give-up banners ---------- */
+.win-banner {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+.win-meta { display: block; margin-top: 4px; font-size: 12.5px; color: var(--muted); }
+.confetti { position: absolute; inset: 0; pointer-events: none; }
+.confetti span {
+  position: absolute;
+  top: -10%;
+  width: 6px; height: 10px;
+  border-radius: 2px;
+  animation: fall 1.6s ease-in forwards;
+}
+@keyframes fall {
+  to { transform: translateY(160px) rotate(280deg); opacity: 0; }
+}
+
+.give-up-banner {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  text-align: center;
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.give-up-banner strong { color: var(--text); }
+
+.win-banner, .give-up-banner {
+  box-shadow: 0 10px 24px -8px rgba(0,0,0,.7);
+}
+.win-banner {
+  background-color: var(--panel);
+  background-image: linear-gradient(120deg, color-mix(in srgb, var(--gold) 16%, transparent), color-mix(in srgb, var(--brand-pink) 12%, transparent));
+}
+
+/* ============================================================
+   Latest guess + guess rows
+   ============================================================ */
+.latest { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; margin-top: 10px; }
+.latest .guess-row { flex: 1; min-width: 0; }
+.guess-row.is-empty { color: var(--muted); font-size: 13px; display: block; }
+
+.board {
+  display: flex;
+  flex-direction: column;
+  /* Fills whatever vertical space is left in #game after the hero, any
+     banners, and the latest-guess row above it — instead of stopping at a
+     fixed fraction of the viewport, so the list uses every pixel that's
+     actually available rather than leaving blank space below it. */
+  flex: 1;
+  min-height: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 30px -18px rgba(0,0,0,.6);
+}
+.board-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; flex-shrink: 0; }
+.muted { color: var(--muted); font-size: 13px; }
+
+.guess-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex: 1;
+  min-height: 160px; /* floor so the list still reads fine on very short viewports */
+  overflow-y: auto;
+}
+.guess-list:empty { display: none; }
+.empty-hint { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0; margin: 0; }
+
+.guess-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  overflow: hidden;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+/* Only new rows fade in — rows that merely change position must not replay it. */
+.guess-row.is-new { animation: rowIn .25s ease-out; }
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.guess-heat { position: absolute; inset: 0 auto 0 0; z-index: 0; opacity: .28; }
+.guess-row.win { border-color: var(--tier-dark-green); background: color-mix(in srgb, var(--tier-dark-green) 38%, var(--panel-2)); }
+.guess-row.win .guess-heat { opacity: 0; }
+.guess-row.host { border: 1px dashed var(--brand-cyan); }
+.guess-row.hint { border: 1px dashed var(--gold); }
+.guess-row.repeat { border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
+.guess-user { font-weight: 700; font-size: 12.5px; z-index: 1; white-space: nowrap; max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
+.guess-row.hint .guess-user { color: var(--gold); }
+.guess-row .pp-avatar { width: 26px; height: 26px; font-size: 11px; z-index: 1; }
+.guess-who { z-index: 1; display: flex; align-items: center; justify-content: center; gap: 7px; min-width: 0; max-width: 100%; }
+.guess-end { z-index: 1; display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; }
+.guess-word { justify-self: start; max-width: 100%; min-width: 0; z-index: 1; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 6px; }
+.guess-note {
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.guess-pts { z-index: 1; font-size: 12px; font-weight: 800; color: var(--gold); white-space: nowrap; }
+.guess-rank { z-index: 1; font-size: 11.5px; font-weight: 800; white-space: nowrap; padding: 2px 8px; border-radius: 999px; }
+
+.rank-exact { background: color-mix(in srgb, var(--tier-dark-green) 30%, transparent); color: var(--tier-dark-green); }
+.rank-blue { background: color-mix(in srgb, var(--tier-blue) 20%, transparent); color: var(--tier-blue); }
+.rank-purple { background: color-mix(in srgb, var(--tier-purple) 20%, transparent); color: var(--tier-purple); }
+.rank-pink { background: color-mix(in srgb, var(--tier-pink) 20%, transparent); color: var(--tier-pink); }
+.rank-dark-green { background: color-mix(in srgb, var(--tier-dark-green) 22%, transparent); color: var(--tier-dark-green); }
+.rank-green { background: color-mix(in srgb, var(--tier-green) 16%, transparent); color: var(--tier-green); }
+.rank-orange { background: color-mix(in srgb, var(--tier-orange) 16%, transparent); color: var(--tier-orange); }
+.rank-red { background: color-mix(in srgb, var(--tier-red) 14%, transparent); color: var(--tier-red); }
+
+/* ---------- Toasts ---------- */
+#toastHost {
+  position: fixed; top: calc(54px + var(--safe-top)); left: 50%; transform: translateX(-50%);
+  z-index: 100; display: flex; flex-direction: column; gap: 8px;
+  width: min(92vw, 420px);
+}
+.toast {
+  background: var(--panel-2);
+  border: 1px solid var(--brand-pink);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  animation: rowIn .2s ease-out;
+}
+
+/* ============================================================
+   Floating "+N points" popup — audience avatar, name, word, points.
+   The host reserves a fixed height at all times (whether a popup is
+   showing or not) so the "Live guesses" board below never jumps up or
+   down as popups appear and disappear. Only one popup is ever shown at
+   once (see advancePopupQueue in client.js) — extras queue and play in
+   turn — so it's positioned absolutely, centered inside that reserved
+   space, instead of stacking in normal document flow.
+   ============================================================ */
+#pointsPopupHost {
+  position: relative;
+  width: 100%;
+  height: 46px; /* reserved — matches one popup's height, prevents layout shift */
+}
+.points-popup {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: min(88vw, 320px);
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 6px 12px 6px 6px;
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,.7);
+  animation: popIn .25s ease-out, popOut .3s ease-in 2.4s forwards;
+}
+/* Every keyframe keeps the translateX(-50%) centering — only what's added
+   on top of it (the vertical offset / scale) actually animates. */
+@keyframes popIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(.94); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+@keyframes popOut { to { opacity: 0; transform: translateX(-50%) translateY(-4px) scale(.94); } }
+.pp-avatar {
+  width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+  object-fit: cover; background: var(--panel-2);
+  display: grid; place-items: center; font-weight: 800; font-size: 13px; color: #fff;
+}
+.pp-text { min-width: 0; flex: 1; }
+.pp-name { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-word { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-pts { font-size: 14px; font-weight: 800; color: var(--gold); flex-shrink: 0; }
+
+/* ============================================================
+   Full-screen floating windows: round-end answer + top scorers,
+   then the all-time leaderboard. Auto-advance, no host action needed.
+   ============================================================ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5,6,10,.78);
+  backdrop-filter: blur(6px);
+  animation: fadeIn .25s ease-out;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.overlay-card {
+  position: relative;
+  width: min(92vw, 420px);
+  max-height: 82vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 26px 22px;
+  text-align: center;
+  box-shadow: 0 20px 60px -12px rgba(0,0,0,.8);
+  animation: overlayIn .3s ease-out;
+}
+.overlay-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: none;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.overlay-close:active { transform: scale(.94); }
+.overlay-close:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+@keyframes overlayIn { from { opacity: 0; transform: scale(.92) translateY(10px); } to { opacity: 1; transform: none; } }
+.overlay-label { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.overlay-label.small { margin-top: 18px; font-size: 12px; }
+.overlay-answer {
+  font-family: 'Baloo 2', 'Inter', sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  color: var(--gold);
+  margin: 8px 0 6px;
+  word-break: break-word;
+}
+.overlay-sub { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.overlay-scorers-wrap { margin-top: 6px; }
+.lb-list { list-style: none; margin: 10px 0 0; padding: 0; text-align: left; }
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  margin-bottom: 6px;
+}
+.lb-rank { flex: 0 0 26px; font-weight: 800; color: var(--muted); font-size: 15px; text-align: center; }
+.lb-row .pp-avatar { width: 26px; height: 26px; font-size: 11px; flex-shrink: 0; }
+.lb-row.lb-medal-row:nth-child(1) { box-shadow: inset 3px 0 0 #ffd700; }
+.lb-row.lb-medal-row:nth-child(2) { box-shadow: inset 3px 0 0 #c7cbe0; }
+.lb-row.lb-medal-row:nth-child(3) { box-shadow: inset 3px 0 0 #d99a5b; }
+.lb-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-score { font-weight: 800; color: var(--gold); font-size: 13.5px; flex-shrink: 0; }
+.lb-empty { color: var(--muted); font-size: 13px; padding: 10px 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* Phones: shrink each guess row so noticeably more of them fit on screen
+   at once (paired with .board/.guess-list flexing to fill the available
+   height above). Row text stays a legible size — only the padding, gaps,
+   and avatar shrink — so this is "denser", not "harder to read". */
+@media (max-width: 700px) {
+  .guess-list { gap: 3px; }
+  .guess-row { padding: 5px 8px; gap: 7px; border-radius: 8px; }
+  .guess-row .pp-avatar { width: 19px; height: 19px; font-size: 8.5px; }
+  .guess-user { font-size: 10.5px; max-width: 62px; }
+  .guess-word { font-size: 12.5px; gap: 5px; }
+  .guess-rank { font-size: 10px; padding: 1px 6px; }
+  .guess-pts { font-size: 10.5px; }
+  .guess-note { font-size: 9.5px; padding: 1px 5px; }
+}
+
+/* Small phones: keep the guessed WORD readable — names and the
+   "Already guessed" note give up space before the word does. */
+@media (max-width: 440px) {
+  .guess-row { gap: 8px; padding: 9px 9px; }
+  .guess-user { max-width: 64px; }
+  .guess-who { gap: 5px; }
+  .guess-note { font-size: 10px; padding: 2px 6px; }
+  .overlay-answer { font-size: 32px; }
+}
+
+@media (max-width: 380px) {
+  .wordmark { font-size: 26px; }
+  .fields { grid-template-columns: 1fr; }
+}
+
+/* Rank tier colors on the light themes (darker for contrast) */
+:root[data-theme="cream"], :root[data-theme="sky"], :root[data-theme="meadow"],
+:root[data-theme="blossom"], :root[data-theme="lavender"], :root[data-theme="honey"] {
+  --tier-blue: #1d63c4; --tier-purple: #7a3fc2; --tier-pink: #c4287c;
+}
+
+/* ============================================================
+   Guess rows: always light grey, whatever the colour theme is.
+   Text inside is forced dark so it stays readable on every theme.
+   ============================================================ */
+.guess-row,
+.guess-row.win {
+  background: #e6e8ec;
+  color: #1c2030;
+}
+.guess-row.win { border-color: var(--tier-dark-green); }
+.guess-row .guess-user,
+.guess-row .guess-word { color: #1c2030; }
+.guess-row.is-empty { color: #4b5263; }
+.guess-row .guess-pts,
+.guess-row .guess-note,
+.guess-row.hint .guess-user { color: #8a5a00; }
+.guess-row .guess-note { background: rgba(138, 90, 0, .14); }
+.guess-row .guess-rank { font-weight: 800; }
+.guess-row .rank-exact,
+.guess-row .rank-dark-green { color: #0b6b3a; }
+.guess-row .rank-green { color: #1d7a2f; }
+.guess-row .rank-blue { color: #1f57b8; }
+.guess-row .rank-purple { color: #6a35b8; }
+.guess-row .rank-pink { color: #b3246f; }
+.guess-row .rank-orange { color: #b4570a; }
+.guess-row .rank-red { color: #b3261e; }
+
+
+/* ===== Platform integration (update 101) ===== */
+a.icon-btn { text-decoration: none; font-size: 16px; line-height: 1; }
+.engagement-tools-wrap { margin-top: 14px; }
