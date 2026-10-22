@@ -96,6 +96,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
+// update 106: longer than Render's proxy idle timeout, so the proxy never reuses a connection the server already closed (random 502 / dropped sockets)
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
 const io = new Server(server);
 
 // Safety net shared by every game on this server: one bad event handler
