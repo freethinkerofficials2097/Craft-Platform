@@ -48,6 +48,14 @@
   };
 
   var DEFAULTS = {
+    numberblindle: {
+      title: "What the colors mean",
+      items: [
+        { id: "green", glyph: "7", label: "Green — digit is correct and in the right position", c: STRONG.green },
+        { id: "yellow", glyph: "7", label: "Yellow — digit is in the secret number but in the wrong position", c: STRONG.yellow },
+        { id: "red", glyph: "7", label: "Red — digit is not in the secret number", c: STRONG.red }
+      ]
+    },
     blindle: {
       title: "What the numbers' colors mean",
       items: [

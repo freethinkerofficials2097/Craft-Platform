@@ -73,6 +73,7 @@
       { id: "wrong", label: "Wrong guess", hint: "off the path, not connected", std: "#EF4444", vars: ["--red-wrong"] },
       { id: "neutral", label: "Land (not guessed)", hint: "countries nobody guessed yet", std: "#8FC1E8", vars: ["--land-light"] }
     ],
+    numberblindle: wordColors("tiles, keys & count column: digit correct and in the right position", "tiles, keys & count column: digit in the number, wrong position", "red", "Red", "#E11D2E", "tiles, keys & count column: digit not in the number"),
     blindle: wordColors("tiles & keys: right letter, right spot", "tiles & keys: right letter, wrong spot", "red", "Red", "#E11D2E", "tiles & keys: letter not in the word"),
     twistle: wordColors("tiles & keys", "tiles & keys", "red", "Red", "#E11D2E", "tiles & keys"),
     oracle: wordColors("green count badges", "gold count badges", "red", "Red", "#E11D2E", "red count badges"),

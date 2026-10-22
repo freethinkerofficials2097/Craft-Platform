@@ -31,6 +31,7 @@
 //   /expandle/ - EXPANDLE (Socket.IO namespace /expandle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //   /contexto/ - CONTEXTO (Socket.IO namespace /contexto)
+//   /numberblindle/ - NUMBERBLINDLE (its own WebSocket path /numberblindle-ws)
 //
 // IMPORTANT: "./server/env-bridge.js" is imported FIRST, before any
 // game module. ES module imports are hoisted and evaluated in the
@@ -69,6 +70,7 @@ import { mountCitydle } from "./server/citydle/citydle-server.js";
 import { mountExpandle } from "./server/expandle/expandle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountContexto } from "./server/contexto/contexto-server.js";
+import { mountNumberblindle } from "./server/numberblindle/numberblindle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -310,6 +312,14 @@ await mountFixle(app, io, { mountPath: "/fixle" });
 // built-in puzzles), with an online and an offline fallback. Points are for discovering one of the 10 closest words; the viewer who types
 // the secret word wins the round. Own Socket.IO namespace /contexto; reuses the platform's shared dictionary (loaded once).
 await mountContexto(app, io, { mountPath: "/contexto" });
+
+// NUMBERBLINDLE is a BLINDLE copy that plays with a SECRET NUMBER (a PIN of 5-8 digits by default) instead of a secret word, inspired
+// by "Tebak Pin". Every guess shows number columns: green = digits correct and in the right position, yellow = digits in the number
+// but in the wrong position, grey = digits not in the number. The host colors digits on the tiles and the one-row 0-9 keyboard (show /
+// hide button) follows the same colors. A legend above the board explains the colors. Scoring: 1 point for every guess that fits the
+// board, 5 points for solving the round. Like BLINDLE it uses its own WebSocket path (/numberblindle-ws) on the shared http server and
+// needs no dictionary.
+await mountNumberblindle(app, server, { mountPath: "/numberblindle", wsPath: "/numberblindle-ws" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

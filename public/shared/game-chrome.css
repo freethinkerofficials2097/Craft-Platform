@@ -12,6 +12,7 @@
    ========================================================================== */
 
 /* ---- per-game identity (font + accent) ---- */
+body[data-game="numberblindle"] { --hero-font: "Righteous", "Fredoka", sans-serif;       --hero-accent: #2F9E6B; --hero-spacing: .05em; }
 body[data-game="blindle"]      { --hero-font: "Pacifico", "Fredoka", cursive;            --hero-accent: #E0A010; --hero-spacing: .02em; }
 body[data-game="crossdle"]     { --hero-font: "Bungee", "Fredoka", sans-serif;          --hero-accent: #7C5CFF; --hero-spacing: .03em; }
 body[data-game="twistle"]      { --hero-font: "Lilita One", "Fredoka", sans-serif;      --hero-accent: #E0699C; --hero-spacing: .06em; }
