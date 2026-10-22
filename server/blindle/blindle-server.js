@@ -36,7 +36,7 @@ import express from "express";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
-import { WebSocketServer } from "ws";
+import { createGameWss } from "../shared/ws-upgrade.js";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
 import { explainTikTokError } from "../shared/tiktok-errors.js";
 import { ANSWER_WORDS as EN_ANSWER_WORDS, MIN_WORD_LENGTH } from "./blindle-answers.js";
@@ -992,7 +992,7 @@ export async function mountBlindle(app, httpServer, options = {}) {
     res.sendFile(path.join(__dirname, "public", "blindle-index.html"));
   });
 
-  wss = new WebSocketServer({ server: httpServer, path: wsPath });
+  wss = createGameWss(httpServer, wsPath, { label: "BLINDLE" }); // update 106: path-routed upgrade + heartbeat
   wss.on(
     "connection",
     safely("ws-connection", (ws) => {

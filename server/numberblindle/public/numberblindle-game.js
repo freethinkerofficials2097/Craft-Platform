@@ -314,8 +314,8 @@ if (el.keyboardBtn) el.keyboardBtn.addEventListener("click", () => setKeyboardWa
 if (el.hideKeyboardBtn) el.hideKeyboardBtn.addEventListener("click", () => setKeyboardWanted(false));
 if (el.keyboardShowToggle) el.keyboardShowToggle.addEventListener("change", () => setKeyboardWanted(el.keyboardShowToggle.checked));
 
-const MIN_DIGITS = 3;
-const MAX_DIGITS = 12;
+const MIN_DIGITS = 4;
+const MAX_DIGITS = 20;
 for (let n = MIN_DIGITS; n <= MAX_DIGITS; n++) {
   const opt = document.createElement("option");
   opt.value = String(n);
@@ -432,24 +432,59 @@ el.tabAllTime.addEventListener("click", () => { activeLeaderboardTab = "total"; 
 
 let socket = null;
 let reconnectDelay = 1000;
+let reconnectTimer = null;
+let lastMsgAt = Date.now();
 let lastState = null;
 
+// update 106: reliable connection to the game server.
+//  - only ONE socket and ONE pending reconnect timer exist at any time (the old code could stack several)
+//  - reconnect waits grow 1s -> 10s with a little random jitter
+//  - the server sends a heartbeat every 25 s; if nothing arrives for 70 s the socket is treated as dead and replaced
+//  - coming back to the tab, waking the phone or getting the network back reconnects immediately
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  setMiniStatus("Reconnecting to game server…");
+  const wait = reconnectDelay + Math.floor(Math.random() * 400);
+  reconnectTimer = setTimeout(() => { reconnectTimer = null; connectSocket(); }, wait);
+  reconnectDelay = Math.min(Math.round(reconnectDelay * 1.6), 10000);
+}
+
+function reconnectNow() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  reconnectDelay = 1000;
+  connectSocket();
+}
+
 function connectSocket() {
+  if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) return;
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   // Namespaced WebSocket path (see NUMBERBLINDLE_CONFIG in numberblindle-index.html)
   // so this game's socket traffic never collides with another game's
   // WebSocketServer mounted on the same host/platform.
   const wsPath = (window.NUMBERBLINDLE_CONFIG && window.NUMBERBLINDLE_CONFIG.wsPath) || "/numberblindle-ws";
-  socket = new WebSocket(protocol + "//" + window.location.host + wsPath);
+  let ws;
+  try {
+    ws = new WebSocket(protocol + "//" + window.location.host + wsPath);
+  } catch (err) {
+    scheduleReconnect();
+    return;
+  }
+  socket = ws;
+  lastMsgAt = Date.now();
 
-  socket.addEventListener("open", () => {
+  ws.addEventListener("open", () => {
+    if (socket !== ws) return;
     reconnectDelay = 1000;
+    lastMsgAt = Date.now();
     setMiniStatus("Connected to game server.");
   });
 
-  socket.addEventListener("message", (event) => {
+  ws.addEventListener("message", (event) => {
+    if (socket !== ws) return;
+    lastMsgAt = Date.now();
     try {
       const msg = JSON.parse(event.data);
+      if (msg.type === "hb") return; // heartbeat from the server
       if (msg.type === "state") render(msg.payload);
       else if (msg.type === "offline_guess_result") handleOfflineGuessResult(msg.payload);
       else if (msg.type === "set_secret_word_result") handleSetAnswerResult(msg.payload);
@@ -458,21 +493,47 @@ function connectSocket() {
     }
   });
 
-  socket.addEventListener("close", () => {
-    setMiniStatus("Reconnecting to game server…");
-    setTimeout(connectSocket, reconnectDelay);
-    reconnectDelay = Math.min(reconnectDelay * 1.6, 10000);
+  ws.addEventListener("close", () => {
+    if (socket !== ws) return; // an old socket we already replaced
+    socket = null;
+    scheduleReconnect();
   });
 
-  socket.addEventListener("error", () => socket.close());
+  ws.addEventListener("error", () => { try { ws.close(); } catch (e) { /* ignore */ } });
 }
 connectSocket();
+
+// Silent-death watchdog (a phone that slept, a proxy that dropped the socket without telling anyone).
+setInterval(() => {
+  if (socket && socket.readyState === WebSocket.OPEN && Date.now() - lastMsgAt > 70000) {
+    const dead = socket;
+    socket = null;
+    try { dead.close(); } catch (e) { /* ignore */ }
+    reconnectNow();
+  } else if (!socket && !reconnectTimer) {
+    scheduleReconnect();
+  }
+}, 10000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (!socket || socket.readyState > WebSocket.OPEN || Date.now() - lastMsgAt > 70000) {
+    if (socket) { const dead = socket; socket = null; try { dead.close(); } catch (e) { /* ignore */ } }
+    reconnectNow();
+  }
+});
+window.addEventListener("online", () => {
+  if (!socket || socket.readyState !== WebSocket.OPEN) reconnectNow();
+});
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted && (!socket || socket.readyState !== WebSocket.OPEN)) reconnectNow();
+});
 
 function send(type, payload) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify({ type: type, payload: payload }));
   } else {
-    setMiniStatus("Not connected to the game server yet — try again in a moment.");
+    setMiniStatus("Not connected to the game server yet — reconnecting, try again in a moment.");
+    if (!socket) reconnectNow();
   }
 }
 function setMiniStatus(text) { el.miniStatus.textContent = text; }

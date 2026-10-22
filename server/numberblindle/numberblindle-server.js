@@ -26,9 +26,9 @@ import express from "express";
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
-import { WebSocketServer } from "ws";
+import { createGameWss } from "../shared/ws-upgrade.js";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
-import { explainTikTokError } from "../shared/tiktok-errors.js";
+import { explainTikTokError, explainTikTokErrorParts } from "../shared/tiktok-errors.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js";
@@ -153,10 +153,10 @@ function formatCounts(c) {
 }
 
 // ---- NUMBER LENGTH -------------------------------------------------------------------------
-// The secret number has 3 to 12 digits. Default: a random length between 5 and 8 digits each round (like the Tebak Pin
+// The secret number has 4 to 20 digits. Default: a random length between 5 and 8 digits each round (like the Tebak Pin
 // screenshots: 5, 7 and 8 digits); the host can pick a fixed length or another range in Settings.
-const MIN_WORD_LENGTH = 3;
-const MAX_WORD_LENGTH = 12;
+const MIN_WORD_LENGTH = 4;
+const MAX_WORD_LENGTH = 20;
 const DIGITS = "0123456789".split("");
 
 const DEFAULT_AUTO_CONTINUE_DELAY = 3;
@@ -432,7 +432,7 @@ function endGame() {
 }
 
 // ---- HINTS (numbers) ------------------------------------------------------------------------
-// "Number idea": a number that fits EVERY clue on the board (but is never the secret). With up to 12 digits the
+// "Number idea": a number that fits EVERY clue on the board (but is never the secret). With up to 20 digits the
 // whole space cannot be listed, so a quick random search with hill-climbing finds a consistent number.
 function findConsistentNumber({ maxEvals = 40000, allowSecret = false, avoid = [] } = {}) {
   const n = game.wordLength;
@@ -606,21 +606,36 @@ function handleIncomingRawEvent(raw) {
 
 let liveConnection = null;
 let testModeTimer = null;
+// update 106: every Connect / Disconnect / mode change bumps this number. A connect attempt that is still running
+// (or waiting between retries) when the number changes is stale: it must not attach itself, flip the status or
+// leave a second TikTok connection receiving chat.
+let connectGen = 0;
 const RETRY_DELAYS_MS = [2000, 4000, 8000];
+// Errors that retrying cannot fix - report them at once instead of waiting 14 s and trying again.
+const PERMANENT_ERROR_CODES = new Set(["NO_KEY", "KEY_REJECTED", "QUOTA", "NO_SUCH_USER", "BAD_USERNAME", "RESTRICTED"]);
+function dropConnection(conn) {
+  if (!conn) return;
+  try { conn.on?.("error", () => {}); } catch {}
+  try { conn.disconnect(); } catch (err) { /* already closed */ }
+}
 
 if (process.env.EULERSTREAM_API_KEY) {
   SignConfig.apiKey = process.env.EULERSTREAM_API_KEY;
 }
 
 function stopEverything() {
+  connectGen += 1; // cancels any connect attempt that is still in progress
   hostAvatarUrl = null;
   if (liveConnection) {
+    const old = liveConnection;
+    liveConnection = null;
     try {
-      liveConnection.disconnect();
+      // its late events are ignored: every handler checks connectGen (see connectToTikTok)
+      old.on?.("error", () => {});
+      old.disconnect();
     } catch (err) {
       console.error("[SAFETY-NET] Error while disconnecting:", err);
     }
-    liveConnection = null;
   }
   if (testModeTimer) {
     clearInterval(testModeTimer);
@@ -634,6 +649,12 @@ async function connectToTikTok(username) {
     broadcastState();
     return;
   }
+  if (!username) {
+    diagnostics.connectionStatus = "error";
+    diagnostics.lastErrorMessage = "Type the TikTok username of the account that is LIVE, then press Connect.";
+    broadcastState();
+    return;
+  }
   if (!diagnostics.signKeyConfigured) {
     diagnostics.connectionStatus = "error";
     diagnostics.lastErrorMessage = "No signing key set up yet. Add EULERSTREAM_API_KEY in Render before connecting.";
@@ -642,6 +663,8 @@ async function connectToTikTok(username) {
   }
 
   stopEverything();
+  const gen = connectGen; // this attempt is only valid while connectGen still equals gen
+  const isStale = () => gen !== connectGen;
   diagnostics.tiktokUsername = username;
   diagnostics.connectionStatus = "connecting";
   diagnostics.retryAttempt = 0;
@@ -649,22 +672,26 @@ async function connectToTikTok(username) {
   broadcastState();
 
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    let connection = null;
     try {
-      const connection = new TikTokLiveConnection(username, {
+      connection = new TikTokLiveConnection(username, {
         signApiKey: process.env.EULERSTREAM_API_KEY
       });
 
-      connection.on(WebcastEvent.CHAT, safely("chat-event", (data) => handleIncomingRawEvent(data)));
+      connection.on(WebcastEvent.CHAT, safely("chat-event", (data) => { if (!isStale()) handleIncomingRawEvent(data); }));
       connection.on(
         WebcastEvent.DISCONNECTED,
         safely("disconnected-event", () => {
+          if (isStale()) return;
           diagnostics.connectionStatus = "disconnected";
+          diagnostics.lastErrorMessage = "The connection to TikTok dropped. The server tries to reconnect by itself - no need to press anything.";
           broadcastState();
         })
       );
       connection.on(
         "reconnected",
         safely("reconnected-event", () => {
+          if (isStale()) return;
           diagnostics.connectionStatus = "live";
           diagnostics.lastErrorMessage = null;
           broadcastState();
@@ -677,6 +704,7 @@ async function connectToTikTok(username) {
       connection.on(
         WebcastEvent.STREAM_END,
         safely("stream-end-event", () => {
+          if (isStale()) return;
           diagnostics.connectionStatus = "disconnected";
           diagnostics.lastErrorMessage = "The TikTok LIVE broadcast ended.";
           broadcastState();
@@ -684,26 +712,34 @@ async function connectToTikTok(username) {
       );
 
       const connectState = await connection.connect();
+      if (isStale()) { // the host pressed Disconnect / switched mode / pressed Connect again while we were waiting
+        dropConnection(connection);
+        return;
+      }
       liveConnection = connection;
       Engagement.attach(connection, { game: "numberblindle", tiktokUsername: username });
       diagnostics.connectionStatus = "live";
       diagnostics.lastErrorMessage = null;
       broadcastState();
-      // Look up the host's profile picture (for the starter-word row) without
+      // Look up the host's profile picture (for the starter-number row) without
       // holding up the connection; broadcast again once it's known.
       resolveHostAvatar(connection, connectState, username, () => liveConnection !== connection).then((url) => {
         if (url && liveConnection === connection) {
           hostAvatarUrl = url;
           broadcastState();
         }
-      });
+      }).catch(() => {});
       return;
     } catch (err) {
+      dropConnection(connection); // never leave a half-open connection behind a failed attempt
+      if (isStale()) return;
       console.error(`[TikTok] Connect attempt ${attempt + 1} failed:`, err?.message || err);
+      let parts = null;
+      try { parts = explainTikTokErrorParts(err, username); } catch {}
       diagnostics.retryAttempt = attempt + 1;
       diagnostics.lastErrorMessage = "Try " + (attempt + 1) + " failed. " + describeConnectError(err);
       const isLastAttempt = attempt === RETRY_DELAYS_MS.length;
-      if (isLastAttempt) {
+      if (isLastAttempt || (parts && PERMANENT_ERROR_CODES.has(parts.code))) {
         diagnostics.connectionStatus = "error";
         diagnostics.lastErrorMessage = describeConnectError(err);
         broadcastState();
@@ -712,6 +748,7 @@ async function connectToTikTok(username) {
       diagnostics.connectionStatus = "retrying";
       broadcastState();
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+      if (isStale()) return;
     }
   }
 }
@@ -892,6 +929,8 @@ function handleClientAction(ws, msg) {
     case "disconnect_tiktok":
       stopEverything();
       diagnostics.connectionStatus = "idle";
+      diagnostics.lastErrorMessage = null;
+      diagnostics.retryAttempt = 0;
       diagnostics.tiktokUsername = null;
       broadcastState();
       break;
@@ -1021,7 +1060,7 @@ export async function mountNumberblindle(app, httpServer, options = {}) {
     res.sendFile(path.join(__dirname, "public", "numberblindle-index.html"));
   });
 
-  wss = new WebSocketServer({ server: httpServer, path: wsPath });
+  wss = createGameWss(httpServer, wsPath, { label: "NUMBERBLINDLE" }); // update 106: path-routed upgrade + heartbeat
   wss.on(
     "connection",
     safely("ws-connection", (ws) => {
