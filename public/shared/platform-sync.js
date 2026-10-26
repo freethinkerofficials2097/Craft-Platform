@@ -20,7 +20,7 @@
   window.__platformSync = true;
 
   var GAME = (location.pathname.split("/")[1] || "").toLowerCase();
-  var FAMILY = { blindle: 1, numberblindle: 1, oracle: 1, colorblindle: 1, colordle: 1, structle: 1, textle: 1, rangedle: 1, codedle: 1, shapedle: 1, forbackle: 1, shiftle: 1, wordle: 1, betweendle: 1, comparable: 1, minedle: 1, linedle: 1, citydle: 1, expandle: 1, fixle: 1, contexto: 1 };
+  var FAMILY = { blindle: 1, numberblindle: 1, oracle: 1, colorblindle: 1, colordle: 1, structle: 1, textle: 1, rangedle: 1, codedle: 1, shapedle: 1, forbackle: 1, shiftle: 1, wordle: 1, betweendle: 1, comparable: 1, minedle: 1, linedle: 1, citydle: 1, towndle: 1, expandle: 1, fixle: 1, contexto: 1 };
   var KNOWN = { flagle: 1, travle: 1, crossdle: 1, twistle: 1, findle: 1 };
   for (var k in FAMILY) KNOWN[k] = 1;
   if (!KNOWN[GAME]) return;

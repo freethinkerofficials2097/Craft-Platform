@@ -199,6 +199,22 @@
         { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
+    towndle: {
+      title: "What the colors, arrow and distance mean",
+      items: [
+        { id: "green", glyph: "✓", label: "Green — the right place (round won)", c: V("--cd-green", "#4CAF50", "#FFFFFF", "#357A38") },
+        { id: "yellow", glyph: "A", label: "Yellow — right state, but the wrong place (13 states + Federal Territories as the 14th)", c: V("--cd-yellow", "#E3B505", "#1B1B1F", "#A98200") },
+        { id: "orange", glyph: "A", label: "Orange — a direct neighbour of the secret place (same or touching district), but not the place itself", c: V("--cd-orange", "#EE7B30", "#1B1B1F", "#B45514") },
+        { id: "gray", glyph: "A", label: "Grey — wrong place, not a neighbour and not in the right state", c: V("--cd-gray", "#8A8A92", "#121214", "#6A6A72") },
+        { id: "arrow", glyph: "↗", label: "Arrow — the direction to guess next, toward the secret place", c: V("--cd-dir", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "km", glyph: "km", label: "Distance — how far the guessed place is from the secret place (km or miles, chosen in Settings)", c: V("--cd-km", "#3C3C40", "#F3F1E6", "#28282B") },
+        { id: "latest", glyph: "NEW", label: "Framed top row — the newest guess", c: V("--cd-frame", "#3C3C40", "#FFFFFF", "#28282B") },
+        { id: "list", glyph: "↓", label: "Rows below — all guesses, nearest place first", c: V("--cd-gray", "#8A8A92", "#121214", "#6A6A72") },
+        { id: "score", glyph: "+5", label: "Score — 5 points for the guess that finds the secret place", c: V("--cd-green", "#4CAF50", "#FFFFFF", "#357A38") },
+        { id: "starter", glyph: "🎲", label: "Starter place — free first guess, no points", c: { bg: "transparent", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "float", glyph: "!", label: "Floating window — announces each new guess", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+      ]
+    },
     expandle: {
       title: "What the colors and rows mean",
       items: [
@@ -427,9 +443,9 @@
   function hexToRgb(hex) { var n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
   // CITYDLE / EXPANDLE: the legend chips of the game's own colors are LINKED to the game (CitydleColors / ExpandleColors).
   // Changing a chip color here changes the game, and changing it in the game's Settings changes the chip.
-  function linkedApi() { return game === "citydle" ? window.CitydleColors : game === "expandle" ? window.ExpandleColors : null; }
+  function linkedApi() { return game === "citydle" ? window.CitydleColors : game === "towndle" ? window.TowndleColors : game === "expandle" ? window.ExpandleColors : null; }
   function cdLinked(id) { var api = linkedApi(); return api && api.legendKey(id); }
-  if (game === "citydle" || game === "expandle") window.addEventListener(game + "-colors", function () {
+  if (game === "citydle" || game === "towndle" || game === "expandle") window.addEventListener(game + "-colors", function () {
     var api = linkedApi();
     var lis = document.querySelectorAll("#lgItems li[data-lgid]");
     for (var i = 0; i < lis.length; i++) {

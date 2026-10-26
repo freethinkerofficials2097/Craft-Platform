@@ -1,0 +1,3 @@
+# TOWNDLE extra places - one per line:  Name, State, District (may be empty), Tier 1-3, latitude, longitude [, Type C/M/D/T]
+# Example:  Kampung Contoh, Selangor, Hulu Langat, 3, 3.05, 101.85, T
+# Lines that start with # are ignored.  See README-towns.txt

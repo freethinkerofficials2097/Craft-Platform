@@ -28,6 +28,7 @@
 //   /minedle/ - MINEDLE (Socket.IO namespace /minedle)
 //   /linedle/ - LINEDLE (Socket.IO namespace /linedle)
 //   /citydle/ - CITYDLE (Socket.IO namespace /citydle)
+//   /towndle/ - TOWNDLE (Socket.IO namespace /towndle)
 //   /expandle/ - EXPANDLE (Socket.IO namespace /expandle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //   /contexto/ - CONTEXTO (Socket.IO namespace /contexto)
@@ -67,6 +68,7 @@ import { mountComparable } from "./server/comparable/comparable-server.js";
 import { mountMinedle } from "./server/minedle/minedle-server.js";
 import { mountLinedle } from "./server/linedle/linedle-server.js";
 import { mountCitydle } from "./server/citydle/citydle-server.js";
+import { mountTowndle } from "./server/towndle/towndle-server.js";
 import { mountExpandle } from "./server/expandle/expandle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountContexto } from "./server/contexto/contexto-server.js";
@@ -296,6 +298,12 @@ await mountLinedle(app, io, { mountPath: "/linedle" });
 // right continent, grey = wrong continent, plus a direction arrow and the distance in km. Nearest guesses are listed first.
 // Scoring: 5 points for the guess that finds the secret city. Own Socket.IO namespace /citydle; the city list is built in.
 await mountCitydle(app, io, { mountPath: "/citydle" });
+
+// TOWNDLE is CITYDLE's Malaysian sibling: chat guesses a secret PLACE (city / municipal / district / town) of Malaysia. green = the place,
+// yellow = right state (13 states + the 3 Federal Territories counted as the 14th), orange = a direct neighbour of the secret place (same or
+// touching district), grey = wrong. Plus a direction arrow and the distance in km; nearest guesses are listed first. Scoring: 5 points for the
+// guess that finds the secret place. Own Socket.IO namespace /towndle; the place list is built in (see server/towndle/).
+await mountTowndle(app, io, { mountPath: "/towndle" });
 
 // EXPANDLE is a BLINDLE sibling (on the FIXLE board): every round starts from a 3-letter word and chat grows it one letter per row (shuffle the
 // letters + ONE new letter = a longer real word) within a 60-second round. 1 point per accepted word. Own Socket.IO namespace /expandle;
