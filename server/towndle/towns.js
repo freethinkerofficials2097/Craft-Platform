@@ -18,7 +18,13 @@ import { TOWN_DATA_1 } from "./towns-data-1.js";
 import { TOWN_DATA_2 } from "./towns-data-2.js";
 import { TOWN_DATA_3 } from "./towns-data-3.js";
 import { TOWN_DATA_4 } from "./towns-data-4.js";
+import { TOWN_DATA_5 } from "./towns-data-5.js";
+import { TOWN_DATA_6 } from "./towns-data-6.js";
+import { TOWN_DATA_7 } from "./towns-data-7.js";
 import { TOWN_ADJACENCY } from "./towns-adjacency.js";
+
+const R = 6371; // earth radius, km
+const rad = (d) => (d * Math.PI) / 180;
 
 // The 14 "states" of the game (13 states + the 3 Federal Territories counted as the 14th).
 export const STATE_LIST = [
@@ -42,6 +48,26 @@ const STATE_CODE_BY_NAME = new Map();
 for (const s of STATE_LIST) STATE_CODE_BY_NAME.set(townKey(s.name), s.code);
 for (const [alias, code] of [["pulaupinang", "PG"], ["penang", "PG"], ["malacca", "ML"], ["kualalumpur", "FT"], ["putrajaya", "FT"], ["labuan", "FT"],
   ["wilayahpersekutuan", "FT"], ["federalterritory", "FT"], ["federalterritories", "FT"], ["nsembilan", "NS"]]) STATE_CODE_BY_NAME.set(alias, code);
+
+// ---- everyday words (update 108) --------------------------------------------------------------------------------------------
+// A chat message that is an ordinary Malay / Indonesian / English word must not be taken for a guess, and a short rare place name that is
+// also an everyday word must be typed with its state. The dictionaries ship with the platform (server/shared/lang/generated).
+export const COMMON_WORDS = new Set();
+(function loadCommonWords() {
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  for (const f of ["dict-ms.txt", "dict-id.txt"]) {
+    try {
+      for (const w of fs.readFileSync(path.resolve(here, "../shared/lang/generated", f), "utf8").split(/\r?\n/)) {
+        const t = w.trim().toLowerCase();
+        if (t.length >= 3 && t.length <= 14 && /^[a-z]+$/.test(t)) COMMON_WORDS.add(t);
+      }
+    } catch (e) { /* dictionary missing: the place list still works */ }
+  }
+})();
+try {
+  const wl = await import("word-list");
+  for (const w of fs.readFileSync(wl.default, "utf8").split(/\r?\n/)) if (w.length >= 3 && w.length <= 12) COMMON_WORDS.add(w);
+} catch (e) { /* optional */ }
 
 export const TYPE_NAMES = { C: "City", M: "Municipal", D: "District", T: "Town" };
 
@@ -74,11 +100,34 @@ function districtKey(name) {
   return townKey(name);
 }
 
-function addPlace(rec, aliases) {
+const SAME_NAME = new Map(); // plain name key -> [places]  (duplicate guard)
+export const AUTO_BLOCKED = []; // rare single-word places whose plain name is an everyday word -> typed with the state
+
+function isDuplicate(rec) {
+  const list = SAME_NAME.get(townKey(rec.name));
+  if (!list) return false;
+  for (const o of list) {
+    if (o.state !== rec.state) continue;
+    if (o.districtKey === rec.districtKey) return true;
+    const dLat = rad(rec.lat - o.lat), dLon = rad(rec.lon - o.lon);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(o.lat)) * Math.cos(rad(rec.lat)) * Math.sin(dLon / 2) ** 2;
+    if (2 * R * Math.asin(Math.min(1, Math.sqrt(h))) <= 12) return true; // same name, same state, a few km apart = the same place
+  }
+  return false;
+}
+
+function addPlace(rec, aliases, opts = {}) {
   const wantedKey = townKey(rec.name);
+  if (isDuplicate(rec)) return null;
+  const known = TOWN_BY_KEY.get(wantedKey); // the same place already known under another spelling / alias
+  if (known && known.state === rec.state && (known.districtKey === rec.districtKey || isDuplicate({ ...rec, name: known.name }))) return null;
   const stateWord = rec.state === "FT" ? rec.territory : rec.stateName; // "Setapak Kuala Lumpur", "Gurun Kedah"
   const stateKey = townKey(rec.name + " " + stateWord);
-  const blocked = BLOCKED_PLAIN.has(wantedKey) || wantedKey.length < 3;
+  let blocked = BLOCKED_PLAIN.has(wantedKey) || wantedKey.length < 3;
+  if (!blocked && opts.autoBlock && rec.tier === 3 && /^[A-Za-z]+$/.test(rec.name) && COMMON_WORDS.has(wantedKey)) {
+    blocked = true;
+    AUTO_BLOCKED.push(rec.name + " (" + rec.stateName + ")");
+  }
   let key = blocked ? stateKey : wantedKey;
   if (TOWN_BY_KEY.has(key)) key = stateKey; // two places with the same name: the first one keeps the plain name, the other is "name + state"
   if (!key || key.length < 3 || TOWN_BY_KEY.has(key)) return null;
@@ -86,6 +135,8 @@ function addPlace(rec, aliases) {
   if (key !== wantedKey) rec.typeAs = rec.name + " " + stateWord;
   TOWNS.push(rec);
   TOWN_BY_KEY.set(key, rec);
+  if (!SAME_NAME.has(wantedKey)) SAME_NAME.set(wantedKey, []);
+  SAME_NAME.get(wantedKey).push(rec);
   if (!TOWN_BY_KEY.has(stateKey)) TOWN_BY_KEY.set(stateKey, rec); // "name + state" always works too
   const distName = townKey(rec.name + " " + rec.district);
   if (!TOWN_BY_KEY.has(distName) && rec.name !== rec.district) TOWN_BY_KEY.set(distName, rec);
@@ -98,7 +149,7 @@ function addPlace(rec, aliases) {
 
 const ITEM_RE = /^(.+?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+([123])([CMDT])$/;
 
-function loadBuiltIn(text) {
+function loadBuiltIn(text, opts = {}) {
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("//")) continue;
@@ -115,12 +166,12 @@ function loadBuiltIn(text) {
       if (!m) return;
       const rec = {
         name: m[1].trim(), state, stateName: STATE_NAMES[state], territory: territoryLabel(rawState.trim(), state), district: district.trim(),
-        districtKey: dk, type: m[5], typeName: TYPE_NAMES[m[5]], lat: Number(m[2]), lon: Number(m[3]), tier: Number(m[4])
+        districtKey: dk, type: m[5], typeName: TYPE_NAMES[m[5]], lat: Number(m[2]), lon: Number(m[3]), tier: Number(m[4]), curated: true
       };
-      const placed = addPlace(rec, aliasPart ? aliasPart.split(",") : []);
+      const placed = addPlace(rec, aliasPart ? aliasPart.split(",") : [], opts);
       if (placed) {
         DISTRICTS.get(dk).places.push(placed);
-        if (idx === 0) DISTRICTS.get(dk).seat = placed;
+        if (!DISTRICTS.get(dk).seat) DISTRICTS.get(dk).seat = placed; // the first place ever added to a district is its seat
       }
     });
   }
@@ -129,6 +180,11 @@ loadBuiltIn(TOWN_DATA_1);
 loadBuiltIn(TOWN_DATA_2);
 loadBuiltIn(TOWN_DATA_3);
 loadBuiltIn(TOWN_DATA_4);
+// update 108: the big expansion (more towns, mukims, townships, islands, hill stations, dive spots ...). Rare single-word names that are also everyday
+// words are typed with their state, like the older entries.
+loadBuiltIn(TOWN_DATA_5, { autoBlock: true });
+loadBuiltIn(TOWN_DATA_6, { autoBlock: true });
+loadBuiltIn(TOWN_DATA_7, { autoBlock: true });
 
 // a district can also be typed by its own name when no town carries that name (for example "kualamuda", "hululangat")
 for (const [dk, d] of DISTRICTS) {
@@ -160,8 +216,6 @@ for (const line of TOWN_ADJACENCY.split("\n")) {
 //     State = Johor, Kedah, ... Penang, ... Sarawak, Selangor, Terengganu or Kuala Lumpur / Putrajaya / Labuan.  Lines starting with # are ignored.
 //  2) GeoNames: a file named MY.txt (all of Malaysia) or cities500.txt / cities1000.txt ... from download.geonames.org/export/dump/ . Only the populated
 //     places (feature class P) of Malaysia are read. Their state and district are copied from the NEAREST place of the built-in list.
-const R = 6371; // earth radius, km
-const rad = (d) => (d * Math.PI) / 180;
 export function distanceKm(a, b) {
   const dLat = rad(b.lat - a.lat);
   const dLon = rad(b.lon - a.lon);
@@ -207,7 +261,7 @@ function loadExternalFiles() {
         if (!dist) continue;
         const type = /^[CMDT]$/i.test(p[6] || "") ? p[6].toUpperCase() : "T";
         const rec = { name: p[0], state, stateName: STATE_NAMES[state], territory: territoryLabel(p[1], state), district: dist.name, districtKey: districtKey(dist.name),
-          type, typeName: TYPE_NAMES[type], lat, lon, tier: Math.min(3, Math.max(1, Math.round(Number(p[3]) || 3))) };
+          type, typeName: TYPE_NAMES[type], lat, lon, tier: Math.min(3, Math.max(1, Math.round(Number(p[3]) || 3))), curated: true };
         const placed = addPlace(rec, []);
         if (placed) { dist.places.push(placed); LOAD_REPORT.extra++; }
       }
@@ -236,19 +290,143 @@ function loadExternalFiles() {
   for (const r of rows) {
     const key = townKey(r.name);
     if (key.length < 4 || key.length > 40 || TOWN_BY_KEY.has(key) || BLOCKED_PLAIN.has(key)) continue;
+    if (COMMON_WORDS.has(key) && !/\s/.test(r.name.trim())) continue; // an everyday word (not a distinct place name): skip the GeoNames one
     const near = nearestBuiltIn(r.lat, r.lon, builtInCount, null);
     if (!near || near.km > 120) continue; // too far from every known place: state unknown, skip
     const base = near.place;
     const rec = { name: r.name, state: base.state, stateName: base.stateName, territory: base.territory, district: base.district, districtKey: base.districtKey,
-      type: "T", typeName: TYPE_NAMES.T, lat: r.lat, lon: r.lon, tier: 3 };
-    const placed = addPlace(rec, []);
+      type: "T", typeName: TYPE_NAMES.T, lat: r.lat, lon: r.lon, tier: 3, curated: false };
+    const placed = addPlace(rec, [], { autoBlock: true });
     if (placed) { DISTRICTS.get(base.districtKey).places.push(placed); LOAD_REPORT.geonames++; }
   }
 }
 loadExternalFiles();
 
+// ---- spelling variants, short forms, typo tolerance (update 108) -----------------------------------------------------------
+// Chat writes places in many ways: "Kota Bharu" / "Kota Baru" / "Kota Baharu", "Telok Intan", "Pulau Redang" / "Redang", "Sg Petani", "KL".
+// finalizeAliases() adds every spelling variant and short form that is not already taken by another place; resolveGuess() cleans the
+// chat message (short forms, noise words like "malaysia") and looks the place up. A near miss (one wrong / missing / swapped letter of a
+// long name that matches exactly ONE place) is accepted as well - set TOWNDLE_FUZZY=0 to switch that off.
+const TOKEN_VARIANTS = {
+  bharu: ["baharu", "baru"], baharu: ["bharu", "baru"], baru: ["baharu", "bharu"],
+  terengganu: ["trengganu"], trengganu: ["terengganu"],
+  tanjung: ["tanjong"], tanjong: ["tanjung"], teluk: ["telok"], telok: ["teluk"],
+  ayer: ["air"], air: ["ayer"], sri: ["seri"], seri: ["sri"], hulu: ["ulu"], ulu: ["hulu"],
+  sungai: ["sungei"], sungei: ["sungai"], pulau: ["pulo"], gombak: ["gombak"], kuantan: ["kuantan"]
+};
+const PREFIX_WORDS = new Set(["bandar", "pekan", "pulau", "gunung", "tasik", "kampung", "felda"]);
+export const SHORT_FORMS = { sg: "sungai", sgi: "sungai", sungei: "sungai", kg: "kampung", kmpg: "kampung", tg: "tanjung", tj: "tanjung", tl: "teluk", bkt: "bukit",
+  pkn: "pekan", bdr: "bandar", plau: "pulau", pulo: "pulau", kl: "kuala lumpur", jb: "johor bahru", pj: "petaling jaya", pg: "penang" };
+
+function tokensOf(name) {
+  return String(name).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").split(/[^a-z]+/).filter(Boolean);
+}
+export const ALIAS_REPORT = { variants: 0, stripped: 0 };
+function finalizeAliases() {
+  const put = (key, rec, kind) => {
+    if (key.length < 3 || key.length > 40 || TOWN_BY_KEY.has(key) || BLOCKED_PLAIN.has(key)) return;
+    TOWN_BY_KEY.set(key, rec);
+    ALIAS_REPORT[kind]++;
+  };
+  for (const rec of TOWNS.slice()) {
+    if (rec.typeAs) continue; // names that must be typed with their state keep exactly that rule
+    const toks = tokensOf(rec.name);
+    if (!toks.length) continue;
+    // spelling variants (cap the combinations)
+    let combos = [[]];
+    for (const t of toks) {
+      const opts = [t, ...(TOKEN_VARIANTS[t] || []).filter((v) => v !== t)];
+      const next = [];
+      for (const c of combos) for (const o of opts) next.push([...c, o]);
+      combos = next.slice(0, 24);
+    }
+    for (const c of combos) put(c.join(""), rec, "variants");
+    // "Pulau Redang" -> "Redang", "Bandar Baharu" -> ... (only when the rest is not an everyday word)
+    if (toks.length >= 2 && PREFIX_WORDS.has(toks[0])) {
+      const rest = toks.slice(1).join("");
+      const everyday = toks.length === 2 && COMMON_WORDS.has(rest);
+      if (rest.length >= 4 && !everyday) put(rest, rec, "stripped");
+    }
+  }
+}
+
+function cleanChat(text) {
+  return String(text || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z]+/g, " ").trim();
+}
+function within1(a, b) { // Damerau distance <= 1
+  if (a === b) return true;
+  const la = a.length, lb = b.length;
+  if (Math.abs(la - lb) > 1) return false;
+  let i = 0;
+  while (i < la && i < lb && a[i] === b[i]) i++;
+  if (la === lb) {
+    if (a.slice(i + 1) === b.slice(i + 1)) return true; // one wrong letter
+    return a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2); // two letters swapped
+  }
+  return la > lb ? a.slice(i + 1) === b.slice(i) : b.slice(i + 1) === a.slice(i); // one letter more / less
+}
+const FUZZY_ON = process.env.TOWNDLE_FUZZY !== "0";
+let fuzzyKeys = null;
+function fuzzyLookup(key) {
+  if (!FUZZY_ON || key.length < 9) return null;
+  if (!fuzzyKeys) fuzzyKeys = [...TOWN_BY_KEY.keys()].filter((k) => k.length >= 8);
+  let found = null;
+  for (const k of fuzzyKeys) {
+    if (Math.abs(k.length - key.length) > 1) continue;
+    if (!within1(k, key)) continue;
+    const rec = TOWN_BY_KEY.get(k);
+    if (found && found !== rec) return null; // two different places fit: not sure enough
+    found = rec;
+  }
+  return found;
+}
+
+const LEAD_NOISE = new Set(["bandar", "bandaraya", "pekan", "kampung", "pulau", "di", "ke", "dari", "negeri", "daerah", "mukim", "district", "city", "town", "state", "the"]);
+const TRAIL_NOISE = new Set(["malaysia", "city", "town", "bandar", "district", "daerah", "state"]);
+
+/** The place a chat message / typed guess means, or null.  (Replaces the plain "letters only" lookup.) */
+export function resolveGuess(text) {
+  const raw = String(text || "");
+  if (!raw || raw.length > 60) return null;
+  const toks = cleanChat(raw).split(" ").filter(Boolean);
+  if (!toks.length || toks.length > 6) return null;
+  const expanded = toks.flatMap((t) => (SHORT_FORMS[t] && toks.length > 1 ? SHORT_FORMS[t].split(" ") : [t]));
+  const look = (arr) => {
+    const k = arr.join("");
+    return k.length >= 3 && k.length <= 40 ? TOWN_BY_KEY.get(k) || null : null;
+  };
+  let r = look(toks) || look(expanded);
+  if (!r && toks.length === 1 && SHORT_FORMS[toks[0]] && ["kl", "jb", "pj"].includes(toks[0])) r = look(SHORT_FORMS[toks[0]].split(" "));
+  if (r) return r;
+  const a = expanded.slice();
+  while (a.length > 1 && TRAIL_NOISE.has(a[a.length - 1])) { a.pop(); r = look(a); if (r) return r; }
+  while (a.length > 1 && LEAD_NOISE.has(a[0])) { a.shift(); r = look(a); if (r) return r; }
+  if (toks.every((t) => COMMON_WORDS.has(t))) return null; // an everyday word is never "corrected" into a place
+  return fuzzyLookup(a.join(""));
+}
+
+/** Up to n places whose name looks like the text - "did you mean ...?" for the host. */
+export function suggestPlaces(text, n = 3) {
+  const key = cleanChat(text).replace(/ /g, "");
+  if (key.length < 3) return [];
+  const out = [];
+  for (const rec of TOWNS) {
+    const k = rec.key;
+    if (k.startsWith(key) || (key.length >= 4 && k.includes(key)) || (key.length >= 5 && within1(k.slice(0, key.length), key))) out.push(rec);
+    if (out.length >= n) break;
+  }
+  return out;
+}
+
+export function isEverydayWord(text) {
+  const toks = cleanChat(text).split(" ").filter(Boolean);
+  return toks.length > 0 && toks.every((t) => COMMON_WORDS.has(t));
+}
+
+finalizeAliases(); // (after every place - built in, extra file, GeoNames - is known)
+
 export function findTown(text) {
-  return TOWN_BY_KEY.get(townKey(text)) || null;
+  return TOWN_BY_KEY.get(townKey(text)) || resolveGuess(text);
 }
 
 // compass bearing (degrees, 0 = north, clockwise) from the GUESS toward the SECRET place - "where to guess next"

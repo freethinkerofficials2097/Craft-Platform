@@ -23,15 +23,16 @@
 import "dotenv/config";
 import express from "express";
 import http from "http";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { TikTokLiveConnection, WebcastEvent, SignConfig } from "tiktok-live-connector";
 import { explainTikTokError } from "../shared/tiktok-errors.js";
-import { TOWNS, TOWN_BY_KEY, STATE_LIST, STATE_NAMES, findTown, clueOf, LOAD_REPORT } from "./towns.js";
+import { TOWNS, TOWN_BY_KEY, DISTRICTS, STATE_LIST, STATE_NAMES, findTown, clueOf, LOAD_REPORT, resolveGuess, suggestPlaces, isEverydayWord } from "./towns.js";
 import { Engagement } from "../engagement/engagement-hub.js";
 import { resolveHostAvatar, adoptHostAvatar, isHostUser } from "../shared/host-avatar.js";
 import * as HC from "../shared/hint-config-store.js"; // update 58: three hint types + host hint settings
-import * as WH from "../shared/word-hints.js";
+import * as TH from "./towndle-hints.js"; // update 108: place hints (region, near, name, type, rule)
 import { getStarterWord, setStarterWord } from "../shared/starter-word-store.js";
 import { getStrictFit, setStrictFit } from "../shared/strict-fit-store.js"; // update 98: Strict fit
 import { getOption, setOption } from "../shared/game-options-store.js"; // update 98: distance unit + continents
@@ -113,6 +114,33 @@ function normalizeGuess(text) {
 // ---- THE CITY BOOK -----------------------------------------------------------------------------
 // Every city lives in cities.js (CITIES). A viewer's message is turned into letters only, then looked up; the clue maths
 // (color level, km, direction) is clueOf(guessCity, secretCity) in cities.js.
+
+// ---- unknown guesses (update 108) ------------------------------------------------------------------------------------
+// Chat comments that look like a place name but are not in the list are counted here and saved to data/towndle-unknown.json, so the host can see
+// which real places are missing. Review them with   npm run review:unknown   and add the real ones to data/towns-extra.txt.
+const UNKNOWN_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../data/towndle-unknown.json");
+const unknownGuesses = new Map();
+try {
+  const saved = JSON.parse(fs.readFileSync(UNKNOWN_FILE, "utf8"));
+  for (const [k, v] of Object.entries(saved || {})) if (Number.isFinite(v)) unknownGuesses.set(k, v);
+} catch (e) { /* first run */ }
+let unknownTimer = null;
+function noteUnknownGuess(text) {
+  const t = String(text || "").toLowerCase().normalize("NFKD").replace(/[^a-z ]+/g, " ").replace(/\s+/g, " ").trim();
+  if (t.length < 4 || t.length > 30 || t.split(" ").length > 3 || isEverydayWord(t)) return;
+  unknownGuesses.set(t, (unknownGuesses.get(t) || 0) + 1);
+  if (unknownGuesses.size > 4000) {
+    const keep = [...unknownGuesses.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2000);
+    unknownGuesses.clear();
+    for (const [k, v] of keep) unknownGuesses.set(k, v);
+  }
+  clearTimeout(unknownTimer);
+  unknownTimer = setTimeout(() => {
+    try { fs.mkdirSync(path.dirname(UNKNOWN_FILE), { recursive: true }); fs.writeFileSync(UNKNOWN_FILE, JSON.stringify(Object.fromEntries(unknownGuesses))); } catch (e) { /* read-only disk */ }
+  }, 5000);
+  if (unknownTimer.unref) unknownTimer.unref();
+}
+
 const GUESS_MIN_LENGTH = 3;
 const GUESS_MAX_LENGTH = 40;
 
@@ -197,7 +225,7 @@ const game = {
 function pickAnswer(difficulty) {
   const tiers = { normal: [1, 2], medium: [2, 3], hard: [3], random: [1, 2, 3] }[difficulty] || [1, 2, 3];
   // update 98: only the continents the host ticked (if the ticked continents have no city of the tier, fall back to them with any tier)
-  let regionCities = TOWNS.filter((c) => game.regions.includes(c.state));
+  let regionCities = TOWNS.filter((c) => c.curated && game.regions.includes(c.state)); // imported (GeoNames) places can be guessed, but never become the secret
   if (regionCities.length === 0) regionCities = TOWNS;
   let pool = regionCities.filter((c) => tiers.includes(c.tier));
   if (pool.length === 0) pool = regionCities;
@@ -395,6 +423,8 @@ function suggestHint() {
   const candidates = consistentCities().filter(
     (c) => c.key !== game.secretWord && !onBoard.has(c.key) && !game.hintSuggestions.includes(c.key)
   );
+  const curated = candidates.filter((c) => c.curated);
+  if (curated.length) candidates.splice(0, candidates.length, ...curated); // suggest places viewers can actually be expected to know
   if (candidates.length === 0) return;
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
   game.hintSuggestions.push(pick.key);
@@ -418,13 +448,10 @@ function useHint(payload, isAuto = false) {
     if (game.hintSuggestions.length > before) {
       const word = game.hintSuggestions[game.hintSuggestions.length - 1];
       const hc = TOWN_BY_KEY.get(word);
-      hint = { type: "suggest", word, text: "Try: " + (hc ? typeLabel(hc) : word).toUpperCase() };
+      hint = { type: "suggest", icon: "💡", word, text: "Try: " + (hc ? typeLabel(hc) : word).toUpperCase() };
     }
-  } else if (chk.type === "letter") {
-    hint = WH.letterHint(game.secretWord, game.hints);
-    if (hint) game.hintsUsed += 1;
-  } else if (chk.type === "rule") {
-    hint = WH.ruleHint(game.secretWord, game.hints, []);
+  } else {
+    hint = TH.buildHint(chk.type, game.secretCity, game, DISTRICTS);
     if (hint) game.hintsUsed += 1;
   }
   if (!hint) { game.hintNote = { text: "Nothing more to reveal with that hint - try another type.", at: now }; broadcastState(); return; }
@@ -501,10 +528,11 @@ function handleIncomingRawEvent(raw) {
   game.recentComments.unshift({ username, text, avatarUrl: knownAvatars.get(username) || null, at: Date.now() });
   if (game.recentComments.length > 30) game.recentComments.length = 30;
 
-  const normalized = normalizeGuess(text);
-  const city = normalized.length >= GUESS_MIN_LENGTH && normalized.length <= GUESS_MAX_LENGTH ? TOWN_BY_KEY.get(normalized) : null;
+  const city = resolveGuess(text); // update 108: short forms (KL, Sg Petani), spelling variants (Kota Baru), "Pulau Redang" / "Redang", small typos
   if (game.status === "live" && game.mode !== "offline" && city) {
     attemptGuess(city, username);
+  } else if (!city && game.status === "live") {
+    noteUnknownGuess(text);
   }
   broadcastState();
 }
@@ -821,11 +849,13 @@ function handleClientAction(ws, msg) {
       break;
     }
     case "submit_offline_guess": {
-      const normalized = normalizeGuess(String((payload && payload.word) || ""));
-      const city = normalized.length >= GUESS_MIN_LENGTH && normalized.length <= GUESS_MAX_LENGTH ? TOWN_BY_KEY.get(normalized) : null;
+      const typed = String((payload && payload.word) || "");
+      const city = resolveGuess(typed);
       let result;
       if (!city) {
-        result = { ok: false, error: "That place is not in the TOWNDLE list of Malaysian places." };
+        const near = suggestPlaces(typed, 3).map((c) => typeLabel(c));
+        noteUnknownGuess(typed);
+        result = { ok: false, error: "That place is not in the TOWNDLE list of Malaysian places." + (near.length ? " Did you mean: " + near.join(", ") + "?" : "") };
       } else {
         result = attemptGuess(city, "Host");
         broadcastState();
