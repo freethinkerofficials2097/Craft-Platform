@@ -97,6 +97,7 @@ class PlatformHubClass {
     this._hb = null;
     this.lastDataAt = 0;
     this._attemptMaster = null;
+    this._subs = new Set(); // update 109: other modules (the AFK autopilot) listening to the shared connection's events
     this.games = new Map(); // update 42: games that the hub links to the shared connection by itself
     this.lastChat = null;
     this._wd = null;
@@ -388,8 +389,16 @@ class PlatformHubClass {
     }
   }
 
+  /** update 109: listen to every event of the ONE shared connection: fn(eventName, argsArray). Returns an unsubscribe function. */
+  subscribe(fn) {
+    if (typeof fn !== "function") return () => {};
+    this._subs.add(fn);
+    return () => this._subs.delete(fn);
+  }
+
   _observe(ev, args, master) {
     const now = Date.now();
+    if (this._subs.size && ev !== EV_RAW && ev !== EV_DECODED && ev !== EV_DISCONNECTED) { for (const fn of this._subs) { try { fn(ev, args); } catch (_) { /* a listener must never break the connection */ } } }
     if (ev === EV_DISCONNECTED) { this._sawDisconnected = true; return; }
     if (ev === EV_RAW || ev === EV_DECODED) { this.lastDataAt = now; return; }
     if (NOISE.has(ev) || ev === "reconnected") return;
