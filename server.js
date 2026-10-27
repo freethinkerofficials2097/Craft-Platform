@@ -92,6 +92,7 @@ import { mountHomeGroups } from "./server/shared/home-groups-store.js";
 import { installTikTokResilience, mountTikTokHealth } from "./server/shared/tiktok-resilience.js";
 import { PlatformHub } from "./server/shared/platform-hub.js";
 import { mountRecords, Records } from "./server/shared/records-store.js";
+import { Autopilot } from "./server/autopilot/autopilot-engine.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -133,6 +134,10 @@ mountTikTokHealth(app);
 // Registered before the games so every game's connect() can already be handed the shared connection.
 PlatformHub.init(app, express);
 
+// AFK AUTOPILOT (update 109): the Live mode can run by itself - timed game sessions, a chat vote for the next game, presets for every
+// game. Panel: /autopilot/   Stage page for the streaming software: /autopilot/stage   See server/autopilot/autopilot-engine.js.
+Autopilot.init(app, express, { hub: PlatformHub });
+
 // Records archive (update 40): every gift, like, share, follow and milestone saved with time, game, host and audience.
 // Page: /records   API: /api/records...   See server/shared/records-store.js.
 mountRecords(app, express);
@@ -146,6 +151,10 @@ Records.setViewerCountSource(() => PlatformHub.viewers);
 // Records page (update 40/41): express.static only serves a file under its FULL name (/records.html), so the short
 // address /records needs its own explicit route - without it the browser showed "Cannot GET /records".
 // Registered BEFORE the static middleware and the games; all spellings open the same page.
+app.get(["/autopilot/stage", "/autopilot/stage/"], (req, res) => res.sendFile(path.join(__dirname, "public", "autopilot", "stage.html")));
+// update 110: this used to be res.redirect(301, "/autopilot/"). Express ignores a trailing slash when matching routes, so that route also
+// matched "/autopilot/" and redirected to itself forever (ERR_TOO_MANY_REDIRECTS = the panel never opened). Both spellings now serve the page.
+app.get(["/autopilot", "/autopilot/"], (req, res) => res.sendFile(path.join(__dirname, "public", "autopilot", "index.html")));
 const sendRecordsPage = (req, res) => res.sendFile(path.join(__dirname, "public", "records.html"));
 app.get(["/records", "/records/", "/Records", "/record", "/records.htm"], sendRecordsPage);
 

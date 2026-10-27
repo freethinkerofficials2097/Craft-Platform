@@ -260,6 +260,12 @@
     setInterval(poll, 4000);
     setInterval(applyIfNeeded, 1000); // the game's own socket may open after the hub answered
   }
-  window.PlatformSync = { state: null, game: GAME };
+  /* update 109: the AFK autopilot stage page (it shows this game in a frame) drives the game through the SAME socket the host buttons use */
+  window.PlatformSync = {
+    state: null, game: GAME, family: !!FAMILY[GAME],
+    ready: function () { try { return !!adapter && !!adapter.ready(); } catch (e) { return false; } },
+    gameState: function () { return cap.gs; },
+    act: function (type, payload) { if (!FAMILY[GAME]) return false; famSend(type, payload); return true; }
+  };
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", startFeed); else startFeed();
 })();

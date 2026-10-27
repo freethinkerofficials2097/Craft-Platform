@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>AFK Autopilot - Stage</title>
+<link rel="stylesheet" href="/autopilot/stage.css" />
+</head>
+<body class="dark">
+<!-- The stage: put THIS page (not a single game) in TikTok LIVE Studio / OBS while the autopilot runs. Press Esc for the host bar. -->
+<iframe id="game" title="game" allow="autoplay; fullscreen" hidden></iframe>
+<div id="bg" class="bg"></div>
+
+<div id="chip" class="chip" hidden></div>
+<div id="banner" class="banner" hidden></div>
+
+<section id="ov" class="ov" hidden>
+  <div class="card" id="card"></div>
+  <div class="tip" id="tip"></div>
+</section>
+
+<div id="cover" class="cover" hidden><div class="spin"></div><div id="coverText"></div></div>
+
+<div id="bar" class="bar" hidden>
+  <b>🤖 Autopilot</b><span id="barState"></span>
+  <button id="bPause">⏸ Pause</button><button id="bSkip">⏭ Skip</button><button id="bStop" class="danger">⏹ Stop</button>
+  <a href="/autopilot/" target="_blank" rel="noopener">Open panel</a><button id="bHide">Hide (Esc)</button>
+</div>
+<script src="/autopilot/stage.js"></script>
+</body>
+</html>

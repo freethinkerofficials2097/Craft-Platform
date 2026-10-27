@@ -25,3 +25,9 @@ Notes
 - Places whose plain name is also an everyday word (Gurun, Song, Bau, Jeli ...) must be typed with the state ("gurun kedah"); the page and the hints show that spelling.
 - Two places with the same name: the first keeps the plain name, the other is typed "name + state" (for example "pulai kelantan").
 - Neighbours (orange) are decided by the district border list in server/towndle/towns-adjacency.js: edit it if you disagree with a border.
+
+---- Update 108 ----
+* GeoNames import = the way to get EVERY Malaysian place. Download https://download.geonames.org/export/dump/MY.zip, unzip, put MY.txt in this data/ folder, restart.
+  GeoNames places can be guessed by chat but never become the secret place.
+* Missed places: while TOWNDLE runs live, unrecognised place-like chat is saved to data/towndle-unknown.json. Run:  npm run review:unknown
+  and add real ones to towns-extra.txt.
