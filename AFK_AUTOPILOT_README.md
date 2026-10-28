@@ -1,4 +1,4 @@
-# AFK Autopilot (update 109)
+# AFK Autopilot (update 109 - notes, save & apply in update 112)
 
 Let the live run by itself. Prepare everything ahead of time, press **Start**, walk away. Stop or take over at any moment.
 
@@ -8,16 +8,17 @@ Let the live run by itself. Prepare everything ahead of time, press **Start**, w
 3. In TikTok LIVE Studio / OBS show **`/autopilot/stage`** (instead of a single game page). This page shows every game, the vote and the splash screens.
    Keep that page open - the games are displayed there. Press **Esc** on it for a small Pause / Skip / Stop bar.
 
-## What you can prepare (all saved on the server, auto-saved)
+## What you can prepare (all kept on the server when you press 💾 Save)
 | Tab | What |
 |---|---|
 | Run | Start / Pause / Skip / Vote now / +5 min / Restart game / Force a game / Stop, live status, warnings, history, event log, practice vote |
 | Schedule | How the next game is chosen (vote, my ordered list, random, weighted), first game, avoid repeats, session length, end by time / rounds / either, finish the running round first, leaderboard between games, run for N hours or N games |
-| Games | Switch each game on/off, its own minutes / rounds / weight, and its **gameplay settings** (difficulty, word length, regions, round pause...) for the 21 games that share the settings protocol |
+| Games | **⚡ Set many games at once** (pick difficulty / word length / pause once, copy it to every game that has the option), then per game: on/off, minutes / rounds / weight and **⚙ Game settings** (difficulty, fixed or random word length, regions, expandle lengths, starter word ...) with a summary chip per game, search, filter and "copy settings from another game" - for the 21 games that share the settings protocol |
+| Notes | For every game: **Also known as** (other names), **Inspired by**, a **note for viewers** shown during the vote, and an optional custom **how-to-play** line. Live preview, three on/off switches, and a button to try it on the stage |
 | Voting | Voting time, how many games to offer and which, vote by number / letter / name, change vote, minimum votes, tie rule, no-vote fallback, close-vote extension, **who may vote** (everyone / followers / subscribers / moderators / gifters / sharers / allow list / block list), vote weights |
 | Stage look | Titles, rotating tips, theme, accent colour, timer chip, how-to splash, loading screen time |
 | Safety | When TikTok disconnects (keep / pause / stop), stop when chat is silent, resume after a server restart |
-| Setups | Save the whole configuration under a name, load / delete, export / import |
+| Setups | Where your setup is stored, **download / restore a backup file**, named setups (save, load, delete) |
 
 ## Good to know
 - The **server** owns the schedule (`server/autopilot/autopilot-engine.js`); the stage page only shows it. Reloading the stage or restarting the server does not lose the plan (`data/autopilot.json`).
@@ -26,3 +27,27 @@ Let the live run by itself. Prepare everything ahead of time, press **Start**, w
 - Flagle, Travle, Findle, Crossdle, Twistle and Contexto run with the settings saved inside the game itself (the autopilot starts, times and switches them). "End after N rounds" needs the stage page open.
 - Protect the panel with `HOME_EDIT_KEY` (same key as the HOME page).
 - Crossdle and Contexto are off by default in the rotation; switch them on in the Games tab if you want them.
+
+## Notes for viewers (update 112)
+Open the **📝 Notes** tab. For each game you can write:
+- **Also known as** - the other names viewers may know it by (up to 6, 40 characters each, separated by commas)
+- **Inspired by** - the game it is inspired by (80 characters)
+- **Note for viewers** - a short tip shown under the game during the vote (120 characters)
+- **How to play** - your own one-line explanation (140 characters); empty = the built-in line
+
+They appear on the stage: under every option of the **vote**, on the **winner** screen and on the **next-game splash**. Three switches in the Notes tab turn them off
+(other names / my note on the vote / my note on winner + splash). Changes show on the stage at once, even during a vote. Nothing is pre-filled - the names are yours.
+
+## Save & apply (update 112)
+Changes are a **draft** until you press **💾 Save** (bottom bar, or Ctrl+S). The bar always tells you: "All saved", "You have changes that are not saved yet" or a problem.
+- **💾 Save** - writes everything to the server (`data/autopilot.json`). It is there every time you launch the platform again. Settings you save while the autopilot runs apply from the next game / vote.
+- **💾 Save & apply now** (shown only while the autopilot runs) - also gives the new settings to the game on screen right now (a fresh round starts).
+- **↩ Discard** - back to the last saved version. **Save automatically** (tick box) saves 1.5 s after every change instead.
+- Closing the page with unsaved changes asks first; if it happens anyway, the panel offers to bring the changes back next time.
+
+## Keeping your setup between deployments
+`data/autopilot.json` lives on the server's disk. Some hosts (Render's free plan) wipe the disk at every redeploy. Three safety nets:
+1. **Setups tab → ⬇ Download my setup file**, rename it `autopilot-setup.json`, put it in the project's `data/` folder and deploy. A server with no saved setup loads it by itself (then Save keeps it).
+2. **Persistent disk** (Render: add a Disk, mount `/var/data`, environment variable `AUTOPILOT_FILE=/var/data/autopilot.json`).
+3. **This browser keeps a copy** of your setup. If the server starts empty, the panel offers "♻ Restore my setup" in one click.
+Loading order at startup: the saved file → its `.bak` backup → `data/autopilot-setup.json` → factory defaults. The Setups tab shows which one was used.

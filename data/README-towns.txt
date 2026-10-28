@@ -1,6 +1,6 @@
 TOWNDLE - making the Malaysian place book bigger
 ================================================
-TOWNDLE ships with a built-in list (server/towndle/towns-data-1..4.js) of cities, municipals, districts and towns of every state and
+TOWNDLE ships with a built-in list (server/towndle/towns-data-1..7.js) of cities, municipals, districts and towns of every state and
 Federal Territory, grouped by district, with a famous / well-known / lesser-known tier for each place.
 Coordinates were written by hand and are approximate (about 3 km). Run   npm run check:towns   to see the counts and any suspicious coordinate.
 
@@ -31,3 +31,15 @@ Notes
   GeoNames places can be guessed by chat but never become the secret place.
 * Missed places: while TOWNDLE runs live, unrecognised place-like chat is saved to data/towndle-unknown.json. Run:  npm run review:unknown
   and add real ones to towns-extra.txt.
+
+---- Update 111 ----
+* BULK places: server/towndle/towns-bulk-1..4.js add about 1,170 more lesser-known places (mukims, townships, small towns, islands, new
+  townships) to every district. One line per district:   State | District | + Name, Name, Name ...   (an optional =alias/alias can follow a name).
+  You can add your own lines; the district name must exist in towns-data-*.js.
+* They have no hand-written coordinates: each sits a few km from a real place of its own district. State and neighbour colors are exact; the
+  distance and arrow are only a rough guide, so the page shows "~" in front of the distance. They can be GUESSED but never become the secret place.
+* Merging rules: a name the book already knows (any spelling variant, same state - or the same name filed in a state next door within 40 km - or
+  with / without "Pulau / Gunung / Tasik / Pekan / Bandar") is skipped; names under 4 letters or with a digit are skipped. Places with a real
+  position (towns-data, towns-extra.txt, GeoNames) always win over a bulk duplicate. Run  npm run check:towns  for the numbers.
+* To give a bulk place an exact position (so it also shows an exact distance), add it to data/towns-extra.txt with latitude and longitude - the
+  bulk copy is then ignored.

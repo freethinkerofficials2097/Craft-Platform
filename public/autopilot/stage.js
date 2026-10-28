@@ -86,6 +86,15 @@
     if (Date.now() - lastTipAt > every) { lastTipAt = Date.now(); tipIdx = (tipIdx + 1) % tips.length; }
     return tips[tipIdx % tips.length];
   }
+  /* viewer notes of a game (update 112): other names, inspired by, and the host's note. where = "vote" | "splash" (each has its own on/off switch) */
+  function notesBlock(o, where) {
+    var d = S.display || {}, box = el("div", "gnotes");
+    var showAka = d.showAka !== false, showNote = where === "vote" ? d.showVoteNotes !== false : d.showNotesOnSplash !== false;
+    if (showAka && o.aka && o.aka.length) box.appendChild(el("div", "aka", "Also known as: " + o.aka.join(" · ")));
+    if (showAka && o.inspiredBy) box.appendChild(el("div", "aka", "💡 " + o.inspiredBy));
+    if (showNote && o.note) box.appendChild(el("div", "nt", "📝 " + o.note));
+    return box.childNodes.length ? box : null;
+  }
   function drawVote() {
     var v = S.vote, d = S.display;
     clear(card);
@@ -93,14 +102,16 @@
     if (v.revotes) card.appendChild(el("p", "sub", "Tie! Second vote between the leaders"));
     card.appendChild(el("div", "how", S.voteInfo.hint));
     var total = v.total || 0, max = Math.max.apply(null, v.options.map(function (o) { return o.count || 0; }).concat([1]));
-    var box = el("div", "opts");
+    var box = el("div", "opts" + (v.options.length >= 6 ? " dense" : ""));
     v.options.forEach(function (o) {
       var row = el("div", "opt"), fill = el("div", "fill");
       fill.style.width = o.count == null ? "0" : (total ? Math.round((o.count / Math.max(total, 1)) * 100) : 0) + "%";
       row.appendChild(fill);
       row.appendChild(el("div", "n", S.voteInfo.letters ? String.fromCharCode(64 + o.n) : String(o.n)));
       row.appendChild(el("div", "e", o.emoji));
-      row.appendChild(el("div", "t", o.name));
+      var tcell = el("div", "t"); tcell.appendChild(el("div", "nm", o.name));
+      var nb = notesBlock(o, "vote"); if (nb) tcell.appendChild(nb);
+      row.appendChild(tcell);
       if (o.count != null) { var c = el("div", "c", String(o.count)); c.appendChild(el("small", "", total ? Math.round((o.count / total) * 100) + "%" : "0%")); row.appendChild(c); }
       box.appendChild(row);
     });
@@ -115,6 +126,7 @@
     clear(card);
     card.appendChild(el("h1", "", (r.preview ? "🧪 " : "🏆 ") + r.emoji + " " + r.winnerName));
     card.appendChild(el("p", "sub", r.note ? r.note : r.total + " vote" + (r.total === 1 ? "" : "s") + " from " + r.voters + " viewer" + (r.voters === 1 ? "" : "s")));
+    var wn = notesBlock(r, "splash"); if (wn) { wn.classList.add("center"); card.appendChild(wn); }
     var box = el("div", "opts"), tot = Math.max(1, r.total);
     r.counts.forEach(function (o) {
       var row = el("div", "opt" + (o.id === r.winnerId ? " win" : "")), fill = el("div", "fill");
@@ -145,6 +157,7 @@
     clear(card);
     card.appendChild(el("p", "sub", S.display.breakTitle || "Next game"));
     card.appendChild(el("h1", "", n.emoji + " " + n.name));
+    var bn = notesBlock(n, "splash"); if (bn) { bn.classList.add("center"); card.appendChild(bn); }
     if (S.display.showHowTo && n.howTo) card.appendChild(el("div", "how", n.howTo));
     card.appendChild(el("div", "big", String(left(S.phaseEndsAt))));
     tipEl.textContent = tipLine();

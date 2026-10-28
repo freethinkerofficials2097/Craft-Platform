@@ -232,3 +232,12 @@ Details in `CHANGES_UPDATE_48.md`. Update 49 only changes word data (`server/sha
 
 ## Update 50 - fuller Indonesian / Malay dictionaries
 See CHANGES_UPDATE_52.md. For the most complete coverage, merge a KBBI / Dewan Bahasa dan Pustaka word list with `node tools/import-wordlist.mjs id|ms yourlist.txt` and deploy the `data/` folder with the rest.
+
+
+---
+
+## Optional (Update 112) - keep your AFK Autopilot setup between deployments
+Your Autopilot settings, notes and named setups are saved in `data/autopilot.json` when you press **Save** in `/autopilot/`. If your host wipes the disk at every redeploy (Render free plan), use ONE of these:
+1. Open `/autopilot/` -> **Setups -> Download my setup file**. Rename it `autopilot-setup.json`, put it in the project's `data/` folder (it is allowed through `.gitignore`) and deploy. A fresh server loads it automatically.
+2. In Render add a **Disk** (mount path `/var/data`) and set the environment variable `AUTOPILOT_FILE` = `/var/data/autopilot.json`.
+3. Nothing to do: the browser you used keeps a copy and offers to restore it when the server starts empty.

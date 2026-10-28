@@ -23,7 +23,18 @@ body.light .ov{ background:rgba(240,236,228,.8); }
 .opt>*{ position:relative; z-index:1; }
 .opt .n{ min-width:2.1em; height:2.1em; border-radius:50%; display:grid; place-items:center; background:var(--accent); color:#fff; font-weight:800; font-size:clamp(16px,3vmin,28px); }
 .opt .e{ font-size:clamp(22px,4vmin,38px); }
-.opt .t{ flex:1; font-weight:700; font-size:clamp(17px,3.2vmin,32px); }
+.opt .t{ flex:1; min-width:0; }
+.opt .t .nm{ font-weight:700; font-size:clamp(17px,3.2vmin,32px); line-height:1.15; }
+.gnotes{ margin-top:2px; display:grid; gap:1px; }
+.gnotes .aka{ font-weight:600; font-size:clamp(11px,1.9vmin,19px); color:var(--mut); line-height:1.25; }
+.gnotes .nt{ font-weight:600; font-size:clamp(12px,2.1vmin,21px); color:var(--fg); opacity:.95; line-height:1.25; }
+.gnotes.center{ text-align:center; margin:2px 0 10px; }
+.gnotes.center .aka{ font-size:clamp(13px,2.3vmin,24px); }
+.gnotes.center .nt{ font-size:clamp(14px,2.5vmin,26px); }
+.opts.dense{ gap:clamp(5px,1vmin,9px); }
+.opts.dense .opt{ padding:clamp(6px,1.1vmin,10px) clamp(8px,1.6vmin,14px); gap:10px; }
+.opts.dense .opt .t .nm{ font-size:clamp(15px,2.6vmin,26px); }
+.opts.dense .gnotes .aka,.opts.dense .gnotes .nt{ font-size:clamp(10px,1.6vmin,16px); }
 .opt .c{ font-weight:800; font-size:clamp(15px,2.6vmin,26px); text-align:right; }
 .opt .c small{ display:block; font-size:.62em; color:var(--mut); font-weight:600; }
 .opt.win{ outline:3px solid #ffd54a; box-shadow:0 0 28px rgba(255,213,74,.55); }
