@@ -423,12 +423,12 @@ function maybeShowRejection(g) {
   if (ev && ev.id > lastShownEventId) {
     lastShownEventId = ev.id;
     if (ev.kind === "duplicate") {
-      showToast("🔁 <b>" + escapeHtml(ev.caller) + "</b> — <b>Already guessed</b>: <b>" + escapeHtml(ev.name) + "</b> — <b>" + fmtKm(ev.km) + "</b>", "info", Math.min(seconds, 3));
+      showToast("🔁 <b>" + escapeHtml(ev.caller) + "</b> — <b>Already guessed</b>: <b>" + escapeHtml(ev.name) + "</b> — <b>" + fmtKm(ev.km, ev.approx) + "</b>", "info", Math.min(seconds, 3));
       return;
     }
     const won = g.status === "won" && g.lastWinInfo && g.lastWinInfo.word === ev.word;
     showToast(
-      (won ? "🎉 " : LEVEL_EMOJI[ev.level] || "🎯") + " <b>" + escapeHtml(ev.caller) + "</b> guessed <b>" + escapeHtml(ev.name) + "</b> (" + escapeHtml(ev.state) + ") — " + (won ? "the secret place!" : LEVEL_TEXT[ev.level] + " · <b>" + fmtKm(ev.km) + "</b>"),
+      (won ? "🎉 " : LEVEL_EMOJI[ev.level] || "🎯") + " <b>" + escapeHtml(ev.caller) + "</b> guessed <b>" + escapeHtml(ev.name) + "</b> (" + escapeHtml(ev.state) + ") — " + (won ? "the secret place!" : LEVEL_TEXT[ev.level] + " · <b>" + fmtKm(ev.km, ev.approx) + "</b>"),
       "info", Math.min(seconds, 3)
     );
   }
@@ -660,9 +660,10 @@ const LEVEL_EMOJI = ["🟩", "🟨", "🟧", "⬜"];
 const LEVEL_TEXT = ["the right place", "right state", "direct neighbour", "wrong state, not a neighbour"];
 const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]; // N NE E SE S SW W NW
 // update 98: the host can show distances in kilometers (default) or miles (Settings -> Distance unit)
-function fmtKm(km) {
+// update 111: approx = a bulk place whose position is only approximate -> shown as "~ 120 km"
+function fmtKm(km, approx) {
   const mi = lastState && lastState.game && lastState.game.distanceUnit === "mi";
-  return Number(mi ? Math.round(Number(km || 0) * 0.621371) : km || 0).toLocaleString("en-US") + (mi ? " mi" : " km");
+  return (approx ? "~ " : "") + Number(mi ? Math.round(Number(km || 0) * 0.621371) : km || 0).toLocaleString("en-US") + (mi ? " mi" : " km");
 }
 function arrowIndex(bearing) { return Math.round((Number(bearing) || 0) / 45) % 8; }
 const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
@@ -702,12 +703,12 @@ function buildBoardRow(kind, entry, g) {
 
   const km = document.createElement("span");
   km.className = "fxScore cdKm";
-  km.textContent = fmtKm(entry.km);
+  km.textContent = fmtKm(entry.km, entry.approx);
   km.title = "Distance from " + entry.name + " to the secret place";
   row.appendChild(km);
 
   row.title = (kind === "latest" ? "Latest guess: " : "Guess: ") + entry.name + " (" + (entry.typeName || "place") + "), " + entry.district + " district, " + entry.state + " — " + LEVEL_TEXT[entry.level] +
-    " — " + fmtKm(entry.km) + (entry.isStarter ? " (starter place)" : entry.caller ? " — by " + entry.caller : "");
+    " — " + fmtKm(entry.km, entry.approx) + (entry.isStarter ? " (starter place)" : entry.caller ? " — by " + entry.caller : "");
   return row;
 }
 
@@ -730,7 +731,7 @@ function renderTiles(g) {
   const list = g.guesses || [];
   const signature = [
     g.roundNumber, g.status, list.length,
-    list.map((e) => e.word + ":" + e.level + ":" + e.km + ":" + (e.avatarUrl || "")).join(",") + "|" + ((lastState && lastState.game && lastState.game.distanceUnit) || "km"),
+    list.map((e) => e.word + ":" + e.level + ":" + e.km + ":" + (e.approx ? "~" : "") + ":" + (e.avatarUrl || "")).join(",") + "|" + ((lastState && lastState.game && lastState.game.distanceUnit) || "km"),
     g.lastWinInfo ? g.lastWinInfo.word : ""
   ].join("|");
   renderBoardStatus(g);

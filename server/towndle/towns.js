@@ -18,6 +18,11 @@ import { TOWN_DATA_1 } from "./towns-data-1.js";
 import { TOWN_DATA_2 } from "./towns-data-2.js";
 import { TOWN_DATA_3 } from "./towns-data-3.js";
 import { TOWN_DATA_4 } from "./towns-data-4.js";
+// update 111: ~1,500 more lesser-known places (names only, one line per district) - see the BULK section below
+import { TOWN_BULK_1 } from "./towns-bulk-1.js";
+import { TOWN_BULK_2 } from "./towns-bulk-2.js";
+import { TOWN_BULK_3 } from "./towns-bulk-3.js";
+import { TOWN_BULK_4 } from "./towns-bulk-4.js";
 import { TOWN_DATA_5 } from "./towns-data-5.js";
 import { TOWN_DATA_6 } from "./towns-data-6.js";
 import { TOWN_DATA_7 } from "./towns-data-7.js";
@@ -222,13 +227,14 @@ export function distanceKm(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
   return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(h))));
 }
-export const LOAD_REPORT = { builtIn: TOWNS.length, geonames: 0, extra: 0, files: [] };
+export const LOAD_REPORT = { builtIn: TOWNS.length, geonames: 0, extra: 0, bulk: 0, files: [] };
 
 function nearestBuiltIn(lat, lon, builtInCount, stateCode) {
   let best = null, bestD = Infinity;
   const cosLat = Math.cos(rad(lat));
   for (let i = 0; i < builtInCount; i++) {
     const p = TOWNS[i];
+    if (p.approx) continue; // update 111: positions of bulk places are only approximate - never use them to place other places
     if (stateCode && p.state !== stateCode) continue;
     const dy = p.lat - lat, dx = (p.lon - lon) * cosLat;
     const d = dx * dx + dy * dy;
@@ -342,7 +348,7 @@ function finalizeAliases() {
     }
     for (const c of combos) put(c.join(""), rec, "variants");
     // "Pulau Redang" -> "Redang", "Bandar Baharu" -> ... (only when the rest is not an everyday word)
-    if (toks.length >= 2 && PREFIX_WORDS.has(toks[0])) {
+    if (toks.length >= 2 && PREFIX_WORDS.has(toks[0]) && !(rec.approx && !["pulau", "gunung", "tasik"].includes(toks[0]))) {
       const rest = toks.slice(1).join("");
       const everyday = toks.length === 2 && COMMON_WORDS.has(rest);
       if (rest.length >= 4 && !everyday) put(rest, rec, "stripped");
@@ -424,6 +430,100 @@ export function isEverydayWord(text) {
 }
 
 finalizeAliases(); // (after every place - built in, extra file, GeoNames - is known)
+
+// ---- BULK places (update 111) ----------------------------------------------------------------------------------------------
+// towns-bulk-1..4.js hold about 1,500 more lesser-known places (mukims, townships, small towns, islands, new townships) as NAMES only, one line
+// per district:   State | District | + Name, Name, Name ...      (an optional "=alias/alias" can follow a name).
+// They are merged into the book like this:
+//   * Loaded LAST - after every real-position place AND after their alias keys (spelling variants, "Pulau Redang" -> "Redang") were handed out - so a bulk
+//     place can never take a name or spelling that an existing place already answers to.
+//   * A name is skipped when the book already knows it: the same name (any spelling variant: Bahru/Baru, Ayer/Air, Seri/Sri ...) in the same state, the
+//     same name filed in another state but within 40 km of this district (the same place under a wrong state), or the same name with / without a
+//     prefix word ("Redang" = "Pulau Redang", "Sri Damansara" = "Bandar Sri Damansara"). The same name in a FAR other state is a different place and is kept.
+//   * Unusable names are skipped: under 4 letters, or containing a digit (the guess matcher reads letters only).
+//   * They have no hand-written coordinates: each sits a few km from a REAL place of its own district (stable, name-based), so the state and
+//     neighbour colors are exact while distance / arrow are only a rough guide - marked `approx`, and the page shows "~" for them.
+//   * They are NOT curated: they can be guessed, but never become the secret place and are never used as hint anchors / suggestions.
+//   * Rare single-word names that are also everyday words are typed with their state, like every other non-curated place.
+export const BULK_REPORT = { listed: 0, added: 0, skipped: { alreadyKnown: 0, samePlaceOtherSpelling: 0, unusable: 0, nameTaken: 0 }, problems: [] };
+{
+  const PREFIX = new Set(["bandar", "pekan", "pulau", "gunung", "tasik", "kampung", "felda"]);
+  // these prefix words name the SAME place as the bare name ("Pulau Redang" = "Redang", "Tasik Chini" = "Chini", "Bandar Menjalara" = "Menjalara");
+  // "Kampung X" / "Felda X" are small settlements of their own and only equal another "Kampung X" / "Felda X"
+  const SAME_AS_BARE = new Set(["pulau", "gunung", "tasik", "pekan", "bandar"]);
+  // spelling variants folded together, so "Wakaf Baharu" = "Wakaf Bharu", "Tanjong" = "Tanjung", "Seri" = "Sri" ...
+  const FOLD = { bharu: "baru", baharu: "baru", bahru: "baru", ayer: "air", telok: "teluk", tanjong: "tanjung", kampong: "kampung", sungei: "sungai", seri: "sri", hulu: "ulu", terengganu: "trengganu", kwala: "kuala", pulo: "pulau" };
+  const parts = (name) => {
+    const t = tokensOf(name).map((x) => FOLD[x] || x);
+    const pre = t.length >= 2 && PREFIX.has(t[0]);
+    return { prefix: pre ? t[0] : "", rest: (pre ? t.slice(1) : t).join("") };
+  };
+  const sameEntity = (a, b) => a.prefix === b.prefix || (a.prefix === "" && SAME_AS_BARE.has(b.prefix)) || (b.prefix === "" && SAME_AS_BARE.has(a.prefix));
+  const index = new Map(); // name without its prefix word -> [{ rec, prefix }]
+  const put = (rec) => {
+    const c = parts(rec.name);
+    if (!c.rest) return;
+    if (!index.has(c.rest)) index.set(c.rest, []);
+    index.get(c.rest).push({ rec, prefix: c.prefix });
+  };
+  for (const rec of TOWNS) put(rec);
+
+  const hash32 = (str) => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+  // a stable spot a few km from a real place of the district (so it lands on populated ground inside the district, not in the sea or next door)
+  const spotFor = (d, name) => {
+    const anchors = d.places.filter((p) => !p.approx);
+    const h = hash32(townKey(name));
+    const base = anchors.length ? anchors[h % anchors.length] : d.seat;
+    const borneo = d.state === "SB" || d.state === "SK";
+    const maxKm = borneo ? 25 : 10;
+    const ang = ((h & 0xffff) / 0xffff) * 2 * Math.PI;
+    const km = maxKm * (0.25 + 0.75 * (((h >>> 16) & 0xffff) / 0xffff));
+    return {
+      lat: Math.round((base.lat + (km * Math.cos(ang)) / 111) * 1000) / 1000,
+      lon: Math.round((base.lon + (km * Math.sin(ang)) / (111 * Math.max(0.2, Math.cos(rad(base.lat))))) * 1000) / 1000
+    };
+  };
+  // why a bulk name must NOT be added (or "" when it is new)
+  const skipReason = (name, d) => {
+    if (townKey(name).length < 4 || /\d/.test(name)) return "unusable";
+    const c = parts(name);
+    const near = (rec) => rec.state === d.state || distanceKm(rec, d.seat) <= 40; // same state, or the same place filed under a neighbouring wrong state
+    for (const e of index.get(c.rest) || []) {
+      if (!sameEntity(c, e) || !near(e.rec)) continue;
+      return c.prefix === e.prefix ? "alreadyKnown" : "samePlaceOtherSpelling";
+    }
+    return "";
+  };
+
+  for (const text of [TOWN_BULK_1, TOWN_BULK_2, TOWN_BULK_3, TOWN_BULK_4]) {
+    for (const line of text.split("\n")) {
+      const t = line.trim();
+      if (!t || t.startsWith("//")) continue;
+      const [rawState, district, rest] = t.split("|");
+      if (!rest || !rest.trim().startsWith("+")) continue;
+      const d = DISTRICTS.get(districtKey(district));
+      if (!d || !d.seat) { BULK_REPORT.problems.push("unknown district: " + district.trim() + " (" + rawState.trim() + ")"); continue; }
+      for (const raw of rest.trim().slice(1).split(",")) {
+        const [namePart, aliasPart] = raw.split("=");
+        const name = namePart.trim().replace(/\s+/g, " ");
+        if (!name) continue;
+        BULK_REPORT.listed++;
+        const why = skipReason(name, d);
+        if (why) { BULK_REPORT.skipped[why]++; continue; }
+        const spot = spotFor(d, name);
+        const rec = { name, state: d.state, stateName: STATE_NAMES[d.state], territory: territoryLabel(rawState.trim(), d.state), district: d.name, districtKey: districtKey(d.name),
+          type: "T", typeName: TYPE_NAMES.T, lat: spot.lat, lon: spot.lon, tier: 3, curated: false, approx: true };
+        const placed = addPlace(rec, aliasPart ? aliasPart.split("/") : [], { autoBlock: true });
+        if (!placed) { BULK_REPORT.skipped.nameTaken++; continue; }
+        d.places.push(placed);
+        put(placed);
+        BULK_REPORT.added++;
+        LOAD_REPORT.bulk++;
+      }
+    }
+  }
+}
+finalizeAliases(); // update 111: the same spelling variants / short forms for the bulk places (keys that are already taken are never overwritten)
 
 export function findTown(text) {
   return TOWN_BY_KEY.get(townKey(text)) || resolveGuess(text);
