@@ -96,6 +96,9 @@ function registerFindle(app, rootIO) {
     },
   };
 
+  // update 113: the AFK Autopilot reads these live settings (read-only) to show them in its "Game settings"
+  import("../shared/game-settings-registry.js").then((m) => m.registerGameSettings("findle", () => ({ difficulty: state.game.difficulty, autoAdvanceDelaySeconds: state.settings.autoAdvanceDelaySeconds, leaderboardDisplaySeconds: state.settings.leaderboardDisplaySeconds, wordLanguage: state.settings.wordLanguage }), ["difficulty", "autoAdvanceDelaySeconds", "leaderboardDisplaySeconds", "wordLanguage"], { readOnly: true })).catch(() => {});
+
   const recentMsgIds = new Set();
   const recentMsgIdOrder = [];
   let recentTextSignatures = [];

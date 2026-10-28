@@ -15,6 +15,7 @@
 // Mounts at /contexto.
 
 import "dotenv/config";
+import { registerGameSettings } from "../shared/game-settings-registry.js"; // update 113
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -1567,3 +1568,6 @@ PlatformHub.registerGame(
     return state.mode === 'live' && ['connected', 'connecting', 'retrying'].includes(state.connection.status) && (!cur || cur === u);
   }
 );
+
+// update 113: the AFK Autopilot reads the host's saved default settings (read-only) to show them in its "Game settings"
+registerGameSettings("contexto", () => state.defaultSettings || {}, ["autoNextRound", "timingAnswerSeconds", "timingLeaderboardSeconds", "timingPopupSeconds", "timingAutoNextSeconds"], { readOnly: true });

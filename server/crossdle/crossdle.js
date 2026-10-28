@@ -9,6 +9,7 @@
 // ============================================================================
 
 import path from 'path';
+import { registerGameSettings } from '../shared/game-settings-registry.js'; // update 113
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 
@@ -37,6 +38,9 @@ export async function registerCrossdle(app, rootIo, options = {}) {
       }
     },
   });
+
+  // update 113: the AFK Autopilot reads these live settings (read-only) to show them in its "Game settings"
+  registerGameSettings('crossdle', () => ({ wordLength: engine.wordLength, nextRoundSeconds: Math.round((engine.nextRoundDelayMs || 0) / 1000) }), ['wordLength', 'nextRoundSeconds'], { readOnly: true });
 
   loadLeaderboard();
 

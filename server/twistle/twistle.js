@@ -30,6 +30,7 @@
 // ============================================================================
 
 import { ANSWER_WORDS as EN_ANSWER_WORDS, MIN_WORD_LENGTH } from '../blindle/blindle-answers.js';
+import { registerGameSettings } from '../shared/game-settings-registry.js'; // update 113
 import { dictionaryState, loadDictionary } from '../blindle/blindle-dictionary.js';
 import { buildDifficultyIndex } from '../blindle/blindle-difficulty.js';
 import * as WL from '../shared/word-language.js'; // update 48: word language
@@ -149,6 +150,9 @@ export async function registerTwistle(app, rootIo, options = {}) {
     leaderboardShowSeconds: DEFAULT_LEADERBOARD_SHOW_SECONDS,
     revealShowSeconds: DEFAULT_REVEAL_SHOW_SECONDS,
   };
+
+  // update 113: the AFK Autopilot reads these live settings (read-only) to show them in its "Game settings"
+  registerGameSettings('twistle', () => game, ['difficulty', 'lengthMode', 'wordLength', 'lengthMin', 'lengthMax', 'autoContinueDelaySeconds'], { readOnly: true });
 
   // -------------------------------------------------------------------------
   // Secret-word selection (BLINDLE's system)

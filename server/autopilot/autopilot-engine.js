@@ -29,6 +29,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { GAMES, GAME_IDS, gameById, DEFAULT_CONFIG, PRESET_FIELDS, PRESET_KEYS, REGION_CHOICES, NOTE_LIMITS, sanitizeConfig, enabledGames } from "./autopilot-config.js";
+import { readAllGameSettings } from "../shared/game-settings-registry.js"; // update 113: what each game is using right now
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.AUTOPILOT_FILE || path.join(__dirname, "..", "..", "data", "autopilot.json");
@@ -156,6 +157,8 @@ class AutopilotEngine {
       catch (e) { res.status(400).json({ ok: false, error: String((e && e.message) || e), state: this.publicState() }); }
     };
     app.get("/api/autopilot", (req, res) => { res.set("Cache-Control", "no-store"); res.json(this.snapshot()); });
+    // update 113: the settings every game is using right now (difficulty, word length, pause ...) - the panel shows them in each game's "Game settings"
+    app.get("/api/autopilot/game-settings", (req, res) => { res.set("Cache-Control", "no-store"); res.json({ games: readAllGameSettings(), at: Date.now() }); });
     app.get("/api/autopilot/stream", (req, res) => {
       res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-store, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" });
       res.flushHeaders && res.flushHeaders();
