@@ -40,7 +40,7 @@ export async function registerCrossdle(app, rootIo, options = {}) {
   });
 
   // update 113: the AFK Autopilot reads these live settings (read-only) to show them in its "Game settings"
-  registerGameSettings('crossdle', () => ({ wordLength: engine.wordLength, nextRoundSeconds: Math.round((engine.nextRoundDelayMs || 0) / 1000) }), ['wordLength', 'nextRoundSeconds'], { readOnly: true });
+  registerGameSettings('crossdle', () => ({ wordLength: engine.wordLength, nextRoundSeconds: Math.round((engine.nextRoundDelayMs || 0) / 1000) }), ['wordLength', 'nextRoundSeconds'], { readOnly: true, restore: (v) => { if (v.wordLength) engine.setWordLength(v.wordLength); if (v.nextRoundSeconds) engine.setNextRoundDelay(v.nextRoundSeconds); } });
 
   loadLeaderboard();
 

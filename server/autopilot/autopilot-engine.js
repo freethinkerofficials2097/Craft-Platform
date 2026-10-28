@@ -28,8 +28,9 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { GAMES, GAME_IDS, gameById, DEFAULT_CONFIG, PRESET_FIELDS, PRESET_KEYS, REGION_CHOICES, NOTE_LIMITS, sanitizeConfig, sanitizePreset, unwrapSetup, auditConfig, summarizeConfig, enabledGames } from "./autopilot-config.js";
-import { readAllGameSettings } from "../shared/game-settings-registry.js"; // update 113: what each game is using right now
+import { GAMES, GAME_IDS, gameById, DEFAULT_CONFIG, PRESET_FIELDS, PRESET_KEYS, REGION_CHOICES, NOTE_LIMITS, sanitizeConfig, enabledGames, extractConfig, describeImport } from "./autopilot-config.js";
+import { readAllGameSettings, restoreDefault } from "../shared/game-settings-registry.js";
+import { GameDefaults } from "../shared/game-defaults-store.js"; // update 114 // update 113: what each game is using right now
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.AUTOPILOT_FILE || path.join(__dirname, "..", "..", "data", "autopilot.json");
@@ -168,12 +169,12 @@ class AutopilotEngine {
       req.on("close", () => this.sse.delete(res));
     });
     app.put("/api/autopilot/config", guard, json, act((b) => { this.setConfig(b); }));
-    app.post("/api/autopilot/save", guard, express.json({ limit: "6mb" }), act((b) => this.saveFromPanel(b)));
+    app.post("/api/autopilot/save", guard, express.json({ limit: "1mb" }), act((b) => this.saveFromPanel(b)));
     app.get("/api/autopilot/export", (req, res) => {
       res.set({ "Content-Type": "application/json; charset=utf-8", "Content-Disposition": "attachment; filename=\"autopilot-setup.json\"", "Cache-Control": "no-store" });
       res.json(this.exportSetup());
     });
-    app.post("/api/autopilot/import", guard, express.json({ limit: "12mb" }), act((b) => this.importSetup(b.data, b)));
+    app.post("/api/autopilot/import", guard, express.json({ limit: "2mb" }), act((b) => this.importSetup(b.data, b)));
     app.post("/api/autopilot/start", guard, json, act((b) => this.start(b)));
     app.post("/api/autopilot/stop", guard, json, act(() => this.stop("Stopped by the host")));
     app.post("/api/autopilot/pause", guard, json, act(() => this.pause(false)));
@@ -199,11 +200,10 @@ class AutopilotEngine {
   _readJson(file) { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { return null; } }
   _adopt(raw, source, label, withRuntime) {
     if (!raw || typeof raw !== "object") return false;
-    let u; try { u = unwrapSetup(raw); } catch (e) { return false; }              // a full file, a browser backup or a bare config
-    if (!u.config) return false;
-    this.config = sanitizeConfig(u.config);
-    if (u.snapshot && source === "shipped") this._fillFromSnapshot(u.snapshot);   // update 114: a shipped file also carries what the games used when it was made
-    if (u.profiles) for (const [k, v] of Object.entries(u.profiles)) this.profiles[String(k).slice(0, 60)] = sanitizeConfig(v);
+    const cfg = extractConfig(raw); // a full file, a bare config, a browser backup, a wrapped file (update 114)
+    if (!cfg) return false;
+    this.config = sanitizeConfig(cfg);
+    if (raw.profiles && typeof raw.profiles === "object") for (const [k, v] of Object.entries(raw.profiles)) this.profiles[String(k).slice(0, 60)] = sanitizeConfig(v);
     this.meta.source = source; this.meta.sourceLabel = label;
     this.meta.savedAt = Number(raw.savedAt) || (() => { try { return fs.statSync(source === "saved" ? this.file : source === "backup" ? this.file + ".bak" : this.seedFile).mtimeMs; } catch (e) { return 0; } })();
     const r = withRuntime && raw.runtime;
@@ -216,9 +216,17 @@ class AutopilotEngine {
     }
     return true;
   }
+  _seedCandidates() {
+    try {
+      const dir = path.dirname(this.file), main = path.basename(this.file);
+      return fs.readdirSync(dir).filter((n) => /autopilot.*\.json$/i.test(n) && n !== main && !/\.(bak|tmp)$/i.test(n)).map((n) => path.join(dir, n)).map((f) => ({ f, t: fs.statSync(f).mtimeMs })).sort((a, b) => b.t - a.t).map((x) => x.f);
+    } catch (e) { return []; }
+  }
   _load() {
     if (this._adopt(this._readJson(this.file), "saved", "your saved setup on this server", true)) return;
     if (this._adopt(this._readJson(this.file + ".bak"), "backup", "the backup copy of your saved setup (the main file was missing or damaged)", true)) { this._log("warn", "The main setup file could not be read - the backup copy was used."); return; }
+    // update 114: the shipped setup file may be called anything with "autopilot" in its name (e.g. "autopilot-setup (1).json"): the newest one is used
+    for (const f of this._seedCandidates()) { if (f === this.seedFile) continue; if (this._adopt(this._readJson(f), "shipped", "the setup file shipped with this deployment (data/" + path.basename(f) + ")", false)) { this.meta.seedFile = f; this._log("info", "No saved setup on this server yet - the setup file “" + path.basename(f) + "” shipped with the deployment was loaded."); return; } }
     if (this._adopt(this._readJson(this.seedFile), "shipped", "the setup file shipped with this deployment (data/autopilot-setup.json)", false)) { this._log("info", "No saved setup on this server yet - the setup file shipped with the deployment was loaded."); return; }
     /* first run: factory defaults */
   }
@@ -285,57 +293,39 @@ class AutopilotEngine {
     }
     return { config: this.config, meta: { ...this.meta }, written: ok, applied };
   }
-  // update 114: the file now ALSO carries what every game is using right now (gameSnapshot). Games that follow their own settings (nothing locked in)
-  // used to come back with nothing after a restart / re-upload; now the file remembers those values too.
-  _snapshotNow() {
-    const out = {};
-    try {
-      const all = readAllGameSettings();
-      for (const g of GAMES) {
-        if (!g.family || !all[g.id] || all[g.id].readOnly) continue;
-        const s = sanitizePreset(g.id, all[g.id].settings);
-        if (Object.keys(s).length) out[g.id] = s;
-      }
-    } catch (e) { /* the games could not be read - the file is still complete without it */ }
-    return out;
-  }
-  // fills ONLY the values the setup does not already set (what the host locked in always wins). Returns how many values were added.
-  _fillFromSnapshot(snap) {
-    let n = 0;
-    if (!snap || typeof snap !== "object") return 0;
-    for (const g of GAMES) {
-      if (!g.family || !snap[g.id]) continue;
-      const add = sanitizePreset(g.id, snap[g.id]);
-      const have = this.config.games[g.id].settings || (this.config.games[g.id].settings = {});
-      for (const k of Object.keys(add)) if (have[k] === undefined) { have[k] = add[k]; n++; }
-      this.config.games[g.id].settings = sanitizePreset(g.id, have); // keep lengthMin <= lengthMax etc.
-    }
-    return n;
-  }
   exportSetup() {
-    return { format: "afk-autopilot-setup", version: 3, exportedAt: now(), name: this.config.name, config: this.config, profiles: this.profiles, gameSnapshot: this._snapshotNow() };
+    return { format: "afk-autopilot-setup", version: 3, exportedAt: now(), name: this.config.name, config: this.config, profiles: this.profiles, gameDefaults: GameDefaults.all() }; // update 114: the "Save & Apply as default" of every game travels with the file
   }
   // restores a setup file (the export above), a bare config, or a browser backup. Named setups in the file are added / replaced, others are kept.
-  // update 114: reads every shape of file, reports what was restored and what could not be kept, can fill in the games' own values from the file and
-  // can push the result to the game on screen (b.apply). b.useSnapshot === false skips the games' own values.
   importSetup(data, b = {}) {
-    const u = unwrapSetup(data);
-    const warnings = [];
-    let filled = 0, n = 0;
-    if (u.config) {
-      this.config = sanitizeConfig(u.config);
-      for (const w of auditConfig(u.config, this.config)) warnings.push(w);
-      if (u.snapshot && b.useSnapshot !== false) filled = this._fillFromSnapshot(u.snapshot);
-    }
-    if (u.profiles) for (const [k, v] of Object.entries(u.profiles)) { this.profiles[String(k).slice(0, 60)] = sanitizeConfig(v); n++; }
+    let d = data;
+    if (typeof d === "string") { try { d = JSON.parse(d.replace(/^\uFEFF/, "")); } catch (e) { throw new Error("That is not a valid setup file."); } }
+    if (!d || typeof d !== "object") throw new Error("That is not a valid setup file.");
+    const cfg = extractConfig(d);
+    if (!cfg) throw new Error("That file does not contain an autopilot setup.");
+    // update 114: what you have right now is kept as a named setup first, so a restore can never lose anything
+    let safety = "";
+    try {
+      const mine = JSON.stringify(this.config);
+      if (mine !== JSON.stringify(DEFAULT_CONFIG)) {
+        const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+        safety = "Before restore " + stamp; this.profiles[safety] = clone(this.config); this.profiles[safety].name = safety;
+        const olds = Object.keys(this.profiles).filter((k) => k.startsWith("Before restore ")).sort(); while (olds.length > 5) delete this.profiles[olds.shift()];
+      }
+    } catch (e) { safety = ""; }
+    this.config = sanitizeConfig(cfg);
+    const report = describeImport(cfg, this.config);
+    let n = 0;
+    const profs = d.profiles && typeof d.profiles === "object" ? d.profiles : d.data && d.data.profiles && typeof d.data.profiles === "object" ? d.data.profiles : null;
+    if (profs) for (const [k, v] of Object.entries(profs)) { const pc = extractConfig(v) || v; this.profiles[String(k).slice(0, 60)] = sanitizeConfig(pc); n++; }
+    // update 114: the games' saved defaults that came with the file ("Save & Apply as default") are restored too
+    let nd = 0;
+    const gd = d.gameDefaults && typeof d.gameDefaults === "object" ? d.gameDefaults : d.data && d.data.gameDefaults && typeof d.data.gameDefaults === "object" ? d.data.gameDefaults : null;
+    if (gd) for (const [id, v] of Object.entries(gd)) { if (v && typeof v === "object" && v.settings && typeof v.settings === "object") { try { GameDefaults.save(id, v.settings, v.form); restoreDefault(id); nd++; } catch (e) { /* unknown game */ } } }
+    report.gameDefaults = nd;
+    report.profiles = n; report.safety = safety; report.name = this.config.name;
     const ok = this._saveNow();
-    let applied = false;
-    if (b.apply && this.rt.running && this.rt.current && (this.rt.phase === "playing" || this.rt.phase === "wrapup")) {
-      this.rt.applySeq += 1; this.rt.current.applySeq = this.rt.applySeq; applied = true;
-      this._broadcast(true);
-    }
-    const report = { ...summarizeConfig(this.config), profiles: n, filledFromGames: filled, hadSnapshot: Boolean(u.snapshot), configInFile: Boolean(u.config), warnings, applied };
-    this._log("info", "Setup restored from a file" + (n ? " (" + n + " named setup" + (n === 1 ? "" : "s") + ")" : "") + (warnings.length ? ", " + warnings.length + " value(s) adjusted" : "") + (ok ? "." : ", but it could not be written to disk."));
+    this._log("info", "Setup restored from a file (" + report.games + " games, " + report.settingValues + " game settings, " + report.notes + " with notes" + (nd ? ", " + nd + " game default" + (nd === 1 ? "" : "s") : "") + (n ? ", " + n + " named setup" + (n === 1 ? "" : "s") : "") + ")" + (ok ? "." : ", but it could not be written to disk."));
     return { config: this.config, meta: { ...this.meta }, written: ok, profiles: Object.keys(this.profiles), report };
   }
   saveProfile(name) {

@@ -164,19 +164,38 @@ export const DEFAULT_CONFIG = {
     showNotesOnSplash: true,      // the same notes on the winner screen and the next-game splash
     transitionSeconds: 4          // black "loading" moment while the stage switches game
   },
+  sync: { mode: "stick" },         // update 114: "stick" = keep the host's saved settings, never auto-refresh from the games | "follow" = auto-refresh what the games use
   games: {}                       // id -> { enabled, minutes, rounds, weight, settings, aka, inspiredBy, voteNote, howTo }
 };
-for (const g of GAMES) DEFAULT_CONFIG.games[g.id] = { enabled: g.id !== "contexto" && g.id !== "crossdle", minutes: 0, rounds: 0, weight: 1, settings: {}, aka: [], inspiredBy: "", voteNote: "", howTo: "" };
+for (const g of GAMES) DEFAULT_CONFIG.games[g.id] = { enabled: g.id !== "contexto" && g.id !== "crossdle", minutes: 0, rounds: 0, weight: 1, settings: {}, syncMode: "global", aka: [], inspiredBy: "", voteNote: "", howTo: "" };
 // limits of the viewer notes (they must fit on a TikTok LIVE screen)
 export const NOTE_LIMITS = { akaCount: 6, akaChars: 40, inspiredBy: 80, voteNote: 120, howTo: 140 };
 
 // ---- sanitizing ----------------------------------------------------------------------------------------------------
-const num = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : d; };
-const pick = (v, list, d) => (list.includes(v) ? v : d);
-const bool = (v, d) => (typeof v === "boolean" ? v : d);
+// update 114: forgiving readers - a restored file may have been edited by hand or come from an older version (numbers as text, "true"/"false",
+// different capital letters). They are understood instead of silently replaced by the default.
+const num = (v, lo, hi, d) => {
+  if (v === null || v === undefined || v === "" || typeof v === "boolean") return d;
+  const n = typeof v === "string" ? parseFloat(v.replace(",", ".")) : Number(v);
+  return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : d;
+};
+const pick = (v, list, d) => {
+  if (list.includes(v)) return v;
+  if (typeof v === "string") { const k = v.trim().toLowerCase(); const hit = list.find((x) => String(x).toLowerCase() === k); if (hit !== undefined) return hit; }
+  return d;
+};
+const bool = (v, d) => {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v === 1 ? true : v === 0 ? false : d;
+  if (typeof v === "string") { const k = v.trim().toLowerCase(); if (["true", "yes", "on", "1"].includes(k)) return true; if (["false", "no", "off", "0"].includes(k)) return false; }
+  return d;
+};
 const str = (v, max, d) => (typeof v === "string" ? v.trim().slice(0, max) : d);
-const idList = (v, max = 40) => (Array.isArray(v) ? [...new Set(v.filter((x) => GAME_IDS.includes(x)))].slice(0, max) : []);
-const nameList = (v, max = 3000) => {
+const idList = (v, max = 40) => {
+  const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\s,;]+/) : [];
+  return [...new Set(raw.map((x) => String(x == null ? "" : x).trim().toLowerCase()).filter((x) => GAME_IDS.includes(x)))].slice(0, max);
+};
+const nameList = (v, max = 300) => {
   const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\s,;]+/) : [];
   return [...new Set(raw.map((x) => String(x || "").replace(/^@/, "").trim().toLowerCase()).filter((x) => /^[a-z0-9._]{2,40}$/.test(x)))].slice(0, max);
 };
@@ -197,17 +216,64 @@ export function sanitizePreset(gameId, raw) {
   for (const k of keys) {
     if (raw[k] === undefined || raw[k] === null || raw[k] === "") continue; // empty = "leave the game's own setting"
     const f = PRESET_FIELDS[k];
-    if (f.type === "select") { const allowed = f.options.map((o) => o[0]); const v = String(raw[k]); if (allowed.includes(v)) out[k] = k === "startLength" ? Number(v) : v; }
+    if (f.type === "select") {
+      let v = String(raw[k]).trim().toLowerCase();
+      if (k === "startLength") { const m = v.match(/\d+/); v = m ? m[0] : v.startsWith("rand") ? "0" : v; }
+      const hit = f.options.map((o) => o[0]).find((x) => String(x).toLowerCase() === v);
+      if (hit !== undefined) out[k] = k === "startLength" ? Number(hit) : hit;
+    }
     else if (f.type === "number") out[k] = num(raw[k], f.min, f.max, f.min);
-    else if (f.type === "bool") out[k] = Boolean(raw[k]);
+    else if (f.type === "bool") { const b = bool(raw[k], undefined); if (b !== undefined) out[k] = b; }
     else if (f.type === "regions") {
-      const allowed = (REGION_CHOICES[gameId] || []).map((r) => r[0]);
-      const list = (Array.isArray(raw[k]) ? raw[k] : []).filter((r) => allowed.includes(r));
+      const choices = REGION_CHOICES[gameId] || [];
+      const src = Array.isArray(raw[k]) ? raw[k] : typeof raw[k] === "string" ? raw[k].split(/[,;|]+/) : [];
+      const list = [];
+      for (const x of src) { const t = String(x == null ? "" : x).trim().toLowerCase(); const hit = choices.find((r) => r[0].toLowerCase() === t || r[1].toLowerCase() === t); if (hit && !list.includes(hit[0])) list.push(hit[0]); }
       if (list.length) out[k] = list;
     }
   }
   if (out.lengthMin !== undefined && out.lengthMax !== undefined && out.lengthMin > out.lengthMax) [out.lengthMin, out.lengthMax] = [out.lengthMax, out.lengthMin];
   return out;
+}
+
+// update 114: finds the config inside whatever file was uploaded: a setup file, a bare config, a browser backup ({ t, data }),
+// or a file wrapped one level deeper. Returns null when nothing that looks like an autopilot setup is in it.
+export function extractConfig(d, depth = 0) {
+  if (!d || typeof d !== "object" || depth > 3) return null;
+  if (d.config && typeof d.config === "object") return extractConfig(d.config, depth + 1) || d.config;
+  if (d.run || d.vote || d.games || d.rotation || d.session || d.eligibility || d.display) return d;
+  if (d.data && typeof d.data === "object") return extractConfig(d.data, depth + 1);
+  return null;
+}
+// games may be an object keyed by id OR by name ("Wordle"), or an array of { id, ... }; settings may sit directly on the game
+function normGames(g) {
+  const key = (x) => String(x == null ? "" : x).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const byKey = {};
+  for (const gm of GAMES) { byKey[key(gm.id)] = gm.id; byKey[key(gm.name)] = gm.id; }
+  const out = {};
+  const put = (k, v) => { const id = byKey[key(k)]; if (id && v && typeof v === "object") out[id] = v; };
+  if (Array.isArray(g)) g.forEach((v) => v && put(v.id || v.game || v.name, v));
+  else if (g && typeof g === "object") Object.entries(g).forEach(([k, v]) => put(k, v));
+  return out;
+}
+
+// update 114: what a restore found in the file and what could not be used (shown to the host after "Restore from a file")
+export function describeImport(rawCfg, clean) {
+  const found = normGames(rawCfg && rawCfg.games), rep = { games: Object.keys(found).length, withSettings: 0, settingValues: 0, notes: 0, dropped: [] };
+  for (const [id, r] of Object.entries(found)) {
+    const gm = gameById(id), cg = clean.games[id] || {}, keys = PRESET_KEYS[id] || [];
+    const src = r.settings && typeof r.settings === "object" ? r.settings : r;
+    let any = false;
+    for (const k of keys) {
+      if (src[k] === undefined || src[k] === null || src[k] === "") continue;
+      if (cg.settings && cg.settings[k] !== undefined) { rep.settingValues++; any = true; } else rep.dropped.push(gm.name + ": " + k + " = " + JSON.stringify(src[k]) + " was not understood");
+    }
+    if (any) rep.withSettings++;
+    if (r.settings && typeof r.settings === "object" && !keys.length && Object.keys(r.settings).length) rep.dropped.push(gm.name + ": its settings stay inside the game itself (not part of the autopilot)");
+    if ((cg.aka && cg.aka.length) || cg.inspiredBy || cg.voteNote || cg.howTo) rep.notes++;
+  }
+  rep.dropped = rep.dropped.slice(0, 12);
+  return rep;
 }
 
 export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
@@ -280,7 +346,7 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       voteTitle: str(dp.voteTitle, 80, b.display.voteTitle),
       breakTitle: str(dp.breakTitle, 60, b.display.breakTitle),
       voteHint: str(dp.voteHint, 160, b.display.voteHint),
-      tips: Array.isArray(dp.tips) ? dp.tips.map((t) => str(t, 140, "")).filter(Boolean).slice(0, 60) : b.display.tips,
+      tips: Array.isArray(dp.tips) ? dp.tips.map((t) => str(t, 140, "")).filter(Boolean).slice(0, 20) : b.display.tips,
       tipSeconds: num(dp.tipSeconds, 3, 60, b.display.tipSeconds),
       showTimer: bool(dp.showTimer, b.display.showTimer),
       showUpNext: bool(dp.showUpNext, b.display.showUpNext),
@@ -292,9 +358,10 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       showNotesOnSplash: bool(dp.showNotesOnSplash, b.display.showNotesOnSplash !== undefined ? b.display.showNotesOnSplash : true),
       transitionSeconds: num(dp.transitionSeconds, 1, 30, b.display.transitionSeconds)
     },
+    sync: { mode: pick((c.sync || {}).mode, ["stick", "follow"], (b.sync && b.sync.mode) || "stick") }, // update 114: stick to the saved settings (default) | follow the games' own settings
     games: {}
   };
-  const gin = c.games && typeof c.games === "object" ? c.games : {};
+  const gin = normGames(c.games);
   for (const g of GAMES) {
     const bg = (b.games && b.games[g.id]) || DEFAULT_CONFIG.games[g.id];
     const r = gin[g.id] && typeof gin[g.id] === "object" ? gin[g.id] : {};
@@ -303,7 +370,8 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       minutes: num(r.minutes, 0, 240, bg.minutes),   // 0 = use the default session length
       rounds: num(r.rounds, 0, 100, bg.rounds),      // 0 = use the default round count
       weight: num(r.weight, 1, 10, bg.weight),
-      settings: r.settings !== undefined ? sanitizePreset(g.id, r.settings) : bg.settings || {},
+      settings: r.settings !== undefined ? sanitizePreset(g.id, r.settings) : (PRESET_KEYS[g.id] || []).some((k) => r[k] !== undefined) ? sanitizePreset(g.id, r) : bg.settings || {},
+      syncMode: pick(r.syncMode, ["global", "stick", "follow"], bg.syncMode || "global"), // update 114: this game follows the global choice, or its own
       aka: akaList(r.aka, Array.isArray(bg.aka) ? bg.aka : []),
       inspiredBy: str(r.inspiredBy, NOTE_LIMITS.inspiredBy, typeof bg.inspiredBy === "string" ? bg.inspiredBy : ""),
       voteNote: str(r.voteNote, NOTE_LIMITS.voteNote, typeof bg.voteNote === "string" ? bg.voteNote : ""),
@@ -311,80 +379,6 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
     };
   }
   return out;
-}
-
-
-// ---- import helpers (update 114) -------------------------------------------------------------------------------------
-// unwrapSetup(): accepts everything a person might bring back - the downloaded setup file (text, with or without a BOM), the browser backup
-// ({t, data}), a bare config, a file inside a file ({config:{config}}) or a file that only holds named setups - and returns { config, profiles, snapshot }.
-export function unwrapSetup(input) {
-  let d = input;
-  if (typeof d === "string") {
-    const txt = d.replace(/^\uFEFF/, "").trim();
-    try { d = JSON.parse(txt); } catch (e) { throw new Error("That is not a valid setup file (it could not be read as JSON)."); }
-  }
-  let guard = 0;
-  while (d && typeof d === "object" && !Array.isArray(d) && guard++ < 4) {
-    const looksLikeConfig = d.run || d.vote || d.games || d.rotation || d.session || d.eligibility || d.display;
-    if (looksLikeConfig) break;
-    if (d.data && typeof d.data === "object" && !d.config) { d = d.data; continue; }          // browser backup {t, data}
-    if (d.config && typeof d.config === "object" && (d.config.config || d.config.data) && !(d.config.run || d.config.vote || d.config.games)) { d = d.config; continue; }
-    break;
-  }
-  if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("That is not a valid setup file.");
-  const config = d.config && typeof d.config === "object" ? d.config : (d.run || d.vote || d.games || d.rotation || d.session || d.eligibility || d.display) ? d : null;
-  const profiles = d.profiles && typeof d.profiles === "object" && !Array.isArray(d.profiles) ? d.profiles : null;
-  if (!config && !(profiles && Object.keys(profiles).length)) throw new Error("That file does not contain an autopilot setup.");
-  const snapshot = d.gameSnapshot && typeof d.gameSnapshot === "object" ? d.gameSnapshot : null;
-  return { config, profiles, snapshot };
-}
-
-// auditConfig(): compares what the file said with what the autopilot could keep, and lists everything that was changed or left out (max 30 lines).
-export function auditConfig(raw, clean) {
-  const out = [];
-  const walk = (r, c, path) => {
-    if (out.length >= 30 || r === undefined) return;
-    if (Array.isArray(r) || Array.isArray(c)) {
-      const rl = Array.isArray(r) ? r.length : 0, cl = Array.isArray(c) ? c.length : 0;
-      if (rl !== cl) out.push(path + ": kept " + cl + " of " + rl + " entries");
-      return;
-    }
-    if (r && typeof r === "object") {
-      if (!c || typeof c !== "object") { out.push(path + ": not used"); return; }
-      for (const k of Object.keys(r)) {
-        if (!(k in c)) { if (r[k] !== "" && r[k] !== null) out.push(path + "." + k + ": not used by this version (ignored)"); }
-        else walk(r[k], c[k], path + "." + k);
-      }
-      return;
-    }
-    if (r === null || r === "") return;
-    if (typeof r === "string" && typeof c === "string" && r.trim() === c) return;
-    if (String(r) !== String(c)) out.push(path + ": " + String(r).slice(0, 40) + " -> " + String(c).slice(0, 40) + " (out of range or not allowed)");
-  };
-  if (raw && typeof raw === "object") {
-    for (const k of Object.keys(raw)) if (k !== "games" && k in clean) walk(raw[k], clean[k], k);
-    const gin = raw.games && typeof raw.games === "object" ? raw.games : {};
-    for (const id of Object.keys(gin)) {
-      if (!clean.games[id]) { out.push("games." + id + ": this game does not exist in this version (ignored)"); continue; }
-      walk(gin[id], clean.games[id], "games." + id);
-    }
-  }
-  return out;
-}
-
-// summary of what a setup holds (shown after a restore)
-export function summarizeConfig(cfg) {
-  const gs = GAMES.map((g) => ({ g, c: cfg.games[g.id] || {} }));
-  return {
-    games: gs.length,
-    enabled: gs.filter((x) => x.c.enabled).length,
-    withSettings: gs.filter((x) => x.c.settings && Object.keys(x.c.settings).length).length,
-    withNotes: gs.filter((x) => (x.c.aka && x.c.aka.length) || x.c.inspiredBy || x.c.voteNote || x.c.howTo).length,
-    withOwnTiming: gs.filter((x) => x.c.minutes || x.c.rounds).length,
-    tips: cfg.display.tips.length,
-    allowList: cfg.eligibility.allowList.length,
-    blockList: cfg.eligibility.blockList.length
-  };
 }
 
 export const enabledGames = (cfg) => GAMES.filter((g) => cfg.games[g.id] && cfg.games[g.id].enabled);

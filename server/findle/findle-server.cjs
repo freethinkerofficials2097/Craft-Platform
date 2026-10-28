@@ -97,7 +97,7 @@ function registerFindle(app, rootIO) {
   };
 
   // update 113: the AFK Autopilot reads these live settings (read-only) to show them in its "Game settings"
-  import("../shared/game-settings-registry.js").then((m) => m.registerGameSettings("findle", () => ({ difficulty: state.game.difficulty, autoAdvanceDelaySeconds: state.settings.autoAdvanceDelaySeconds, leaderboardDisplaySeconds: state.settings.leaderboardDisplaySeconds, wordLanguage: state.settings.wordLanguage }), ["difficulty", "autoAdvanceDelaySeconds", "leaderboardDisplaySeconds", "wordLanguage"], { readOnly: true })).catch(() => {});
+  import("../shared/game-settings-registry.js").then((m) => m.registerGameSettings("findle", () => ({ difficulty: state.game.difficulty, autoAdvanceDelaySeconds: state.settings.autoAdvanceDelaySeconds, leaderboardDisplaySeconds: state.settings.leaderboardDisplaySeconds, wordLanguage: state.settings.wordLanguage }), ["difficulty", "autoAdvanceDelaySeconds", "leaderboardDisplaySeconds", "wordLanguage"], { readOnly: true, restore: (v) => { if (typeof v.difficulty === "string" && DIFFICULTY_SETTINGS[v.difficulty]) state.game.difficulty = v.difficulty; if (Number.isFinite(v.autoAdvanceDelaySeconds)) state.settings.autoAdvanceDelaySeconds = Math.min(120, Math.max(1, v.autoAdvanceDelaySeconds)); if (Number.isFinite(v.leaderboardDisplaySeconds)) state.settings.leaderboardDisplaySeconds = Math.min(120, Math.max(1, v.leaderboardDisplaySeconds)); } })).catch(() => {});
 
   const recentMsgIds = new Set();
   const recentMsgIdOrder = [];

@@ -1570,4 +1570,4 @@ PlatformHub.registerGame(
 );
 
 // update 113: the AFK Autopilot reads the host's saved default settings (read-only) to show them in its "Game settings"
-registerGameSettings("contexto", () => state.defaultSettings || {}, ["autoNextRound", "timingAnswerSeconds", "timingLeaderboardSeconds", "timingPopupSeconds", "timingAutoNextSeconds"], { readOnly: true });
+registerGameSettings("contexto", () => state.defaultSettings || {}, ["autoNextRound", "timingAnswerSeconds", "timingLeaderboardSeconds", "timingPopupSeconds", "timingAutoNextSeconds"], { readOnly: true, restore: false });
