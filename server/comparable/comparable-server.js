@@ -30,6 +30,7 @@
 
 import "dotenv/config";
 import express from "express";
+import { registerGameSettings } from "../shared/game-settings-registry.js"; // update 113: lets the AFK Autopilot show this game's settings
 import http from "http";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -1121,3 +1122,6 @@ PlatformHub.registerGame(
     return game.mode === "live" && ["live", "connecting", "retrying"].includes(diagnostics.connectionStatus) && (!cur || cur === u);
   }
 );
+
+// update 113: the AFK Autopilot reads this game's live settings (difficulty, length, pause ...) to show them in its "Game settings"
+registerGameSettings("comparable", () => game);
