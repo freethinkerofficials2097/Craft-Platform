@@ -176,7 +176,7 @@ const pick = (v, list, d) => (list.includes(v) ? v : d);
 const bool = (v, d) => (typeof v === "boolean" ? v : d);
 const str = (v, max, d) => (typeof v === "string" ? v.trim().slice(0, max) : d);
 const idList = (v, max = 40) => (Array.isArray(v) ? [...new Set(v.filter((x) => GAME_IDS.includes(x)))].slice(0, max) : []);
-const nameList = (v, max = 300) => {
+const nameList = (v, max = 3000) => {
   const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\s,;]+/) : [];
   return [...new Set(raw.map((x) => String(x || "").replace(/^@/, "").trim().toLowerCase()).filter((x) => /^[a-z0-9._]{2,40}$/.test(x)))].slice(0, max);
 };
@@ -190,7 +190,7 @@ const akaList = (v, d) => {
 };
 const hex = (v, d) => (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : d);
 
-function sanitizePreset(gameId, raw) {
+export function sanitizePreset(gameId, raw) {
   const keys = PRESET_KEYS[gameId] || [];
   const out = {};
   if (!raw || typeof raw !== "object") return out;
@@ -280,7 +280,7 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       voteTitle: str(dp.voteTitle, 80, b.display.voteTitle),
       breakTitle: str(dp.breakTitle, 60, b.display.breakTitle),
       voteHint: str(dp.voteHint, 160, b.display.voteHint),
-      tips: Array.isArray(dp.tips) ? dp.tips.map((t) => str(t, 140, "")).filter(Boolean).slice(0, 20) : b.display.tips,
+      tips: Array.isArray(dp.tips) ? dp.tips.map((t) => str(t, 140, "")).filter(Boolean).slice(0, 60) : b.display.tips,
       tipSeconds: num(dp.tipSeconds, 3, 60, b.display.tipSeconds),
       showTimer: bool(dp.showTimer, b.display.showTimer),
       showUpNext: bool(dp.showUpNext, b.display.showUpNext),
@@ -311,6 +311,80 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
     };
   }
   return out;
+}
+
+
+// ---- import helpers (update 114) -------------------------------------------------------------------------------------
+// unwrapSetup(): accepts everything a person might bring back - the downloaded setup file (text, with or without a BOM), the browser backup
+// ({t, data}), a bare config, a file inside a file ({config:{config}}) or a file that only holds named setups - and returns { config, profiles, snapshot }.
+export function unwrapSetup(input) {
+  let d = input;
+  if (typeof d === "string") {
+    const txt = d.replace(/^\uFEFF/, "").trim();
+    try { d = JSON.parse(txt); } catch (e) { throw new Error("That is not a valid setup file (it could not be read as JSON)."); }
+  }
+  let guard = 0;
+  while (d && typeof d === "object" && !Array.isArray(d) && guard++ < 4) {
+    const looksLikeConfig = d.run || d.vote || d.games || d.rotation || d.session || d.eligibility || d.display;
+    if (looksLikeConfig) break;
+    if (d.data && typeof d.data === "object" && !d.config) { d = d.data; continue; }          // browser backup {t, data}
+    if (d.config && typeof d.config === "object" && (d.config.config || d.config.data) && !(d.config.run || d.config.vote || d.config.games)) { d = d.config; continue; }
+    break;
+  }
+  if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("That is not a valid setup file.");
+  const config = d.config && typeof d.config === "object" ? d.config : (d.run || d.vote || d.games || d.rotation || d.session || d.eligibility || d.display) ? d : null;
+  const profiles = d.profiles && typeof d.profiles === "object" && !Array.isArray(d.profiles) ? d.profiles : null;
+  if (!config && !(profiles && Object.keys(profiles).length)) throw new Error("That file does not contain an autopilot setup.");
+  const snapshot = d.gameSnapshot && typeof d.gameSnapshot === "object" ? d.gameSnapshot : null;
+  return { config, profiles, snapshot };
+}
+
+// auditConfig(): compares what the file said with what the autopilot could keep, and lists everything that was changed or left out (max 30 lines).
+export function auditConfig(raw, clean) {
+  const out = [];
+  const walk = (r, c, path) => {
+    if (out.length >= 30 || r === undefined) return;
+    if (Array.isArray(r) || Array.isArray(c)) {
+      const rl = Array.isArray(r) ? r.length : 0, cl = Array.isArray(c) ? c.length : 0;
+      if (rl !== cl) out.push(path + ": kept " + cl + " of " + rl + " entries");
+      return;
+    }
+    if (r && typeof r === "object") {
+      if (!c || typeof c !== "object") { out.push(path + ": not used"); return; }
+      for (const k of Object.keys(r)) {
+        if (!(k in c)) { if (r[k] !== "" && r[k] !== null) out.push(path + "." + k + ": not used by this version (ignored)"); }
+        else walk(r[k], c[k], path + "." + k);
+      }
+      return;
+    }
+    if (r === null || r === "") return;
+    if (typeof r === "string" && typeof c === "string" && r.trim() === c) return;
+    if (String(r) !== String(c)) out.push(path + ": " + String(r).slice(0, 40) + " -> " + String(c).slice(0, 40) + " (out of range or not allowed)");
+  };
+  if (raw && typeof raw === "object") {
+    for (const k of Object.keys(raw)) if (k !== "games" && k in clean) walk(raw[k], clean[k], k);
+    const gin = raw.games && typeof raw.games === "object" ? raw.games : {};
+    for (const id of Object.keys(gin)) {
+      if (!clean.games[id]) { out.push("games." + id + ": this game does not exist in this version (ignored)"); continue; }
+      walk(gin[id], clean.games[id], "games." + id);
+    }
+  }
+  return out;
+}
+
+// summary of what a setup holds (shown after a restore)
+export function summarizeConfig(cfg) {
+  const gs = GAMES.map((g) => ({ g, c: cfg.games[g.id] || {} }));
+  return {
+    games: gs.length,
+    enabled: gs.filter((x) => x.c.enabled).length,
+    withSettings: gs.filter((x) => x.c.settings && Object.keys(x.c.settings).length).length,
+    withNotes: gs.filter((x) => (x.c.aka && x.c.aka.length) || x.c.inspiredBy || x.c.voteNote || x.c.howTo).length,
+    withOwnTiming: gs.filter((x) => x.c.minutes || x.c.rounds).length,
+    tips: cfg.display.tips.length,
+    allowList: cfg.eligibility.allowList.length,
+    blockList: cfg.eligibility.blockList.length
+  };
 }
 
 export const enabledGames = (cfg) => GAMES.filter((g) => cfg.games[g.id] && cfg.games[g.id].enabled);
