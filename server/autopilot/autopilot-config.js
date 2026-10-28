@@ -7,6 +7,8 @@
 //                    message the game's own Settings screen sends)
 //   DEFAULT_CONFIG   every setting with its default
 //   sanitizeConfig() turns anything the browser sends into a valid, clamped config (unknown keys are dropped)
+//   update 112: every game also has NOTES for the viewers - other names (aka), the game it is inspired by, a note shown during the vote and an
+//   optional custom "how to play" line (see games[id] below and the display.show* switches).
 // ===================================================================
 
 // family: true  -> one of the 21 games that share the "apply_settings" host message, so their gameplay settings can be preset.
@@ -157,11 +159,16 @@ export const DEFAULT_CONFIG = {
     theme: "dark",                // dark | light
     accent: "#ff5c8a",
     showHowTo: true,              // one-line "how to play" on the next-game splash
+    showAka: true,                // "Also known as ..." / "Inspired by ..." under each game on the vote, result and splash screens (update 112)
+    showVoteNotes: true,          // the host's short note for each game, shown under it during the vote
+    showNotesOnSplash: true,      // the same notes on the winner screen and the next-game splash
     transitionSeconds: 4          // black "loading" moment while the stage switches game
   },
-  games: {}                       // id -> { enabled, minutes, rounds, weight, settings }
+  games: {}                       // id -> { enabled, minutes, rounds, weight, settings, aka, inspiredBy, voteNote, howTo }
 };
-for (const g of GAMES) DEFAULT_CONFIG.games[g.id] = { enabled: g.id !== "contexto" && g.id !== "crossdle", minutes: 0, rounds: 0, weight: 1, settings: {} };
+for (const g of GAMES) DEFAULT_CONFIG.games[g.id] = { enabled: g.id !== "contexto" && g.id !== "crossdle", minutes: 0, rounds: 0, weight: 1, settings: {}, aka: [], inspiredBy: "", voteNote: "", howTo: "" };
+// limits of the viewer notes (they must fit on a TikTok LIVE screen)
+export const NOTE_LIMITS = { akaCount: 6, akaChars: 40, inspiredBy: 80, voteNote: 120, howTo: 140 };
 
 // ---- sanitizing ----------------------------------------------------------------------------------------------------
 const num = (v, lo, hi, d) => { const n = Number(v); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, Math.round(n))) : d; };
@@ -172,6 +179,14 @@ const idList = (v, max = 40) => (Array.isArray(v) ? [...new Set(v.filter((x) => 
 const nameList = (v, max = 300) => {
   const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[\s,;]+/) : [];
   return [...new Set(raw.map((x) => String(x || "").replace(/^@/, "").trim().toLowerCase()).filter((x) => /^[a-z0-9._]{2,40}$/.test(x)))].slice(0, max);
+};
+// "Termo, Lingo" / ["Termo","Lingo"] / one per line  ->  a clean list of other names
+const akaList = (v, d) => {
+  const raw = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[,;|\n]+/) : null;
+  if (!raw) return d;
+  const seen = new Set(), out = [];
+  for (const x of raw) { const n = String(x == null ? "" : x).replace(/\s+/g, " ").trim().slice(0, NOTE_LIMITS.akaChars); const k = n.toLowerCase(); if (n && !seen.has(k)) { seen.add(k); out.push(n); } }
+  return out.slice(0, NOTE_LIMITS.akaCount);
 };
 const hex = (v, d) => (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v) ? v : d);
 
@@ -272,6 +287,9 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       theme: pick(dp.theme, ["dark", "light"], b.display.theme),
       accent: hex(dp.accent, b.display.accent),
       showHowTo: bool(dp.showHowTo, b.display.showHowTo),
+      showAka: bool(dp.showAka, b.display.showAka !== undefined ? b.display.showAka : true),
+      showVoteNotes: bool(dp.showVoteNotes, b.display.showVoteNotes !== undefined ? b.display.showVoteNotes : true),
+      showNotesOnSplash: bool(dp.showNotesOnSplash, b.display.showNotesOnSplash !== undefined ? b.display.showNotesOnSplash : true),
       transitionSeconds: num(dp.transitionSeconds, 1, 30, b.display.transitionSeconds)
     },
     games: {}
@@ -285,7 +303,11 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       minutes: num(r.minutes, 0, 240, bg.minutes),   // 0 = use the default session length
       rounds: num(r.rounds, 0, 100, bg.rounds),      // 0 = use the default round count
       weight: num(r.weight, 1, 10, bg.weight),
-      settings: r.settings !== undefined ? sanitizePreset(g.id, r.settings) : bg.settings || {}
+      settings: r.settings !== undefined ? sanitizePreset(g.id, r.settings) : bg.settings || {},
+      aka: akaList(r.aka, Array.isArray(bg.aka) ? bg.aka : []),
+      inspiredBy: str(r.inspiredBy, NOTE_LIMITS.inspiredBy, typeof bg.inspiredBy === "string" ? bg.inspiredBy : ""),
+      voteNote: str(r.voteNote, NOTE_LIMITS.voteNote, typeof bg.voteNote === "string" ? bg.voteNote : ""),
+      howTo: str(r.howTo, NOTE_LIMITS.howTo, typeof bg.howTo === "string" ? bg.howTo : "")
     };
   }
   return out;

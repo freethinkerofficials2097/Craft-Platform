@@ -17,6 +17,9 @@
 // REST (JSON):   GET  /api/autopilot                 config + state + catalog
 //                GET  /api/autopilot/stream          state pushed live (Server-Sent Events)
 //                PUT  /api/autopilot/config          save settings (sanitised)
+//                POST /api/autopilot/save            {config, apply}  save to disk (+ re-apply to the game on screen) and tell whether it reached the disk
+//                GET  /api/autopilot/export          download the whole setup (settings + named setups) as autopilot-setup.json
+//                POST /api/autopilot/import          restore a setup file / a browser backup
 //                POST /api/autopilot/{start,stop,pause,resume,skip,vote-now,extend,force,restart-game,preview-vote,test-vote,reset-memory}
 //                GET|POST|DELETE /api/autopilot/profiles...   named setups
 //                POST /api/autopilot/report          (the stage page: round progress)
@@ -25,10 +28,13 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { GAMES, GAME_IDS, gameById, DEFAULT_CONFIG, PRESET_FIELDS, PRESET_KEYS, REGION_CHOICES, sanitizeConfig, enabledGames } from "./autopilot-config.js";
+import { GAMES, GAME_IDS, gameById, DEFAULT_CONFIG, PRESET_FIELDS, PRESET_KEYS, REGION_CHOICES, NOTE_LIMITS, sanitizeConfig, enabledGames } from "./autopilot-config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = process.env.AUTOPILOT_FILE || path.join(__dirname, "..", "..", "data", "autopilot.json");
+// update 112: a setup file that is shipped INSIDE the deployed folder (data/autopilot-setup.json). It is used when the server has no saved setup of its own
+// (a fresh disk after a redeploy), so a setup you prepared once is never lost.
+const SEED_FILE = process.env.AUTOPILOT_SETUP_FILE || path.join(__dirname, "..", "..", "data", "autopilot-setup.json");
 const TICK_MS = 500;
 const STAGE_STALE_MS = 15000;
 const MAX_MEMORY = 60000; // viewers remembered per live (gifters / followers / sharers)
@@ -102,6 +108,8 @@ class AutopilotEngine {
     this._lastBroadcast = 0;
     this._pendingBroadcast = null;
     this._disconnectedSince = 0;
+    // where the saved setup came from / whether it really reaches the disk (shown in the panel: Setups -> "Where is my setup stored?")
+    this.meta = { source: "defaults", sourceLabel: "factory defaults (nothing saved yet)", savedAt: 0, file: "", seedFile: "", writable: true, error: "" };
   }
 
   _fresh() {
@@ -126,6 +134,8 @@ class AutopilotEngine {
     this._inited = true;
     this.hub = opts.hub || null;
     this.file = opts.file || DATA_FILE;
+    this.seedFile = opts.seedFile || SEED_FILE;
+    this.meta.file = this.file; this.meta.seedFile = this.seedFile;
     this.editKey = String(process.env.HOME_EDIT_KEY || "");
     this._load();
     if (this.hub && typeof this.hub.subscribe === "function") this.hub.subscribe((ev, args) => this._onTikTok(ev, args));
@@ -155,6 +165,12 @@ class AutopilotEngine {
       req.on("close", () => this.sse.delete(res));
     });
     app.put("/api/autopilot/config", guard, json, act((b) => { this.setConfig(b); }));
+    app.post("/api/autopilot/save", guard, express.json({ limit: "1mb" }), act((b) => this.saveFromPanel(b)));
+    app.get("/api/autopilot/export", (req, res) => {
+      res.set({ "Content-Type": "application/json; charset=utf-8", "Content-Disposition": "attachment; filename=\"autopilot-setup.json\"", "Cache-Control": "no-store" });
+      res.json(this.exportSetup());
+    });
+    app.post("/api/autopilot/import", guard, express.json({ limit: "2mb" }), act((b) => this.importSetup(b.data, b)));
     app.post("/api/autopilot/start", guard, json, act((b) => this.start(b)));
     app.post("/api/autopilot/stop", guard, json, act(() => this.stop("Stopped by the host")));
     app.post("/api/autopilot/pause", guard, json, act(() => this.pause(false)));
@@ -176,32 +192,67 @@ class AutopilotEngine {
   }
 
   // ------------------------------------------------------------------ persistence
-  _load() {
-    try {
-      const raw = JSON.parse(fs.readFileSync(this.file, "utf8"));
-      if (raw && raw.config) this.config = sanitizeConfig(raw.config);
-      if (raw && raw.profiles && typeof raw.profiles === "object") for (const [k, v] of Object.entries(raw.profiles)) this.profiles[String(k).slice(0, 60)] = sanitizeConfig(v);
-      const r = raw && raw.runtime;
-      if (r && r.running && this.config.run.resumeAfterRestart) {
-        this.rt = { ...this._fresh(), ...r, vote: null, stage: { seenAt: 0, status: "", roundNumber: 0, game: "", applied: 0 }, paused: false, pausedAt: 0, autoPaused: false };
-        if (this.rt.phase === "voting" || this.rt.phase === "result" || this.rt.phase === "summary" || this.rt.phase === "wrapup") { this.rt.phase = "playing"; if (this.rt.current) this.rt.current.sessionEndsAt = Math.min(this.rt.current.sessionEndsAt, now() + 5000); }
-        this.rt.loadSeq = (this.rt.loadSeq || 0) + 1; this.rt.applySeq = (this.rt.applySeq || 0) + 1;
-        if (this.rt.current) { this.rt.current.loadSeq = this.rt.loadSeq; this.rt.current.applySeq = this.rt.applySeq; }
-        this._log("warn", "The server restarted - the autopilot carried on by itself.");
-      }
-    } catch (e) { /* first run */ }
+  // Load order (update 112): the server's own saved file -> its backup copy -> the setup file shipped inside the deployed folder -> factory defaults.
+  _readJson(file) { try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch (e) { return null; } }
+  _adopt(raw, source, label, withRuntime) {
+    if (!raw || typeof raw !== "object") return false;
+    const cfg = raw.config && typeof raw.config === "object" ? raw.config : raw.run || raw.vote || raw.games ? raw : null; // a full file, or a bare config
+    if (!cfg) return false;
+    this.config = sanitizeConfig(cfg);
+    if (raw.profiles && typeof raw.profiles === "object") for (const [k, v] of Object.entries(raw.profiles)) this.profiles[String(k).slice(0, 60)] = sanitizeConfig(v);
+    this.meta.source = source; this.meta.sourceLabel = label;
+    this.meta.savedAt = Number(raw.savedAt) || (() => { try { return fs.statSync(source === "saved" ? this.file : source === "backup" ? this.file + ".bak" : this.seedFile).mtimeMs; } catch (e) { return 0; } })();
+    const r = withRuntime && raw.runtime;
+    if (r && r.running && this.config.run.resumeAfterRestart) {
+      this.rt = { ...this._fresh(), ...r, vote: null, stage: { seenAt: 0, status: "", roundNumber: 0, game: "", applied: 0 }, paused: false, pausedAt: 0, autoPaused: false };
+      if (this.rt.phase === "voting" || this.rt.phase === "result" || this.rt.phase === "summary" || this.rt.phase === "wrapup") { this.rt.phase = "playing"; if (this.rt.current) this.rt.current.sessionEndsAt = Math.min(this.rt.current.sessionEndsAt, now() + 5000); }
+      this.rt.loadSeq = (this.rt.loadSeq || 0) + 1; this.rt.applySeq = (this.rt.applySeq || 0) + 1;
+      if (this.rt.current) { this.rt.current.loadSeq = this.rt.loadSeq; this.rt.current.applySeq = this.rt.applySeq; }
+      this._log("warn", "The server restarted - the autopilot carried on by itself.");
+    }
+    return true;
   }
+  _load() {
+    if (this._adopt(this._readJson(this.file), "saved", "your saved setup on this server", true)) return;
+    if (this._adopt(this._readJson(this.file + ".bak"), "backup", "the backup copy of your saved setup (the main file was missing or damaged)", true)) { this._log("warn", "The main setup file could not be read - the backup copy was used."); return; }
+    if (this._adopt(this._readJson(this.seedFile), "shipped", "the setup file shipped with this deployment (data/autopilot-setup.json)", false)) { this._log("info", "No saved setup on this server yet - the setup file shipped with the deployment was loaded."); return; }
+    /* first run: factory defaults */
+  }
+  _payload() {
+    const r = this.rt;
+    const runtime = { running: r.running, phase: r.phase, phaseStartedAt: r.phaseStartedAt, phaseEndsAt: r.phaseEndsAt, runStartedAt: r.runStartedAt, runEndsAt: r.runEndsAt, gamesPlayed: r.gamesPlayed, seqIndex: r.seqIndex, current: r.current, next: r.next, history: r.history.slice(-30), loadSeq: r.loadSeq, applySeq: r.applySeq };
+    return { format: "afk-autopilot-setup", version: 2, savedAt: this.meta.savedAt || now(), config: this.config, profiles: this.profiles, runtime };
+  }
+  // write right now, safely: temp file -> keep the previous file as .bak -> rename. Returns true when it really reached the disk.
+  _writeNow() {
+    try {
+      fs.mkdirSync(path.dirname(this.file), { recursive: true });
+      const tmp = this.file + ".tmp";
+      fs.writeFileSync(tmp, JSON.stringify(this._payload(), null, 1));
+      try { if (fs.existsSync(this.file)) fs.copyFileSync(this.file, this.file + ".bak"); } catch (e) { /* no backup this time */ }
+      fs.renameSync(tmp, this.file);
+      this.meta.writable = true; this.meta.error = "";
+      return true;
+    } catch (e) {
+      this.meta.writable = false; this.meta.error = String((e && e.message) || e).slice(0, 160);
+      return false;
+    }
+  }
+  // debounced: used for the running state (phase changes happen all the time)
   _save() {
     clearTimeout(this._saveTimer);
-    this._saveTimer = setTimeout(() => {
-      try {
-        fs.mkdirSync(path.dirname(this.file), { recursive: true });
-        const r = this.rt;
-        const runtime = { running: r.running, phase: r.phase, phaseStartedAt: r.phaseStartedAt, phaseEndsAt: r.phaseEndsAt, runStartedAt: r.runStartedAt, runEndsAt: r.runEndsAt, gamesPlayed: r.gamesPlayed, seqIndex: r.seqIndex, current: r.current, next: r.next, history: r.history.slice(-30), loadSeq: r.loadSeq, applySeq: r.applySeq };
-        fs.writeFileSync(this.file, JSON.stringify({ config: this.config, profiles: this.profiles, runtime }, null, 1));
-      } catch (e) { /* read-only disk: the autopilot still works, it just cannot remember */ }
-    }, 800);
+    this._saveTimer = setTimeout(() => { this._writeNow(); }, 800);
     if (this._saveTimer.unref) this._saveTimer.unref();
+  }
+  // immediate: used when the HOST saves settings - the panel must be able to say truthfully "saved to disk"
+  _saveNow() {
+    clearTimeout(this._saveTimer);
+    const before = this.meta.savedAt;
+    this.meta.savedAt = now(); // (the payload written to disk carries this time)
+    const ok = this._writeNow();
+    if (ok) { this.meta.source = "saved"; this.meta.sourceLabel = "your saved setup on this server"; }
+    else this.meta.savedAt = before; // nothing reached the disk: do not claim a save time
+    return ok;
   }
   _log(level, text) {
     this.log.push({ t: now(), level, text: String(text).slice(0, 240) });
@@ -214,8 +265,38 @@ class AutopilotEngine {
     const merged = sanitizeConfig({ ...this.config, ...(patch || {}), games: { ...this.config.games, ...((patch && patch.games) || {}) } }, this.config);
     this.config = merged;
     // running right now? a changed session length etc. applies from the NEXT game; the current game keeps its own deadline
-    this._save();
-    this._log("info", "Settings saved" + (this.rt.running ? " (they apply from the next game / vote)." : "."));
+    const ok = this._saveNow();
+    this._log(ok ? "info" : "warn", ok ? "Settings saved" + (this.rt.running ? " (they apply from the next game / vote)." : ".") : "Settings changed, but the server could NOT write them to disk (" + this.meta.error + ") - they are lost at the next restart.");
+    return ok;
+  }
+  // the panel's Save / "Save & apply now" buttons. apply = also push the settings to the game that is on screen right now (fresh round).
+  saveFromPanel(b = {}) {
+    const ok = this.setConfig(b.config || {});
+    let applied = false;
+    if (b.apply && this.rt.running && this.rt.current && (this.rt.phase === "playing" || this.rt.phase === "wrapup")) {
+      this.rt.applySeq += 1; this.rt.current.applySeq = this.rt.applySeq; // the stage page sees the new number and sends the (new) settings to the game
+      applied = true;
+      this._log("info", "Settings re-applied to the game on screen (a fresh round starts).");
+      this._broadcast(true);
+    }
+    return { config: this.config, meta: { ...this.meta }, written: ok, applied };
+  }
+  exportSetup() {
+    return { format: "afk-autopilot-setup", version: 2, exportedAt: now(), name: this.config.name, config: this.config, profiles: this.profiles };
+  }
+  // restores a setup file (the export above), a bare config, or a browser backup. Named setups in the file are added / replaced, others are kept.
+  importSetup(data, b = {}) {
+    let d = data;
+    if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { throw new Error("That is not a valid setup file."); } }
+    if (!d || typeof d !== "object") throw new Error("That is not a valid setup file.");
+    const cfg = d.config && typeof d.config === "object" ? d.config : d.run || d.vote || d.games ? d : null;
+    if (!cfg) throw new Error("That file does not contain an autopilot setup.");
+    this.config = sanitizeConfig(cfg);
+    let n = 0;
+    if (d.profiles && typeof d.profiles === "object") for (const [k, v] of Object.entries(d.profiles)) { this.profiles[String(k).slice(0, 60)] = sanitizeConfig(v); n++; }
+    const ok = this._saveNow();
+    this._log("info", "Setup restored from a file" + (n ? " (" + n + " named setup" + (n === 1 ? "" : "s") + ")" : "") + (ok ? "." : ", but it could not be written to disk."));
+    return { config: this.config, meta: { ...this.meta }, written: ok, profiles: Object.keys(this.profiles) };
   }
   saveProfile(name) {
     const n = String(name || "").trim().slice(0, 60);
@@ -223,7 +304,7 @@ class AutopilotEngine {
     this.profiles[n] = clone(this.config);
     this.profiles[n].name = n;
     this.config.name = n;
-    this._save();
+    this._saveNow();
     this._log("info", "Setup saved as “" + n + "”.");
   }
   loadProfile(name) {
@@ -231,13 +312,13 @@ class AutopilotEngine {
     if (!p) throw new Error("No setup with that name.");
     this.config = sanitizeConfig(p);
     this.config.name = name;
-    this._save();
+    this._saveNow();
     this._log("info", "Setup “" + name + "” loaded.");
   }
   deleteProfile(name) {
     if (!this.profiles[name]) throw new Error("No setup with that name.");
     delete this.profiles[name];
-    this._save();
+    this._saveNow();
   }
   _resetMemory() { this.memory.gifters.clear(); this.memory.followers.clear(); this.memory.sharers.clear(); }
 
@@ -719,7 +800,7 @@ class AutopilotEngine {
     if (r.vote) {
       const v = r.vote;
       this._tally(v);
-      vote = { options: v.options.map((o) => ({ n: o.n, id: o.id, name: o.name, emoji: o.emoji, count: c.vote.showCounts ? o.count : null })), endsAt: v.endsAt, startedAt: v.startedAt, total: c.vote.showCounts ? v.total : null, voters: v.voters, revotes: v.revotes, preview: v.preview, first: v.first, rejected: v.rejected || 0 };
+      vote = { options: v.options.map((o) => ({ n: o.n, id: o.id, name: o.name, emoji: o.emoji, count: c.vote.showCounts ? o.count : null, ...this._notesFor(o.id) })), endsAt: v.endsAt, startedAt: v.startedAt, total: c.vote.showCounts ? v.total : null, voters: v.voters, revotes: v.revotes, preview: v.preview, first: v.first, rejected: v.rejected || 0 };
     }
     const h = this._hubState();
     const e = c.eligibility;
@@ -729,9 +810,9 @@ class AutopilotEngine {
       serverNow: now(),
       running: r.running, paused: r.paused, autoPaused: r.autoPaused, preview: r.preview, phase: r.phase, phaseStartedAt: r.phaseStartedAt, phaseEndsAt: r.phaseEndsAt,
       runStartedAt: r.runStartedAt, runEndsAt: r.runEndsAt, gamesPlayed: r.gamesPlayed, stopReason: r.stopReason,
-      current: cur && g ? { id: g.id, name: g.name, emoji: g.emoji, path: g.path, family: g.family, howTo: g.howTo, startedAt: cur.startedAt, sessionEndsAt: cur.sessionEndsAt, minutes: cur.minutes, roundsLimit: cur.roundsLimit, roundsDone: cur.roundsDone, loadSeq: cur.loadSeq, applySeq: cur.applySeq, via: cur.via, stopped: Boolean(cur.stopped), preset: this._presetFor(cur.id) } : null,
-      next: r.next && nextG ? { id: nextG.id, name: nextG.name, emoji: nextG.emoji, howTo: nextG.howTo, via: r.next.via } : null,
-      vote, result: r.result,
+      current: cur && g ? { id: g.id, name: g.name, emoji: g.emoji, path: g.path, family: g.family, ...this._notesFor(g.id), startedAt: cur.startedAt, sessionEndsAt: cur.sessionEndsAt, minutes: cur.minutes, roundsLimit: cur.roundsLimit, roundsDone: cur.roundsDone, loadSeq: cur.loadSeq, applySeq: cur.applySeq, via: cur.via, stopped: Boolean(cur.stopped), preset: this._presetFor(cur.id) } : null,
+      next: r.next && nextG ? { id: nextG.id, name: nextG.name, emoji: nextG.emoji, ...this._notesFor(nextG.id), via: r.next.via } : null,
+      vote, result: r.result ? { ...r.result, ...this._notesFor(r.result.winnerId) } : null,
       leaderboard: r.leaderboard,
       history: r.history.slice(-12).map((h2) => ({ ...h2, name: (gameById(h2.id) || {}).name || h2.id, emoji: (gameById(h2.id) || {}).emoji || "" })),
       stage: { seenAt: r.stage.seenAt, alive: now() - r.stage.seenAt < STAGE_STALE_MS, status: r.stage.status, roundNumber: r.stage.roundNumber, applied: r.stage.applied },
@@ -744,6 +825,11 @@ class AutopilotEngine {
       log: this.log.slice(-40)
     };
   }
+  // update 112: the host's notes for a game (other names, inspired by, vote note, how-to). Read live from the config, so a note edited during a vote shows at once.
+  _notesFor(id) {
+    const gc = this._cfgFor(id) || {}, g = gameById(id) || {};
+    return { aka: Array.isArray(gc.aka) ? gc.aka : [], inspiredBy: gc.inspiredBy || "", note: gc.voteNote || "", howTo: gc.howTo || g.howTo || "" };
+  }
   _presetFor(id) {
     const gc = this._cfgFor(id), g = gameById(id);
     if (!g || !g.family) return {};
@@ -754,11 +840,13 @@ class AutopilotEngine {
       config: this.config,
       state: this.publicState(),
       editKeyRequired: Boolean(this.editKey),
+      meta: { ...this.meta },
       profiles: Object.keys(this.profiles),
       catalog: {
         games: GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, family: g.family, keys: PRESET_KEYS[g.id] || [], howTo: g.howTo })),
         fields: PRESET_FIELDS,
-        regions: REGION_CHOICES
+        regions: REGION_CHOICES,
+        noteLimits: NOTE_LIMITS
       }
     };
   }
