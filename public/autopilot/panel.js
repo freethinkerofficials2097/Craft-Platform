@@ -30,7 +30,7 @@
      cfg      = the draft you are editing           savedStr = the last version the server confirmed it wrote to disk
      Every change only changes the draft (and keeps a copy of it in this browser). Nothing is lost until you leave without saving - and then the
      page warns you. Save = write to the server's disk (kept for every future launch). Save & apply now = save + give the settings to the game on screen. */
-  var savedStr = "", meta = {}, autoSave = lsGet("apAutoSave") === "1", draftTimer = null, ui = { open: {}, search: "", filter: "all", bulk: {}, notesFilter: "all", draft: null, backup: null, hideBackup: false };
+  var savedStr = "", meta = {}, autoSave = lsGet("apAutoSave") === "1", draftTimer = null, ui = { open: {}, search: "", filter: "all", bulk: {}, notesFilter: "all", draft: null, backup: null, hideBackup: false, report: null };
   // update 113: what each game is using right now (read from the server). live[gameId] = { settings: {...}, readOnly: bool }
   var live = {}, liveAt = 0, liveBusy = false;
   function fetchLive(rerender) {
@@ -693,15 +693,51 @@
     return c;
   }
 
+  /* ---------- RESTORE (update 114) ----------
+     One path for every kind of restore (file, browser backup). It first stops everything that could write the OLD draft back over the restored
+     setup (the pending draft copy and the "Save automatically" timer), then asks the server, then shows exactly what came back. */
+  function stopPendingWrites() { clearTimeout(draftTimer); clearTimeout(saveTimer); lsDel("apDraft"); ui.draft = null; barState = ""; }
+  function restoreData(data, opts) {
+    return call("POST", "/api/autopilot/import", { data: data, useSnapshot: opts.useSnapshot !== false, apply: Boolean(opts.apply) }).then(function (j) {
+      stopPendingWrites(); ui.report = j.report || null; ui.backup = null; flash("Setup restored ✓");
+      return load();
+    }).catch(function (e) { window.alert(e.message); });
+  }
+  function restoreFromText(text, label) {
+    var o; try { o = JSON.parse(String(text).replace(/^\uFEFF/, "")); } catch (e) { window.alert("That is not a valid setup file (it could not be read as JSON)."); return; }
+    var snap = Boolean(o && (o.gameSnapshot || (o.data && o.data.gameSnapshot)));
+    if (!window.confirm("Replace your current settings with the ones in “" + label + "”? (Your named setups are kept and the file's are added.)" + (dirty() ? "\n\nYou have changes that are not saved - they will be replaced." : ""))) return;
+    var useSnapshot = true, apply = false;
+    if (snap) useSnapshot = window.confirm("This file also remembers the settings the games were using when it was saved (difficulty, word length, pause, regions…).\n\nOK = fill those in too (only where the setup does not already set them)\nCancel = leave those games following their own settings");
+    if (S && S.running && S.current) apply = window.confirm("The autopilot is running. Also give the restored settings to the game on screen now? (A fresh round starts.)");
+    restoreData(text, { useSnapshot: useSnapshot, apply: apply });
+  }
+  function reportNotice(f) {
+    var r = ui.report; if (!r) return;
+    var b = el("div", "notice " + (r.warnings && r.warnings.length ? "warn" : "good"));
+    var head = !r.configInFile ? "✓ Restored the named setups from the file (your current settings were not changed): " + r.profiles + "."
+      : "✓ Restored: " + r.enabled + " of " + r.games + " games switched on · " + r.withSettings + " with their own game settings · " + r.withNotes + " with notes · " + r.withOwnTiming + " with own minutes / rounds · " + r.tips + " tips · " + r.allowList + " allowed and " + r.blockList + " blocked names" + (r.profiles ? " · " + r.profiles + " named setup" + (r.profiles === 1 ? "" : "s") : "") + ".";
+    b.appendChild(el("div", "", head));
+    if (r.configInFile) b.appendChild(el("div", "help", r.hadSnapshot ? (r.filledFromGames ? r.filledFromGames + " game value" + (r.filledFromGames === 1 ? "" : "s") + " were filled in from what the games used when the file was saved." : "The file's remembered game values were already covered by your setup.") : "This file (made by an older version) does not remember the games' own values - games without locked-in settings follow what they use now. Press ⬇ Lock in every game's current settings in the Games tab, then Save, to keep them."));
+    if (r.applied) b.appendChild(el("div", "help", "Given to the game on screen - a fresh round started."));
+    if (r.warnings && r.warnings.length) {
+      b.appendChild(el("div", "", "These values could not be kept exactly as they were in the file:"));
+      r.warnings.forEach(function (w) { b.appendChild(el("div", "help", "• " + w)); });
+    }
+    var bt = el("div", "btns tight"), k = el("button", "b sm", "OK"); k.onclick = function () { ui.report = null; render(); }; bt.appendChild(k); b.appendChild(bt);
+    f.appendChild(b);
+  }
+
   /* ---------- notices at the top of every tab ---------- */
   function notices() {
     var f = document.createDocumentFragment();
+    reportNotice(f);
     function box(cls, text, buttons) { var b = el("div", "notice " + cls); b.appendChild(el("div", "", text)); var bt = el("div", "btns tight"); buttons.forEach(function (x) { var k = el("button", "b sm " + (x[2] || ""), x[0]); k.onclick = x[1]; bt.appendChild(k); }); b.appendChild(bt); f.appendChild(b); }
     if (ui.draft) box("warn", "You have unsaved changes from " + when(ui.draft.t) + " that were never saved (the page was closed or reloaded). Bring them back?", [
       ["↩ Bring them back", function () { cfg = ui.draft.cfg; ui.draft = null; queueSave(); render(); }, "go"],
       ["Throw them away", function () { lsDel("apDraft"); ui.draft = null; render(); }]]);
     if (ui.backup) box("bad", "Nothing is saved on the server yet - this happens when the hosting wipes its disk after a redeploy. This browser still has a copy of your setup from " + when(ui.backup.t) + ".", [
-      ["♻ Restore my setup", function () { call("POST", "/api/autopilot/import", { data: ui.backup.data }).then(function () { ui.backup = null; flash("Setup restored ✓"); return load(); }).catch(function (e) { window.alert(e.message); }); }, "go"],
+      ["♻ Restore my setup", function () { restoreData(ui.backup.data, {}); }, "go"],
       ["Ignore", function () { ui.backup = null; ui.hideBackup = true; render(); }]]);
     if (meta && meta.writable === false) box("bad", "The server cannot write to its disk (" + (meta.error || "read-only") + "). Your settings work now but will be lost at the next restart. See Setups → “Where is my setup stored?”.", []);
     if (meta && meta.source === "shipped" && !dirty()) box("good", "Loaded from the setup file shipped with this deployment. Press Save to keep it on the server too.", []);
@@ -735,15 +771,14 @@
     ].forEach(function (t) { ul.appendChild(el("p", "help", "• " + t)); });
     tip.appendChild(ul); w.appendChild(tip); d.appendChild(w);
 
-    var bk = card("🧰 Backup file", "A single file with all your settings, notes and named setups. Keep it somewhere safe, or move your setup to another server.");
+    var bk = card("🧰 Backup file", "A single file with all your settings, notes, named setups AND the settings the games are using right now (difficulty, word length, pause, regions…). Restoring it brings everything back and tells you exactly what was restored. Keep it somewhere safe, or move your setup to another server.");
     var bb = el("div", "btns");
-    var dl = el("button", "b go", "⬇ Download my setup file"); dl.onclick = function () { fetch("/api/autopilot/export", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { download("autopilot-setup.json", JSON.stringify(j, null, 1)); }).catch(function (e) { window.alert(e.message); }); }; bb.appendChild(dl);
+    var dl = el("button", "b go", "⬇ Download my setup file"); dl.onclick = function () { fetch("/api/autopilot/export", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { download("autopilot-setup-" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(j, null, 1)); }).catch(function (e) { window.alert(e.message); }); }; bb.appendChild(dl);
     var up = el("button", "b", "⬆ Restore from a file…"); var fi = el("input"); fi.type = "file"; fi.accept = ".json,application/json"; fi.style.display = "none";
     fi.onchange = function () {
       var f = fi.files && fi.files[0]; if (!f) return;
       var rd = new FileReader(); rd.onload = function () {
-        if (!window.confirm("Replace your current settings with the ones in “" + f.name + "”? (Your named setups are kept and the file's are added.)")) return;
-        call("POST", "/api/autopilot/import", { data: String(rd.result) }).then(function () { lsDel("apDraft"); flash("Restored ✓"); return load(); }).catch(function (e) { window.alert(e.message); });
+        restoreFromText(String(rd.result), f.name);
       }; rd.readAsText(f); fi.value = "";
     };
     up.onclick = function () { fi.click(); }; bb.appendChild(up); bb.appendChild(fi);

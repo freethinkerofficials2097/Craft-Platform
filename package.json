@@ -1,6 +1,6 @@
 {
   "name": "tiktok-live-game-platform",
-  "version": "2.62.0",
+  "version": "2.63.0",
   "private": true,
   "type": "module",
   "description": "A TikTok LIVE game platform hosting twenty-seven independent games (Flagle Live, TRAVLE Live, Blindle, Findle Live, CROSSDLE Live, TWISTLE Live, Oracle, Colorblindle, Colordle, Structle, Textle, Rangedle, Codedle, Shapedle, Forbackle, Shiftle, Wordle, Betweendle, Comparable, Minedle, Linedle, Citydle, Towndle, Expandle, Fixle, Contexto, Numberblindle) behind one game-selector screen, each reading real audience chat as guesses. Word games can be played in English, Bahasa Indonesia, Bahasa Melayu (Malaysia) or any mix.",

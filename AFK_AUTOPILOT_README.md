@@ -60,3 +60,8 @@ Open **🎮 Games**. For every game, **⚙ Game settings** now shows what that g
 - Per game: **📌 Lock in the game's settings**, **↺ Follow the game again**, **📋 Copy settings from…**.
 - Twistle, Findle, Crossdle and Contexto keep their own settings inside the game: they are shown here **to check only** (change them in the game). Flagle and Travle keep theirs in the browser you used, so the server cannot read them.
 - Why "lock in"? A game forgets its settings when the server restarts. A locked-in setting is stored in your autopilot setup (`data/autopilot.json` / the setup file) and sent to the game every time it starts.
+
+## Update 114 - restoring a setup file
+Setups -> ⬇ Download my setup file now includes the settings every game is using at that moment. ⬆ Restore from a file… brings back settings, notes, named setups
+and those game values, then shows a report of what was restored and anything that could not be kept exactly. Old files (made before update 114) still restore;
+they just have no remembered game values.
