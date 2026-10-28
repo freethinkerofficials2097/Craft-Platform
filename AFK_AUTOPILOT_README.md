@@ -1,4 +1,4 @@
-# AFK Autopilot (update 109 - notes, save & apply in update 112)
+# AFK Autopilot (update 109 - notes, save & apply in update 112 - game settings shown in update 113)
 
 Let the live run by itself. Prepare everything ahead of time, press **Start**, walk away. Stop or take over at any moment.
 
@@ -51,3 +51,12 @@ Changes are a **draft** until you press **💾 Save** (bottom bar, or Ctrl+S). T
 2. **Persistent disk** (Render: add a Disk, mount `/var/data`, environment variable `AUTOPILOT_FILE=/var/data/autopilot.json`).
 3. **This browser keeps a copy** of your setup. If the server starts empty, the panel offers "♻ Restore my setup" in one click.
 Loading order at startup: the saved file → its `.bak` backup → `data/autopilot-setup.json` → factory defaults. The Setups tab shows which one was used.
+
+## Game settings now follow - and show - each game's own settings (update 113)
+Open **🎮 Games**. For every game, **⚙ Game settings** now shows what that game is using right now (difficulty, fixed / random word length, number of letters, pause between rounds, regions, Expandle lengths and round time, starter word, repeating digits), read straight from the running game:
+- The **chips** under each game's name show the settings the game will use. A **coloured chip** = set in the autopilot (it overrides the game). A **plain chip** = followed from the game.
+- Inside **⚙ Game settings**: the option the game uses now has a **dashed outline**, number boxes show **"game: 6"**, the regions the game uses are ticked. Click or type something to change it; click **(game's own)** to follow the game again.
+- **🔗 Follow the games' own settings** (top of the Games tab): **⬇ Lock in every game's current settings** copies what every game uses now into the autopilot in one click (then press **💾 Save**). **🔄 Refresh** reads the games again (also done automatically when you come back to this tab).
+- Per game: **📌 Lock in the game's settings**, **↺ Follow the game again**, **📋 Copy settings from…**.
+- Twistle, Findle, Crossdle and Contexto keep their own settings inside the game: they are shown here **to check only** (change them in the game). Flagle and Travle keep theirs in the browser you used, so the server cannot read them.
+- Why "lock in"? A game forgets its settings when the server restarts. A locked-in setting is stored in your autopilot setup (`data/autopilot.json` / the setup file) and sent to the game every time it starts.

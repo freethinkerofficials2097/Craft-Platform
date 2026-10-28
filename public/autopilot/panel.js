@@ -31,6 +31,17 @@
      Every change only changes the draft (and keeps a copy of it in this browser). Nothing is lost until you leave without saving - and then the
      page warns you. Save = write to the server's disk (kept for every future launch). Save & apply now = save + give the settings to the game on screen. */
   var savedStr = "", meta = {}, autoSave = lsGet("apAutoSave") === "1", draftTimer = null, ui = { open: {}, search: "", filter: "all", bulk: {}, notesFilter: "all", draft: null, backup: null, hideBackup: false };
+  // update 113: what each game is using right now (read from the server). live[gameId] = { settings: {...}, readOnly: bool }
+  var live = {}, liveAt = 0, liveBusy = false;
+  function fetchLive(rerender) {
+    if (liveBusy) return; liveBusy = true;
+    fetch("/api/autopilot/game-settings", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+      liveBusy = false; var before = stable(live); live = (j && j.games) || {}; liveAt = Date.now();
+      var a = document.activeElement, typing = a && /INPUT|SELECT|TEXTAREA/.test(a.tagName);
+      if (rerender && tab === "games" && (before !== stable(live) || rerender === "force") && !typing) render();
+    }).catch(function () { liveBusy = false; });
+  }
+  window.addEventListener("focus", function () { if (tab === "games") fetchLive(true); }); // came back from changing a game's settings in another tab
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
@@ -273,81 +284,130 @@
   function fieldInfo(k) { return catalog.fields[k] || {}; }
   function optLabel(k, v) { var f = fieldInfo(k), o = (f.options || []).filter(function (x) { return String(x[0]) === String(v); })[0]; return o ? o[1] : String(v); }
   function unitOf(g) { return g.id === "numberblindle" ? "digits" : "letters"; }
-  function summaryOf(g) { // short chips that tell, at a glance, what this game will use
-    if (!g.family) return ["its own saved settings"];
-    var st = get("games." + g.id + ".settings") || {}, out = [];
-    if (st.difficulty) out.push(optLabel("difficulty", st.difficulty).replace(/ \(.*\)/, ""));
-    if (st.lengthMode === "random") out.push((st.lengthMin || "?") + "–" + (st.lengthMax || "?") + " " + unitOf(g));
-    else if (st.wordLength) out.push(st.wordLength + " " + unitOf(g));
-    else if (st.lengthMode === "fixed") out.push("fixed length");
-    if (st.regions && st.regions.length) out.push(st.regions.length + " region" + (st.regions.length === 1 ? "" : "s"));
-    if (st.startLength !== undefined) out.push("start " + (st.startLength || "3–5"));
-    if (st.maxLength !== undefined) out.push("max " + (st.maxLength || "auto"));
-    if (st.roundSeconds) out.push(st.roundSeconds + " s round");
-    if (st.starterWord !== undefined) out.push(st.starterWord ? "starter word" : "no starter word");
-    if (st.allowRepeats !== undefined) out.push(st.allowRepeats ? "digits repeat" : "no repeats");
-    if (st.autoContinueDelaySeconds) out.push("pause " + st.autoContinueDelaySeconds + " s");
-    return out.length ? out : ["game's own settings"];
+  function liveOf(g) { var r = live[g.id]; return r && r.settings ? r.settings : {}; }
+  function isRO(g) { var r = live[g.id]; return Boolean(r && r.readOnly); }
+  function merged(g) { var m = {}, l = liveOf(g), st = get("games." + g.id + ".settings") || {}; Object.keys(l).forEach(function (k) { m[k] = l[k]; }); Object.keys(st).forEach(function (k) { m[k] = st[k]; }); return m; }
+  function nice(k) { return k.replace(/([A-Z])/g, " $1").replace(/Seconds?/, "(s)").toLowerCase(); }
+  function valText(k, v) { if (typeof v === "boolean") return v ? "on" : "off"; if (Array.isArray(v)) return v.join(", "); return catalog.fields[k] && catalog.fields[k].options ? optLabel(k, v).replace(/ \(.*\)/, "") : String(v); }
+  // short chips that tell, at a glance, what this game will use: { t: text, ov: true when the autopilot overrides the game's own value }
+  function summaryOf(g) {
+    if (!g.family) {
+      var l0 = liveOf(g), ks = Object.keys(l0);
+      if (!(isRO(g) && ks.length)) return [{ t: "its own saved settings", ov: false }];
+      if (!(l0.difficulty && l0.lengthMode) || l0.wordLength === undefined) return ks.map(function (k) { return { t: nice(k) + ": " + valText(k, l0[k]), ov: false }; });
+      // Twistle: same kind of settings as the shared-protocol games, shown the same way (read-only)
+      var ro = []; ro.push({ t: optLabel("difficulty", l0.difficulty).replace(/ \(.*\)/, ""), ov: false });
+      ro.push({ t: l0.lengthMode === "random" ? (l0.lengthMin || "?") + "–" + (l0.lengthMax || "?") + " letters" : l0.wordLength + " letters", ov: false });
+      if (l0.autoContinueDelaySeconds) ro.push({ t: "pause " + l0.autoContinueDelaySeconds + " s", ov: false });
+      return ro;
+    }
+    var st = get("games." + g.id + ".settings") || {}, m = merged(g), out = [];
+    function add(t, keys) { out.push({ t: t, ov: keys.some(function (k) { return st[k] !== undefined; }) }); }
+    if (m.difficulty) add(optLabel("difficulty", m.difficulty).replace(/ \(.*\)/, ""), ["difficulty"]);
+    if (m.lengthMode === "random") add((m.lengthMin || "?") + "–" + (m.lengthMax || "?") + " " + unitOf(g), ["lengthMode", "lengthMin", "lengthMax"]);
+    else if (m.wordLength) add(m.wordLength + " " + unitOf(g), ["lengthMode", "wordLength"]);
+    else if (m.lengthMode === "fixed") add("fixed length", ["lengthMode"]);
+    if (m.regions && m.regions.length) add(m.regions.length + " region" + (m.regions.length === 1 ? "" : "s"), ["regions"]);
+    if (m.startLength !== undefined) add("start " + (m.startLength || "3–5"), ["startLength"]);
+    if (m.maxLength !== undefined) add("max " + (m.maxLength || "auto"), ["maxLength"]);
+    if (m.roundSeconds) add(m.roundSeconds + " s round", ["roundSeconds"]);
+    if (m.starterWord !== undefined) add(m.starterWord ? "starter word" : "no starter word", ["starterWord"]);
+    if (m.allowRepeats !== undefined) add(m.allowRepeats ? "digits repeat" : "no repeats", ["allowRepeats"]);
+    if (m.autoContinueDelaySeconds) add("pause " + m.autoContinueDelaySeconds + " s", ["autoContinueDelaySeconds"]);
+    return out.length ? out : [{ t: "game's own settings", ov: false }];
   }
   function setPreset(path, k, v) { var o = get(path); if (!o || typeof o !== "object") { set(path, {}); o = get(path); } if (v === undefined) delete o[k]; else o[k] = v; queueSave(); }
 
-  // a row of buttons: (keep) | option | option ...  - click the active one again to go back to "keep"
-  function segmented(options, cur, onPick, keepLabel) {
-    var box = el("div", "seg");
+  // a row of buttons: (keep) | option | option ...  - click the active one again to go back to "keep".
+  // inhVal = what the GAME itself uses now: that option gets a dashed outline while nothing is overridden here
+  function segmented(options, cur, onPick, keepLabel, inhVal) {
+    var box = el("div", "seg"), unset = (cur === undefined || cur === null || cur === "");
     [["", keepLabel || "(keep)"]].concat(options).forEach(function (o) {
-      var on = (cur === undefined || cur === null || cur === "") ? o[0] === "" : String(cur) === String(o[0]);
-      var b = el("button", on ? "on" : "", o[1]); b.type = "button";
+      var on = unset ? o[0] === "" : String(cur) === String(o[0]);
+      var isInh = unset && o[0] !== "" && inhVal !== undefined && inhVal !== null && String(inhVal) === String(o[0]);
+      var b = el("button", on ? "on" : isInh ? "inh" : "", o[1]); b.type = "button";
+      if (isInh) b.title = "This is what the game uses now";
       b.onclick = function () { onPick(o[0] === "" || (on && o[0] !== "") ? undefined : o[0]); };
       box.appendChild(b);
     });
     return box;
   }
-  function numBox(cur, f, onSet, ph) {
-    var i = el("input"); i.type = "number"; i.min = f.min; i.max = f.max; i.placeholder = ph || "(keep)"; i.value = cur === undefined || cur === null ? "" : cur;
+  function numBox(cur, f, onSet, ph, inhVal) {
+    var i = el("input"); i.type = "number"; i.min = f.min; i.max = f.max;
+    i.placeholder = inhVal !== undefined && inhVal !== null ? "game: " + inhVal : (ph || "(keep)");
+    i.value = cur === undefined || cur === null ? "" : cur;
     i.oninput = function () { onSet(i.value === "" ? undefined : Math.min(f.max, Math.max(f.min, Number(i.value)))); };
     return i;
   }
 
-  // the editor for ONE set of settings. `read()` gives the current values, `write(k, v)` stores one value (v === undefined = keep), `keys` = the fields this game has
-  function settingsForm(g, read, write, rebuild) {
+  // the editor for ONE set of settings. `read()` gives the values set in the autopilot, `write(k, v)` stores one value (v === undefined = follow the game),
+  // `keys` = the fields this game has, `inh` = what the game itself uses right now (update 113: shown pre-filled so you can check it and change it)
+  function settingsForm(g, read, write, rebuild, inh) {
+    inh = inh || {};
     var gr = el("div", "sform"), st = read(), keys = g.keys, has = function (k) { return keys.indexOf(k) >= 0; };
+    var KEEP = Object.keys(inh).length ? "(game's own)" : "(keep)";
+    function eff(k) { return st[k] !== undefined ? st[k] : inh[k]; }
+    function now(k) { return inh[k] !== undefined ? " In the game now: " + valText(k, inh[k]) + "." : ""; }
     function row(label, node, help) { var r = el("div", "srow"); r.appendChild(el("label", "", label)); r.appendChild(node); if (help) r.appendChild(el("small", "", help)); gr.appendChild(r); }
-    if (has("difficulty")) row("Difficulty", segmented(fieldInfo("difficulty").options.map(function (o) { return [o[0], o[1].replace(/ \(.*\)/, "")]; }), st.difficulty, function (v) { write("difficulty", v); rebuild(); }));
+    if (has("difficulty")) row("Difficulty", segmented(fieldInfo("difficulty").options.map(function (o) { return [o[0], o[1].replace(/ \(.*\)/, "")]; }), st.difficulty, function (v) { write("difficulty", v); rebuild(); }, KEEP, inh.difficulty), now("difficulty").trim());
     if (has("lengthMode")) {
-      row("Word length", segmented(fieldInfo("lengthMode").options.map(function (o) { return [o[0], o[0] === "fixed" ? "Always the same" : "Random in a range"]; }), st.lengthMode, function (v) { write("lengthMode", v); rebuild(); }), "Fixed = every round has the same number of " + unitOf(g) + ". Range = a different length each round.");
-      var showFixed = st.lengthMode !== "random", showRange = st.lengthMode !== "fixed";
-      if (has("wordLength") && showFixed) row("Number of " + unitOf(g), numBox(st.wordLength, fieldInfo("wordLength"), function (v) { write("wordLength", v); }), "The game uses the lengths it has " + (g.id === "numberblindle" ? "codes" : "words") + " for.");
-      if (has("lengthMin") && showRange) { var rr = el("div", "two"); rr.appendChild(numBox(st.lengthMin, fieldInfo("lengthMin"), function (v) { write("lengthMin", v); }, "shortest")); rr.appendChild(el("span", "", "to")); rr.appendChild(numBox(st.lengthMax, fieldInfo("lengthMax"), function (v) { write("lengthMax", v); }, "longest")); row("Length range", rr); }
+      row("Word length", segmented(fieldInfo("lengthMode").options.map(function (o) { return [o[0], o[0] === "fixed" ? "Always the same" : "Random in a range"]; }), st.lengthMode, function (v) { write("lengthMode", v); rebuild(); }, KEEP, inh.lengthMode), "Fixed = every round has the same number of " + unitOf(g) + ". Range = a different length each round." + now("lengthMode"));
+      var showFixed = eff("lengthMode") !== "random", showRange = eff("lengthMode") !== "fixed";
+      if (has("wordLength") && showFixed) row("Number of " + unitOf(g), numBox(st.wordLength, fieldInfo("wordLength"), function (v) { write("wordLength", v); }, null, inh.wordLength), "The game uses the lengths it has " + (g.id === "numberblindle" ? "codes" : "words") + " for.");
+      if (has("lengthMin") && showRange) { var rr = el("div", "two"); rr.appendChild(numBox(st.lengthMin, fieldInfo("lengthMin"), function (v) { write("lengthMin", v); }, "shortest", inh.lengthMin)); rr.appendChild(el("span", "", "to")); rr.appendChild(numBox(st.lengthMax, fieldInfo("lengthMax"), function (v) { write("lengthMax", v); }, "longest", inh.lengthMax)); row("Length range", rr); }
     }
-    if (has("startLength")) row("Starting length", segmented(fieldInfo("startLength").options.map(function (o) { return [o[0], o[1]]; }), st.startLength === undefined ? undefined : String(st.startLength), function (v) { write("startLength", v === undefined ? undefined : Number(v)); rebuild(); }));
-    if (has("maxLength")) row("Longest word", numBox(st.maxLength, fieldInfo("maxLength"), function (v) { write("maxLength", v); }, "(keep)"), "0 = automatic.");
-    if (has("roundSeconds")) row("Round time", numBox(st.roundSeconds, fieldInfo("roundSeconds"), function (v) { write("roundSeconds", v); }), "seconds");
-    if (has("starterWord")) row("Starter word", segmented([["true", "On"], ["false", "Off"]], st.starterWord === undefined ? undefined : String(st.starterWord), function (v) { write("starterWord", v === undefined ? undefined : v === "true"); rebuild(); }), "Opens every round with one free word.");
-    if (has("allowRepeats")) row("Digits may repeat", segmented([["true", "Yes"], ["false", "No"]], st.allowRepeats === undefined ? undefined : String(st.allowRepeats), function (v) { write("allowRepeats", v === undefined ? undefined : v === "true"); rebuild(); }));
+    if (has("startLength")) row("Starting length", segmented(fieldInfo("startLength").options.map(function (o) { return [o[0], o[1]]; }), st.startLength === undefined ? undefined : String(st.startLength), function (v) { write("startLength", v === undefined ? undefined : Number(v)); rebuild(); }, KEEP, inh.startLength), now("startLength").trim() || null);
+    if (has("maxLength")) row("Longest word", numBox(st.maxLength, fieldInfo("maxLength"), function (v) { write("maxLength", v); }, "(keep)", inh.maxLength), "0 = automatic.");
+    if (has("roundSeconds")) row("Round time", numBox(st.roundSeconds, fieldInfo("roundSeconds"), function (v) { write("roundSeconds", v); }, null, inh.roundSeconds), "seconds");
+    if (has("starterWord")) row("Starter word", segmented([["true", "On"], ["false", "Off"]], st.starterWord === undefined ? undefined : String(st.starterWord), function (v) { write("starterWord", v === undefined ? undefined : v === "true"); rebuild(); }, KEEP, inh.starterWord), "Opens every round with one free word." + now("starterWord"));
+    if (has("allowRepeats")) row("Digits may repeat", segmented([["true", "Yes"], ["false", "No"]], st.allowRepeats === undefined ? undefined : String(st.allowRepeats), function (v) { write("allowRepeats", v === undefined ? undefined : v === "true"); rebuild(); }, KEEP, inh.allowRepeats), now("allowRepeats").trim() || null);
     if (has("regions")) {
-      var choices = catalog.regions[g.id] || [], box = el("div", "cb"), sel0 = st.regions || [];
+      var choices = catalog.regions[g.id] || [], box = el("div", "cb"), sel0 = st.regions || inh.regions || [];
       function put(list) { write("regions", list.length ? list : undefined); rebuild(); }
-      choices.forEach(function (r) { var lab = el("label"); var c = el("input"); c.type = "checkbox"; c.checked = sel0.indexOf(r[0]) >= 0; c.onchange = function () { var now = (read().regions || []).slice(), ix = now.indexOf(r[0]); if (c.checked && ix < 0) now.push(r[0]); if (!c.checked && ix >= 0) now.splice(ix, 1); put(now); }; lab.appendChild(c); lab.appendChild(document.createTextNode(r[1])); box.appendChild(lab); });
+      choices.forEach(function (r) { var lab = el("label"); var c = el("input"); c.type = "checkbox"; c.checked = sel0.indexOf(r[0]) >= 0; c.onchange = function () { var now0 = (read().regions || inh.regions || []).slice(), ix = now0.indexOf(r[0]); if (c.checked && ix < 0) now0.push(r[0]); if (!c.checked && ix >= 0) now0.splice(ix, 1); put(now0); }; lab.appendChild(c); lab.appendChild(document.createTextNode(r[1])); box.appendChild(lab); });
       var wrapR = el("div"); wrapR.appendChild(box);
-      var qb = el("div", "btns tight"); var all = el("button", "b sm", "All"); all.onclick = function () { put(choices.map(function (r) { return r[0]; })); }; var none = el("button", "b sm", "None (keep)"); none.onclick = function () { put([]); }; qb.appendChild(all); qb.appendChild(none); wrapR.appendChild(qb);
-      row("Where the secret place can be", wrapR, "Nothing ticked = keep the game's own choice.");
+      var qb = el("div", "btns tight"); var all = el("button", "b sm", "All"); all.onclick = function () { put(choices.map(function (r) { return r[0]; })); }; var none = el("button", "b sm", "None (follow the game)"); none.onclick = function () { put([]); }; qb.appendChild(all); qb.appendChild(none); wrapR.appendChild(qb);
+      row("Where the secret place can be", wrapR, st.regions ? "Set in the autopilot." : (inh.regions ? "Ticked = what the game uses now. Tick or untick to override it." : "Nothing ticked = the game's own choice (all places)."));
     }
-    if (has("autoContinueDelaySeconds")) row("Pause between rounds", numBox(st.autoContinueDelaySeconds, fieldInfo("autoContinueDelaySeconds"), function (v) { write("autoContinueDelaySeconds", v); }), "seconds");
+    if (has("autoContinueDelaySeconds")) row("Pause between rounds", numBox(st.autoContinueDelaySeconds, fieldInfo("autoContinueDelaySeconds"), function (v) { write("autoContinueDelaySeconds", v); }, null, inh.autoContinueDelaySeconds), "seconds");
     return gr;
   }
 
   function copyableGames(g) { return catalog.games.filter(function (x) { return x.family && x.id !== g.id && x.keys.some(function (k) { return g.keys.indexOf(k) >= 0; }); }); }
+  function clockOf(t) { var d = new Date(t); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2); }
+  // copy what the game uses now into the autopilot's own settings (so it is kept for every launch). Returns how many values were copied.
+  function lockIn(g) { var l = liveOf(g), n = 0; (g.keys || []).forEach(function (k) { if (l[k] !== undefined) { setPreset("games." + g.id + ".settings", k, JSON.parse(JSON.stringify(l[k]))); n++; } }); return n; }
   function presetEditor(g, onChange) {
     var det = el("details", "preset"); det.open = Boolean(ui.open[g.id]);
-    det.ontoggle = function () { ui.open[g.id] = det.open; };
+    det.ontoggle = function () { ui.open[g.id] = det.open; if (det.open) fetchLive(true); };
     det.appendChild(el("summary", "", "⚙ Game settings"));
     var body = el("div", "pbody"); det.appendChild(body);
-    if (!g.family) { body.appendChild(el("p", "help", "This game runs with the settings you saved inside the game itself (open the game once and set it there). The autopilot still starts, times and switches it.")); return det; }
     var path = "games." + g.id + ".settings";
+    function status() {
+      var has = Object.keys(liveOf(g)).length;
+      if (!g.family && !isRO(g)) return el("span"); // Flagle / Travle keep their settings in the browser: nothing to read from the server
+      var box = el("div", "livebox " + (has ? "ok" : "none"));
+      box.appendChild(el("span", "", has ? "✔ Read from the game at " + clockOf(liveAt) + " - what the game itself uses now is shown below." : (liveAt ? "The game did not report its settings (it may not be running yet) - nothing is pre-filled." : "Reading the game's settings…")));
+      var rf = el("button", "b sm", "🔄 Refresh"); rf.title = "Read the game's settings again (e.g. after you changed them inside the game)"; rf.onclick = function () { fetchLive("force"); }; box.appendChild(rf);
+      return box;
+    }
     function build() {
       clear(body);
-      body.appendChild(el("p", "help", "Only what you set here is sent to the game every time it starts in a session. “(keep)” = the game's own setting."));
+      body.appendChild(status());
+      var lv = liveOf(g);
+      if (!g.family) {
+        if (isRO(g) && Object.keys(lv).length) {
+          body.appendChild(el("p", "help", "This game keeps its settings inside the game itself, so they are shown here to check only. Change them in the game (open it once, ⚙ Settings); the autopilot starts, times and switches it."));
+          var rows = el("div", "ro"); Object.keys(lv).forEach(function (k) { var r = el("div", "srow"); r.appendChild(el("label", "", nice(k))); r.appendChild(el("span", "rov", valText(k, lv[k]))); rows.appendChild(r); }); body.appendChild(rows);
+        } else body.appendChild(el("p", "help", "This game runs with the settings you saved inside the game itself (open the game once and set it there) - they are kept in the browser you used, so the autopilot cannot show them here. The autopilot still starts, times and switches it."));
+        return;
+      }
+      body.appendChild(el("p", "help", "Dashed outline / “game:” numbers = what this game uses now. Pick or type something to override it - only what you set here is sent to the game every time it starts in a session. “(game's own)” = follow the game."));
       var tools = el("div", "btns tight");
+      if (Object.keys(lv).length) {
+        var lk = el("button", "b sm acc", "📌 Lock in the game's settings"); lk.title = "Copies everything the game uses now into the autopilot, so it keeps using them even after a server restart (press Save to keep)";
+        lk.onclick = function () { var n = lockIn(g); flash(n ? "Locked in " + n + " setting" + (n === 1 ? "" : "s") + " - press Save to keep it" : "Nothing to copy"); build(); onChange(); }; tools.appendChild(lk);
+      }
       var cp = copyableGames(g);
       if (cp.length) {
         var cs = el("select", "sm"); var c0 = el("option", "", "📋 Copy settings from…"); c0.value = ""; cs.appendChild(c0);
@@ -359,12 +419,35 @@
         };
         tools.appendChild(cs);
       }
-      var rs = el("button", "b sm", "↺ Back to the game's own settings"); rs.onclick = function () { set(path, {}); build(); onChange(); }; tools.appendChild(rs);
+      var rs = el("button", "b sm", "↺ Follow the game again"); rs.title = "Removes what you set here for this game - it uses its own settings again"; rs.onclick = function () { set(path, {}); build(); onChange(); }; tools.appendChild(rs);
       body.appendChild(tools);
-      body.appendChild(settingsForm(g, function () { return get(path) || {}; }, function (k, v) { setPreset(path, k, v); onChange(); }, build));
+      body.appendChild(settingsForm(g, function () { return get(path) || {}; }, function (k, v) { setPreset(path, k, v); onChange(); }, build, lv));
     }
+    det.rebuild = build;
     build();
     return det;
+  }
+
+  // update 113: one button for the whole platform - take over what every game is using now
+  function liveTool() {
+    var c = card("🔗 Follow the games' own settings", "The autopilot starts every game with the settings that game itself is using (difficulty, word length, pause ...). They are shown in each game's “⚙ Game settings” below so you can check them and change anything. A game that you have not changed here simply follows its own settings. A coloured chip = set in the autopilot; a plain chip = followed from the game.");
+    var fam = catalog.games.filter(function (g) { return g.family && Object.keys(liveOf(g)).length; });
+    var anySet = catalog.games.some(function (g) { return g.family && Object.keys(get("games." + g.id + ".settings") || {}).length; });
+    var info = el("p", "help", liveAt ? "Read " + fam.length + " game" + (fam.length === 1 ? "" : "s") + " at " + clockOf(liveAt) + "." : "Reading the games…");
+    c.appendChild(info);
+    var bt = el("div", "btns");
+    var tgt = el("select"); [["on", "the games that are switched on"], ["all", "all games"]].forEach(function (o) { var op = el("option", "", o[1]); op.value = o[0]; tgt.appendChild(op); }); tgt.value = ui.liveTarget || "on"; tgt.onchange = function () { ui.liveTarget = tgt.value; };
+    var im = el("button", "b " + (anySet ? "acc" : "go"), "⬇ Lock in every game's current settings"); im.title = "Copies what each game uses now into the autopilot, so it is kept for every launch (press Save)";
+    im.onclick = function () {
+      if (!fam.length) { window.alert("No game has reported its settings yet. Open the platform in Live mode, wait a moment and press Refresh."); return; }
+      if (anySet && !window.confirm("This replaces what you set in the autopilot for those options with what each game uses now. Continue?")) return;
+      var n = 0; fam.forEach(function (g) { if ((ui.liveTarget || "on") === "on" && !get("games." + g.id + ".enabled")) return; if (lockIn(g)) n++; });
+      flash("Locked in the settings of " + n + " game" + (n === 1 ? "" : "s") + " - press Save to keep it"); render();
+    };
+    var rf = el("button", "b", "🔄 Refresh from the games"); rf.onclick = function () { fetchLive("force"); };
+    var lab = el("span", "count", "for"); bt.appendChild(im); bt.appendChild(lab); bt.appendChild(tgt); bt.appendChild(rf); c.appendChild(bt);
+    c.appendChild(el("p", "help", "Tip: games forget their settings when the server restarts. “Lock in” keeps them in your autopilot setup, so every launch starts from the same, checked values."));
+    return c;
   }
 
   function bulkTool() {
@@ -389,7 +472,7 @@
         });
         flash("Copied to " + n + " game" + (n === 1 ? "" : "s") + " - press Save to keep it"); render();
       }; bt.appendChild(ap);
-      var cl = el("button", "b stop", "Clear all game settings"); cl.onclick = function () { if (window.confirm("Set every game back to its own settings? (Your notes stay.)")) { catalog.games.forEach(function (g) { set("games." + g.id + ".settings", {}); }); render(); } }; bt.appendChild(cl);
+      var cl = el("button", "b stop", "Clear all autopilot game settings"); cl.onclick = function () { if (window.confirm("Make every game follow its own settings again? (Your notes stay.)")) { catalog.games.forEach(function (g) { set("games." + g.id + ".settings", {}); }); render(); } }; bt.appendChild(cl);
       body.appendChild(bt);
     }
     build();
@@ -398,6 +481,7 @@
 
   function tGames() {
     var d = document.createDocumentFragment();
+    d.appendChild(liveTool());
     d.appendChild(bulkTool());
     var c = card("🎮 Your games", "Tick the games you want in the rotation. Open “⚙ Game settings” to set difficulty, word length and more for that game. “Minutes” and “Rounds” override the default session for the game (0 = default); “Weight” matters for the weighted picks.");
     var tb = el("div", "toolbar");
@@ -429,7 +513,7 @@
       top.appendChild(nums); node.appendChild(top);
       function refreshChips() {
         clear(chips);
-        summaryOf(g).forEach(function (s) { chips.appendChild(el("span", "gc", s)); });
+        summaryOf(g).forEach(function (s) { var cc = el("span", "gc" + (s.ov ? " ov" : ""), s.t); cc.title = s.ov ? "Set in the autopilot" : "What the game uses now"; chips.appendChild(cc); });
         var n = get(p + ".aka") || [], hasNote = n.length || get(p + ".inspiredBy") || get(p + ".voteNote");
         var nb = el("span", "gc note" + (hasNote ? " has" : ""), hasNote ? "📝 notes" : "📝 no notes"); nb.title = "Edit in the Notes tab"; nb.onclick = function () { tab = "notes"; ui.notesFilter = "all"; render(); window.scrollTo(0, 0); }; chips.appendChild(nb);
       }
@@ -604,7 +688,7 @@
     else line("good", "Your settings are saved" + (meta && meta.savedAt ? " (" + when(meta.savedAt) + ") and will be there next time you launch the platform." : "."));
     if (en.length < 2 && get("rotation.mode") === "vote") line("bad", "Only " + en.length + " game switched on - viewers need at least 2 to vote.", "Choose games", "games");
     else line("good", en.length + " games switched on.", "Change", "games");
-    line(withSet.length ? "good" : "info", withSet.length + " of them have their own difficulty / length settings." + (withSet.length ? "" : " (Otherwise each game uses the settings it last had.)"), "Set them", "games");
+    line(withSet.length ? "good" : "info", withSet.length + " of them have settings saved in the autopilot." + (withSet.length ? " The others follow what each game uses now (see each game's ⚙ Game settings)." : " Each game follows the settings it uses now - open the Games tab to check them or lock them in."), "Check them", "games");
     line(withNotes.length ? "good" : "info", withNotes.length + " of " + en.length + " have notes for your viewers (other names, inspired by, a note).", "Edit notes", "notes");
     return c;
   }
@@ -700,6 +784,7 @@
     main.appendChild(fn());
     window.scrollTo(0, y);
     updatePill(); renderBar();
+    if (tab === "games" && Date.now() - liveAt > 4000) fetchLive(true); // update 113: read what the games use now
   }
   function updatePill() {
     if (!S) return;
@@ -723,7 +808,7 @@
       // the server starts empty but this browser has a backup (the hosting wiped its disk)?
       var bk = readJSON("apBackup"); ui.backup = !ui.hideBackup && meta.source === "defaults" && bk && bk.data && bk.data.config && stable(bk.data.config) !== savedStr ? bk : null;
       if (meta.source !== "defaults" && meta.writable !== false) refreshBackup(); // keep this browser's copy in step with what the server has (never overwrite it with an empty server)
-      render();
+      render(); fetchLive(true);
     });
   }
   load();

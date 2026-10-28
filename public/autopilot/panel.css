@@ -87,3 +87,11 @@ details.preset{ margin:8px 0 0; background:rgba(0,0,0,.18); }
   .count{ margin-left:0; }
   .savebar{ padding-left:10px; padding-right:10px; } .bst{ font-size:13px; }
 }
+
+/* update 113: the game's own settings shown inside each game's "Game settings" */
+.seg button.inh{ border:1px dashed var(--acc); color:var(--fg); background:rgba(255,92,138,.10); }
+.gc.ov{ background:rgba(255,92,138,.22); color:#ffd3e0; box-shadow:inset 0 0 0 1px rgba(255,92,138,.55); }
+.livebox{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:8px 12px; border-radius:10px; font-size:12.5px; margin-bottom:6px; }
+.livebox.ok{ background:rgba(51,209,122,.12); color:#8ff0b6; }
+.livebox.none{ background:rgba(255,255,255,.06); color:var(--mut); }
+.ro{ display:grid; gap:6px; margin-top:6px; } .ro .rov{ font-weight:700; color:#d4d7ff; }
