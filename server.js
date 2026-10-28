@@ -92,6 +92,7 @@ import { mountHomeGroups } from "./server/shared/home-groups-store.js";
 import { installTikTokResilience, mountTikTokHealth } from "./server/shared/tiktok-resilience.js";
 import { PlatformHub } from "./server/shared/platform-hub.js";
 import { mountRecords, Records } from "./server/shared/records-store.js";
+import { mountGameDefaults } from "./server/shared/game-defaults-routes.js"; // update 114: "Save & Apply as default" for every game
 import { Autopilot } from "./server/autopilot/autopilot-engine.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -137,6 +138,7 @@ PlatformHub.init(app, express);
 // AFK AUTOPILOT (update 109): the Live mode can run by itself - timed game sessions, a chat vote for the next game, presets for every
 // game. Panel: /autopilot/   Stage page for the streaming software: /autopilot/stage   See server/autopilot/autopilot-engine.js.
 Autopilot.init(app, express, { hub: PlatformHub });
+mountGameDefaults(app, express); // update 114
 
 // Records archive (update 40): every gift, like, share, follow and milestone saved with time, game, host and audience.
 // Page: /records   API: /api/records...   See server/shared/records-store.js.

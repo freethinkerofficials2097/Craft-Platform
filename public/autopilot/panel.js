@@ -30,9 +30,14 @@
      cfg      = the draft you are editing           savedStr = the last version the server confirmed it wrote to disk
      Every change only changes the draft (and keeps a copy of it in this browser). Nothing is lost until you leave without saving - and then the
      page warns you. Save = write to the server's disk (kept for every future launch). Save & apply now = save + give the settings to the game on screen. */
-  var savedStr = "", meta = {}, autoSave = lsGet("apAutoSave") === "1", draftTimer = null, ui = { open: {}, search: "", filter: "all", bulk: {}, notesFilter: "all", draft: null, backup: null, hideBackup: false, report: null };
+  var savedStr = "", meta = {}, autoSave = lsGet("apAutoSave") === "1", draftTimer = null, ui = { open: {}, search: "", filter: "all", bulk: {}, notesFilter: "all", draft: null, backup: null, hideBackup: false };
   // update 113: what each game is using right now (read from the server). live[gameId] = { settings: {...}, readOnly: bool }
   var live = {}, liveAt = 0, liveBusy = false;
+  // update 114: when should the panel read the games' settings by itself?
+  //   "stick"  = keep what the host saved; never refresh by itself (the 🔄 button still reads the game once)
+  //   "follow" = refresh automatically (when the Games tab opens, when you come back to the page) so it always shows what the games use now
+  function modeOf(g) { var m = g ? get("games." + g.id + ".syncMode") : ""; return m === "stick" || m === "follow" ? m : (get("sync.mode") === "follow" ? "follow" : "stick"); }
+  function anyFollow() { return catalog && catalog.games.some(function (g) { return modeOf(g) === "follow"; }); }
   function fetchLive(rerender) {
     if (liveBusy) return; liveBusy = true;
     fetch("/api/autopilot/game-settings", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
@@ -41,7 +46,7 @@
       if (rerender && tab === "games" && (before !== stable(live) || rerender === "force") && !typing) render();
     }).catch(function () { liveBusy = false; });
   }
-  window.addEventListener("focus", function () { if (tab === "games") fetchLive(true); }); // came back from changing a game's settings in another tab
+  window.addEventListener("focus", function () { if (tab === "games" && anyFollow()) fetchLive(true); }); // came back from changing a game's settings in another tab
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
@@ -68,6 +73,15 @@
   function hhmm(ts) { return ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""; }
   function when(ts) { return ts ? new Date(ts).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "never"; }
 
+
+  // update 114: a plain-words summary of what a restore found
+  function reportText(j) {
+    var r = j && j.report; if (!r) return "Restored ✓";
+    var t = "Restored" + (r.name ? " “" + r.name + "”" : "") + ":\n• " + r.games + " games found, " + r.withSettings + " with game settings (" + r.settingValues + " values), " + r.notes + " with notes" + "\n• " + (r.profiles || 0) + " named setup(s) and " + (r.gameDefaults || 0) + " saved game default(s)";
+    if (r.safety) t += "\n• Your previous setup was kept as the named setup “" + r.safety + "”.";
+    if (r.dropped && r.dropped.length) t += "\n\nCould not be used:\n- " + r.dropped.join("\n- ");
+    return t;
+  }
   var barState = "";
   function doSave(apply, silent) {
     clearTimeout(saveTimer);
@@ -379,16 +393,16 @@
   function lockIn(g) { var l = liveOf(g), n = 0; (g.keys || []).forEach(function (k) { if (l[k] !== undefined) { setPreset("games." + g.id + ".settings", k, JSON.parse(JSON.stringify(l[k]))); n++; } }); return n; }
   function presetEditor(g, onChange) {
     var det = el("details", "preset"); det.open = Boolean(ui.open[g.id]);
-    det.ontoggle = function () { ui.open[g.id] = det.open; if (det.open) fetchLive(true); };
+    det.ontoggle = function () { ui.open[g.id] = det.open; if (det.open && (liveAt === 0 || modeOf(g) === "follow")) fetchLive(true); };
     det.appendChild(el("summary", "", "⚙ Game settings"));
     var body = el("div", "pbody"); det.appendChild(body);
     var path = "games." + g.id + ".settings";
     function status() {
       var has = Object.keys(liveOf(g)).length;
       if (!g.family && !isRO(g)) return el("span"); // Flagle / Travle keep their settings in the browser: nothing to read from the server
-      var box = el("div", "livebox " + (has ? "ok" : "none"));
-      box.appendChild(el("span", "", has ? "✔ Read from the game at " + clockOf(liveAt) + " - what the game itself uses now is shown below." : (liveAt ? "The game did not report its settings (it may not be running yet) - nothing is pre-filled." : "Reading the game's settings…")));
-      var rf = el("button", "b sm", "🔄 Refresh"); rf.title = "Read the game's settings again (e.g. after you changed them inside the game)"; rf.onclick = function () { fetchLive("force"); }; box.appendChild(rf);
+      var box = el("div", "livebox " + (has ? "ok" : "none")), mode = modeOf(g), ds = live[g.id] && live[g.id].defaultSavedAt;
+      box.appendChild(el("span", "", (mode === "stick" ? "🔒 Sticking to your saved settings - not refreshed by itself. " : "🔄 Following the game - refreshed automatically. ") + (has ? "Last read from the game at " + clockOf(liveAt) + "." : (liveAt ? "The game did not report its settings (it may not be running yet)." : "Reading the game's settings…")) + (ds ? " 💾 Game default saved " + new Date(ds).toLocaleString() + "." : " No 💾 default saved in the game yet (Game Settings → Save & Apply as default).")));
+      var rf = el("button", "b sm", "🔄 Refresh"); rf.title = "Read the game's settings once now (nothing you saved is changed)"; rf.onclick = function () { fetchLive("force"); }; box.appendChild(rf);
       return box;
     }
     function build() {
@@ -402,6 +416,10 @@
         } else body.appendChild(el("p", "help", "This game runs with the settings you saved inside the game itself (open the game once and set it there) - they are kept in the browser you used, so the autopilot cannot show them here. The autopilot still starts, times and switches it."));
         return;
       }
+      var sm = el("div", "srow"); sm.appendChild(el("label", "", "Refresh from the game"));
+      sm.appendChild(segmented([["stick", "🔒 Stick to my saved"], ["follow", "🔄 Follow the game"]], get("games." + g.id + ".syncMode") === "global" ? undefined : get("games." + g.id + ".syncMode"), function (v) { set("games." + g.id + ".syncMode", v || "global"); build(); onChange(); }, "(global choice: " + (get("sync.mode") === "follow" ? "follow" : "stick") + ")"));
+      sm.appendChild(el("small", "", "Stick = what you saved here is always used and never replaced by what the game currently shows (games forget their settings when the server restarts). Follow = keep re-reading the game."));
+      body.appendChild(sm);
       body.appendChild(el("p", "help", "Dashed outline / “game:” numbers = what this game uses now. Pick or type something to override it - only what you set here is sent to the game every time it starts in a session. “(game's own)” = follow the game."));
       var tools = el("div", "btns tight");
       if (Object.keys(lv).length) {
@@ -431,6 +449,10 @@
   // update 113: one button for the whole platform - take over what every game is using now
   function liveTool() {
     var c = card("🔗 Follow the games' own settings", "The autopilot starts every game with the settings that game itself is using (difficulty, word length, pause ...). They are shown in each game's “⚙ Game settings” below so you can check them and change anything. A game that you have not changed here simply follows its own settings. A coloured chip = set in the autopilot; a plain chip = followed from the game.");
+    var gm = el("div", "srow modebox"); gm.appendChild(el("label", "", "When to read the games"));
+    gm.appendChild(segmented([["stick", "🔒 Stick to my saved settings"], ["follow", "🔄 Follow the games (auto-refresh)"]], get("sync.mode") === "follow" ? "follow" : "stick", function (v) { set("sync.mode", v || "stick"); render(); if (v === "follow") fetchLive("force"); }, "(default: stick)"));
+    gm.appendChild(el("small", "", (get("sync.mode") === "follow" ? "Now: the panel re-reads every game by itself and shows what it uses right now - values you did not lock in follow the game." : "Now: nothing is refreshed by itself. The settings you saved stay exactly as they are, even after a server restart made the games forget theirs. Use 🔄 Refresh to look at a game once.") + " You can also choose per game (open its ⚙ Game settings)."));
+    c.appendChild(gm);
     var fam = catalog.games.filter(function (g) { return g.family && Object.keys(liveOf(g)).length; });
     var anySet = catalog.games.some(function (g) { return g.family && Object.keys(get("games." + g.id + ".settings") || {}).length; });
     var info = el("p", "help", liveAt ? "Read " + fam.length + " game" + (fam.length === 1 ? "" : "s") + " at " + clockOf(liveAt) + "." : "Reading the games…");
@@ -693,51 +715,15 @@
     return c;
   }
 
-  /* ---------- RESTORE (update 114) ----------
-     One path for every kind of restore (file, browser backup). It first stops everything that could write the OLD draft back over the restored
-     setup (the pending draft copy and the "Save automatically" timer), then asks the server, then shows exactly what came back. */
-  function stopPendingWrites() { clearTimeout(draftTimer); clearTimeout(saveTimer); lsDel("apDraft"); ui.draft = null; barState = ""; }
-  function restoreData(data, opts) {
-    return call("POST", "/api/autopilot/import", { data: data, useSnapshot: opts.useSnapshot !== false, apply: Boolean(opts.apply) }).then(function (j) {
-      stopPendingWrites(); ui.report = j.report || null; ui.backup = null; flash("Setup restored ✓");
-      return load();
-    }).catch(function (e) { window.alert(e.message); });
-  }
-  function restoreFromText(text, label) {
-    var o; try { o = JSON.parse(String(text).replace(/^\uFEFF/, "")); } catch (e) { window.alert("That is not a valid setup file (it could not be read as JSON)."); return; }
-    var snap = Boolean(o && (o.gameSnapshot || (o.data && o.data.gameSnapshot)));
-    if (!window.confirm("Replace your current settings with the ones in “" + label + "”? (Your named setups are kept and the file's are added.)" + (dirty() ? "\n\nYou have changes that are not saved - they will be replaced." : ""))) return;
-    var useSnapshot = true, apply = false;
-    if (snap) useSnapshot = window.confirm("This file also remembers the settings the games were using when it was saved (difficulty, word length, pause, regions…).\n\nOK = fill those in too (only where the setup does not already set them)\nCancel = leave those games following their own settings");
-    if (S && S.running && S.current) apply = window.confirm("The autopilot is running. Also give the restored settings to the game on screen now? (A fresh round starts.)");
-    restoreData(text, { useSnapshot: useSnapshot, apply: apply });
-  }
-  function reportNotice(f) {
-    var r = ui.report; if (!r) return;
-    var b = el("div", "notice " + (r.warnings && r.warnings.length ? "warn" : "good"));
-    var head = !r.configInFile ? "✓ Restored the named setups from the file (your current settings were not changed): " + r.profiles + "."
-      : "✓ Restored: " + r.enabled + " of " + r.games + " games switched on · " + r.withSettings + " with their own game settings · " + r.withNotes + " with notes · " + r.withOwnTiming + " with own minutes / rounds · " + r.tips + " tips · " + r.allowList + " allowed and " + r.blockList + " blocked names" + (r.profiles ? " · " + r.profiles + " named setup" + (r.profiles === 1 ? "" : "s") : "") + ".";
-    b.appendChild(el("div", "", head));
-    if (r.configInFile) b.appendChild(el("div", "help", r.hadSnapshot ? (r.filledFromGames ? r.filledFromGames + " game value" + (r.filledFromGames === 1 ? "" : "s") + " were filled in from what the games used when the file was saved." : "The file's remembered game values were already covered by your setup.") : "This file (made by an older version) does not remember the games' own values - games without locked-in settings follow what they use now. Press ⬇ Lock in every game's current settings in the Games tab, then Save, to keep them."));
-    if (r.applied) b.appendChild(el("div", "help", "Given to the game on screen - a fresh round started."));
-    if (r.warnings && r.warnings.length) {
-      b.appendChild(el("div", "", "These values could not be kept exactly as they were in the file:"));
-      r.warnings.forEach(function (w) { b.appendChild(el("div", "help", "• " + w)); });
-    }
-    var bt = el("div", "btns tight"), k = el("button", "b sm", "OK"); k.onclick = function () { ui.report = null; render(); }; bt.appendChild(k); b.appendChild(bt);
-    f.appendChild(b);
-  }
-
   /* ---------- notices at the top of every tab ---------- */
   function notices() {
     var f = document.createDocumentFragment();
-    reportNotice(f);
     function box(cls, text, buttons) { var b = el("div", "notice " + cls); b.appendChild(el("div", "", text)); var bt = el("div", "btns tight"); buttons.forEach(function (x) { var k = el("button", "b sm " + (x[2] || ""), x[0]); k.onclick = x[1]; bt.appendChild(k); }); b.appendChild(bt); f.appendChild(b); }
     if (ui.draft) box("warn", "You have unsaved changes from " + when(ui.draft.t) + " that were never saved (the page was closed or reloaded). Bring them back?", [
       ["↩ Bring them back", function () { cfg = ui.draft.cfg; ui.draft = null; queueSave(); render(); }, "go"],
       ["Throw them away", function () { lsDel("apDraft"); ui.draft = null; render(); }]]);
     if (ui.backup) box("bad", "Nothing is saved on the server yet - this happens when the hosting wipes its disk after a redeploy. This browser still has a copy of your setup from " + when(ui.backup.t) + ".", [
-      ["♻ Restore my setup", function () { restoreData(ui.backup.data, {}); }, "go"],
+      ["♻ Restore my setup", function () { call("POST", "/api/autopilot/import", { data: ui.backup.data }).then(function () { ui.backup = null; flash("Setup restored ✓"); return load(); }).catch(function (e) { window.alert(e.message); }); }, "go"],
       ["Ignore", function () { ui.backup = null; ui.hideBackup = true; render(); }]]);
     if (meta && meta.writable === false) box("bad", "The server cannot write to its disk (" + (meta.error || "read-only") + "). Your settings work now but will be lost at the next restart. See Setups → “Where is my setup stored?”.", []);
     if (meta && meta.source === "shipped" && !dirty()) box("good", "Loaded from the setup file shipped with this deployment. Press Save to keep it on the server too.", []);
@@ -771,14 +757,15 @@
     ].forEach(function (t) { ul.appendChild(el("p", "help", "• " + t)); });
     tip.appendChild(ul); w.appendChild(tip); d.appendChild(w);
 
-    var bk = card("🧰 Backup file", "A single file with all your settings, notes, named setups AND the settings the games are using right now (difficulty, word length, pause, regions…). Restoring it brings everything back and tells you exactly what was restored. Keep it somewhere safe, or move your setup to another server.");
+    var bk = card("🧰 Backup file", "A single file with all your settings, notes and named setups. Keep it somewhere safe, or move your setup to another server.");
     var bb = el("div", "btns");
-    var dl = el("button", "b go", "⬇ Download my setup file"); dl.onclick = function () { fetch("/api/autopilot/export", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { download("autopilot-setup-" + new Date().toISOString().slice(0, 10) + ".json", JSON.stringify(j, null, 1)); }).catch(function (e) { window.alert(e.message); }); }; bb.appendChild(dl);
+    var dl = el("button", "b go", "⬇ Download my setup file"); dl.onclick = function () { fetch("/api/autopilot/export", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { download("autopilot-setup.json", JSON.stringify(j, null, 1)); }).catch(function (e) { window.alert(e.message); }); }; bb.appendChild(dl);
     var up = el("button", "b", "⬆ Restore from a file…"); var fi = el("input"); fi.type = "file"; fi.accept = ".json,application/json"; fi.style.display = "none";
     fi.onchange = function () {
       var f = fi.files && fi.files[0]; if (!f) return;
       var rd = new FileReader(); rd.onload = function () {
-        restoreFromText(String(rd.result), f.name);
+        if (!window.confirm("Replace your current settings with the ones in “" + f.name + "”? (Your named setups are kept and the file's are added.)")) return;
+        clearTimeout(saveTimer); call("POST", "/api/autopilot/import", { data: String(rd.result) }).then(function (j) { lsDel("apDraft"); ui.draft = null; return load().then(function () { flash("Restored ✓"); window.alert(reportText(j)); }); }).catch(function (e) { window.alert(e.message); });
       }; rd.readAsText(f); fi.value = "";
     };
     up.onclick = function () { fi.click(); }; bb.appendChild(up); bb.appendChild(fi);
@@ -819,7 +806,7 @@
     main.appendChild(fn());
     window.scrollTo(0, y);
     updatePill(); renderBar();
-    if (tab === "games" && Date.now() - liveAt > 4000) fetchLive(true); // update 113: read what the games use now
+    if (tab === "games" && (liveAt === 0 || (anyFollow() && Date.now() - liveAt > 4000))) fetchLive(true); // update 113/114: read the games once; keep re-reading only while "follow" is chosen
   }
   function updatePill() {
     if (!S) return;

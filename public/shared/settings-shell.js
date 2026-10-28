@@ -215,6 +215,18 @@
     });
     $(".csFootBtns", root).appendChild(proxy);
     S.applyProxy = proxy;
+    // update 114: "Save & Apply as default" - apply now AND remember these settings on the server, so they are used again after a restart
+    var defBtn = mk("button", "csApply csApplyDef"); defBtn.type = "button"; defBtn.textContent = "💾 Save & Apply as default";
+    defBtn.title = "Applies the settings now and keeps them as this game's default: they stay even after the server restarts";
+    defBtn.addEventListener("click", function () {
+      try { if (out.apply) out.apply.click(); } catch (e) { console.warn(e); }
+      defBtn.disabled = true; defBtn.textContent = "Saving…";
+      setTimeout(function () {
+        saveDefault().then(function (ok) { toast(ok === true ? "✔ Saved as the default for this game" : ok === "memory" ? "⚠ Applied, but the server could not write the file - it is kept until the next restart" : "⚠ Could not save the default (" + ok + ")"); })
+          .then(function () { defBtn.disabled = false; defBtn.textContent = "💾 Save & Apply as default"; var c = $(ad.close); if (c) c.click(); else forceClose(); });
+      }, 700); // give the game a moment to take the new settings, then read them back from the server
+    });
+    $(".csFootBtns", root).appendChild(defBtn);
     if (out.apply) out.apply.classList.add("csGone");
     if (out.applyNote) out.applyNote.classList.add("csGone");
 
@@ -312,6 +324,48 @@
     if (open) { S.active = S.active || "play"; nav();  }
   }
 
+
+  /* ------------------------------------------------------------------ update 114: saved defaults ("Save & Apply as default") */
+  function gameId() { return (location.pathname.split("/").filter(Boolean)[0] || "").toLowerCase().replace(/\.html?$/, ""); }
+  function editHeaders() { var h = { "Content-Type": "application/json" }; try { var k = localStorage.getItem("apEditKey"); if (k) h["x-edit-key"] = k; } catch (e) {} return h; }
+  var SKIP_ID = /key|token|password|secret|sign|user(name)?$|handle|tiktok|connect|search|file|upload|chat|guess|answer|message/i;
+  // the values of the game's own settings controls (used by games whose settings live in the browser: Flagle, Travle)
+  function formSnapshot() {
+    var out = {}, roots = [S.root, S.overlay];
+    roots.forEach(function (r) {
+      if (!r) return;
+      $$("input, select, textarea", r).forEach(function (c) {
+        var id = c.id; if (!id || SKIP_ID.test(id) || /^(button|submit|file|password|reset|image)$/.test(c.type)) return;
+        out[id] = (c.type === "checkbox" || c.type === "radio") ? !!c.checked : c.value;
+      });
+    });
+    return out;
+  }
+  function saveDefault() {
+    var id = gameId(); if (!id) return Promise.resolve("no game");
+    return fetch("/api/game-defaults/" + encodeURIComponent(id) + "/save", { method: "POST", headers: editHeaders(), body: JSON.stringify({ form: formSnapshot() }) })
+      .then(function (r) { if (r.status === 401) { var k = window.prompt("This site is protected. Enter the HOME edit key:"); if (k) { try { localStorage.setItem("apEditKey", k); } catch (e) {} return saveDefault(); } return "edit key needed"; } return r.json().then(function (j) { return j && j.ok ? (j.written === false ? "memory" : true) : (j && j.error) || "error"; }); })
+      .catch(function (e) { return String((e && e.message) || e); });
+  }
+  function toast(msg) {
+    var t = mk("div", "csToast"); t.textContent = msg;
+    t.style.cssText = "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:2147483647;background:#1b1b2e;color:#fff;padding:12px 18px;border-radius:12px;font:600 14px system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:90vw;text-align:center";
+    document.body.appendChild(t); setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 3800);
+  }
+  // Flagle and Travle keep their settings in the page (not on the server): put the saved form back and press the game's own Apply
+  function restoreForm() {
+    var id = gameId(); if (id !== "flagle" && id !== "travle") return;
+    fetch("/api/game-defaults/" + encodeURIComponent(id), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+      var f = j && j.default && j.default.form; if (!f || !Object.keys(f).length) return;
+      Object.keys(f).forEach(function (cid) {
+        var c = document.getElementById(cid); if (!c) return;
+        if (c.type === "checkbox" || c.type === "radio") c.checked = !!f[cid]; else c.value = f[cid];
+        try { c.dispatchEvent(new Event("input", { bubbles: true })); c.dispatchEvent(new Event("change", { bubbles: true })); } catch (e) {}
+      });
+      setTimeout(function () { try { if (S.out && S.out.apply) S.out.apply.click(); } catch (e) {} }, 900);
+    }).catch(function () {});
+  }
+
   function init() {
     if (S.built || S.failed) return;
     for (var i = 0; i < ADAPTERS.length; i++) {
@@ -324,6 +378,7 @@
         new MutationObserver(sync).observe(overlay, { attributes: true, attributeFilter: ["hidden", "class"] });
         sync();
         document.documentElement.classList.add("csReady");
+        restoreForm(); // update 114
       } catch (e) {
         S.failed = true; console.warn("[settings-shell] fell back to the classic panel:", e);
         if (S.root && S.root.parentNode) S.root.parentNode.removeChild(S.root);

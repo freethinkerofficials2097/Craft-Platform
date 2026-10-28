@@ -61,7 +61,15 @@ Open **🎮 Games**. For every game, **⚙ Game settings** now shows what that g
 - Twistle, Findle, Crossdle and Contexto keep their own settings inside the game: they are shown here **to check only** (change them in the game). Flagle and Travle keep theirs in the browser you used, so the server cannot read them.
 - Why "lock in"? A game forgets its settings when the server restarts. A locked-in setting is stored in your autopilot setup (`data/autopilot.json` / the setup file) and sent to the game every time it starts.
 
-## Update 114 - restoring a setup file
-Setups -> ⬇ Download my setup file now includes the settings every game is using at that moment. ⬆ Restore from a file… brings back settings, notes, named setups
-and those game values, then shows a report of what was restored and anything that could not be kept exactly. Old files (made before update 114) still restore;
-they just have no remembered game values.
+## Stick to my saved settings - or follow the games (update 114)
+Games forget their settings when the server restarts, so the autopilot must not keep copying what a (just restarted) game shows. **🎮 Games -> 🔗 Follow the games' own settings -> "When to read the games"**:
+- **🔒 Stick to my saved settings** (the default): the autopilot never refreshes by itself. What you saved is what every game gets, every time it starts. **🔄 Refresh** still lets you look at a game once, and changes nothing you saved.
+- **🔄 Follow the games**: the panel re-reads the games by itself (when you open the Games tab or come back to the page) and shows what they use now.
+- Every game can have its own choice: open its **⚙ Game settings -> Refresh from the game** (global choice / stick / follow). Press **💾 Save** to keep the choice.
+
+## Restoring your setup file now restores everything (update 114)
+**💾 Setups -> ⬆ Restore from a file** understands: a downloaded setup file, a bare config, a browser backup, files edited by hand (numbers or true/false written as text, different capital letters, games listed by name or as a list, settings written directly on a game). After restoring, a window tells you what was found: games, game settings, notes, named setups, saved game defaults - and anything that could not be used. Your previous setup is kept automatically as the named setup **"Before restore ..."** (the last 5 are kept). A file placed in `data/` whose name contains "autopilot" and ends in .json (for example `autopilot-setup (1).json`) is also picked up on a fresh server.
+
+## 💾 Save & Apply as default - for every game (update 114)
+In every game's **Settings** screen, next to **Save & Apply**, there is **💾 Save & Apply as default**. It applies the settings and remembers them on the server (`data/game-defaults.json`); after a restart the game starts with them again. Remembered: difficulty, word length (fixed / range), pause between rounds, starter word, repeating digits, regions, Expandle lengths / round time (Twistle, Crossdle and Findle: their own values), and for Flagle / Travle the values of their settings controls. Contexto keeps its own existing button. The AFK Autopilot setup file now also contains every game's saved default, so **Download my setup file / Restore from a file** moves them too.
+On hosting that wipes its disk at each deploy, put your downloaded setup file into the `data/` folder before deploying (or restore it once after deploying).

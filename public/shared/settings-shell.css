@@ -132,3 +132,7 @@ html.csLock{ overflow:hidden; }
 .csFoot{ background:transparent !important; border-top:0 !important; justify-content:center !important; gap:0; }
 .csFootBtns{ margin:0 auto !important; justify-content:center; }
 .csApply{ font-size:12px !important; padding:7px 22px !important; box-shadow:0 2px 6px var(--theme-shadow,rgba(0,0,0,.2)); }
+
+/* update 114: second footer button */
+.csApplyDef{ background:linear-gradient(135deg,#1f8f55,#2db36a); margin-left:8px; }
+.csApplyDef[disabled]{ opacity:.7; cursor:wait; }
