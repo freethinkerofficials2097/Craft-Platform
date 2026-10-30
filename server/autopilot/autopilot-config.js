@@ -106,7 +106,8 @@ export const DEFAULT_CONFIG = {
     rounds: 6,                    // used by "rounds" / "either"
     finishRound: true,            // when the time is up, let the running round finish first
     graceSeconds: 90,             // ... but never wait longer than this
-    showLeaderboardSeconds: 10    // session leaderboard before voting (0 = skip)
+    showLeaderboardSeconds: 10,   // session leaderboard before voting (0 = skip)
+    resultSeconds: 8              // update 115: after the LAST round of a session, keep the result on screen this long before the game changes
   },
   rotation: {
     mode: "vote",                 // vote | sequence | random | weighted
@@ -131,7 +132,9 @@ export const DEFAULT_CONFIG = {
     resultSeconds: 8,
     extendSecondsIfClose: 0,      // add time once if the top two are within 1 vote with < 5 s left (0 = off)
     includeReplayOption: false,   // add "Play <current game> again" as an option
-    maxVotesPerMinutePerUser: 20  // anti-spam
+    maxVotesPerMinutePerUser: 20, // anti-spam
+    simulateWhenNotLive: true,    // update 115: in Offline / Test mode nobody can type in chat, so a few practice voters vote (otherwise every vote would end with "nobody voted")
+    allowStageClicks: true        // update 115: a click / tap on an option of the stage page also counts as a vote (host, or a phone)
   },
   eligibility: {
     everyone: true,
@@ -300,7 +303,8 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       rounds: num(ses.rounds, 1, 100, b.session.rounds),
       finishRound: bool(ses.finishRound, b.session.finishRound),
       graceSeconds: num(ses.graceSeconds, 5, 900, b.session.graceSeconds),
-      showLeaderboardSeconds: num(ses.showLeaderboardSeconds, 0, 60, b.session.showLeaderboardSeconds)
+      showLeaderboardSeconds: num(ses.showLeaderboardSeconds, 0, 60, b.session.showLeaderboardSeconds),
+      resultSeconds: num(ses.resultSeconds, 0, 60, b.session.resultSeconds !== undefined ? b.session.resultSeconds : 8)
     },
     rotation: {
       mode: pick(rot.mode, ["vote", "sequence", "random", "weighted"], b.rotation.mode),
@@ -325,7 +329,9 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       resultSeconds: num(vt.resultSeconds, 2, 60, b.vote.resultSeconds),
       extendSecondsIfClose: num(vt.extendSecondsIfClose, 0, 60, b.vote.extendSecondsIfClose),
       includeReplayOption: bool(vt.includeReplayOption, b.vote.includeReplayOption),
-      maxVotesPerMinutePerUser: num(vt.maxVotesPerMinutePerUser, 1, 120, b.vote.maxVotesPerMinutePerUser)
+      maxVotesPerMinutePerUser: num(vt.maxVotesPerMinutePerUser, 1, 120, b.vote.maxVotesPerMinutePerUser),
+      simulateWhenNotLive: bool(vt.simulateWhenNotLive, b.vote.simulateWhenNotLive !== undefined ? b.vote.simulateWhenNotLive : true),
+      allowStageClicks: bool(vt.allowStageClicks, b.vote.allowStageClicks !== undefined ? b.vote.allowStageClicks : true)
     },
     eligibility: {
       everyone: bool(el.everyone, b.eligibility.everyone),

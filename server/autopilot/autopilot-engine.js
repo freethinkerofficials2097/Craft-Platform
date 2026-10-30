@@ -186,6 +186,9 @@ class AutopilotEngine {
     app.post("/api/autopilot/restart-game", guard, json, act(() => this.restartGame()));
     app.post("/api/autopilot/preview-vote", guard, json, act(() => this.previewVote()));
     app.post("/api/autopilot/test-vote", guard, json, act((b) => this.testVotes(b)));
+    // update 115: a click / tap on an option on the stage page (or on a phone) is a vote. No edit key needed (the stage page is not secret from the host, and
+    // a click is limited per device and per vote), so it also works on a screen nobody is typing a key into.
+    app.post("/api/autopilot/stage-vote", json, act((b) => this.stageVote(b)));
     app.post("/api/autopilot/reset-memory", guard, json, act(() => { this._resetMemory(); this._log("info", "Remembered followers / gifters / sharers of this live were cleared."); }));
     app.get("/api/autopilot/profiles", (req, res) => res.json({ profiles: Object.keys(this.profiles), current: this.config.name }));
     app.post("/api/autopilot/profiles", guard, json, act((b) => this.saveProfile(b.name)));
@@ -209,7 +212,14 @@ class AutopilotEngine {
     const r = withRuntime && raw.runtime;
     if (r && r.running && this.config.run.resumeAfterRestart) {
       this.rt = { ...this._fresh(), ...r, vote: null, stage: { seenAt: 0, status: "", roundNumber: 0, game: "", applied: 0 }, paused: false, pausedAt: 0, autoPaused: false };
-      if (this.rt.phase === "voting" || this.rt.phase === "result" || this.rt.phase === "summary" || this.rt.phase === "wrapup") { this.rt.phase = "playing"; if (this.rt.current) this.rt.current.sessionEndsAt = Math.min(this.rt.current.sessionEndsAt, now() + 5000); }
+      // update 115: a restart (a deploy, a crash, a sleeping free host) used to cut the running game to 5 seconds and skip the vote. Now the game keeps its own
+      // clock (at least 20 s remain), a vote that was open is opened again from the start, and a result / break is carried on.
+      const ph = this.rt.phase, t0 = now();
+      if (ph === "wrapup") this.rt.phase = "playing";
+      if (this.rt.current && (this.rt.phase === "playing" || ph === "wrapup")) { this.rt.current.sessionEndsAt = Math.max(Number(this.rt.current.sessionEndsAt) || 0, t0 + 20000); this.rt.phaseEndsAt = this.rt.current.sessionEndsAt; }
+      if (ph === "voting") { this.rt.phase = "playing"; this.rt.resumeAs = "vote"; }
+      else if (ph === "result" || ph === "summary" || ph === "break") { this.rt.phase = "playing"; this.rt.resumeAs = "choose"; }
+      if (this.rt.resumeAs && this.rt.current) { this.rt.current.sessionEndsAt = t0 + 3000; this.rt.phaseEndsAt = this.rt.current.sessionEndsAt; this.rt.current.endNow = true; }
       this.rt.loadSeq = (this.rt.loadSeq || 0) + 1; this.rt.applySeq = (this.rt.applySeq || 0) + 1;
       if (this.rt.current) { this.rt.current.loadSeq = this.rt.loadSeq; this.rt.current.applySeq = this.rt.applySeq; }
       this._log("warn", "The server restarted - the autopilot carried on by itself.");
@@ -490,6 +500,24 @@ class AutopilotEngine {
     this._broadcast(true);
   }
 
+  // ------------------------------------------------------------------ update 115: keep the game joined to the shared TikTok connection
+  // The game that is switched to must follow the platform's Live connection WITHOUT anybody pressing Connect. The server does it itself (the stage page
+  // does the same from its side for the 5 games that cannot be linked from the server: Flagle, Travle, Crossdle, Twistle, Findle).
+  _linkGameNow(id) {
+    try {
+      if (!this.hub || typeof this.hub.linkGame !== "function") return;
+      Promise.resolve(this.hub.linkGame(id)).then((res) => { if (res === "linked") this._log("info", "Game linked to the TikTok connection."); }).catch(() => {});
+    } catch (e) { /* never break the schedule */ }
+  }
+  _linkWatch(t, cur) {
+    if (t - (this._lastLinkCheck || 0) < 5000) return;
+    this._lastLinkCheck = t;
+    try {
+      if (!this.hub || typeof this.hub.isGameLinked !== "function") return;
+      if (this.hub.isGameLinked(cur.id) === false) { this._log("warn", "The game was not linked to TikTok - linking it again."); this._linkGameNow(cur.id); }
+    } catch (e) { /* ignore */ }
+  }
+
   // ------------------------------------------------------------------ the state machine
   _tick() {
     const r = this.rt, t = now();
@@ -505,10 +533,19 @@ class AutopilotEngine {
       case "playing": {
         const cur = r.current;
         if (!cur) break;
+        if (r.resumeAs) { const as = r.resumeAs; r.resumeAs = ""; cur.endNow = false; this._log("info", "Carrying on after the restart: " + (as === "vote" ? "the vote opens again." : "choosing the next game.")); this._recordHistory("server restarted"); r.gamesPlayed += 1; if (as === "vote") this._startVote({}); else this._choose(); break; }
+        this._linkWatch(t, cur);
         const stageAlive = t - r.stage.seenAt < STAGE_STALE_MS;
-        const roundRule = this.config.session.endRule !== "time" && stageAlive && cur.roundsLimit > 0 && cur.roundsDone >= cur.roundsLimit;
-        const timeRule = this.config.session.endRule !== "rounds" ? t >= cur.sessionEndsAt : (!stageAlive && t >= cur.sessionEndsAt + 60000); // "rounds only" without a stage page: do not wait forever
-        if (roundRule) this._endSession("round limit reached", false);
+        const useRounds = cur.useRounds !== undefined ? cur.useRounds : this.config.session.endRule !== "time";
+        const useTime = cur.useTime !== undefined ? cur.useTime : this.config.session.endRule !== "rounds";
+        // update 115: when the game cannot be counted (it publishes no round information), a "rounds only" game must still end by the clock
+        const countable = r.stage.canCount !== false;
+        const roundsReached = useRounds && cur.roundsLimit > 0 && cur.roundsDone >= cur.roundsLimit;
+        if (roundsReached && !cur.limitAt) { cur.limitAt = t; this._log("info", "Round limit reached (" + cur.roundsDone + "/" + cur.roundsLimit + ") - the result stays on screen for " + this.config.session.resultSeconds + " s."); this._save(); }
+        const hold = Math.max(0, Number(this.config.session.resultSeconds) || 0) * 1000;
+        const roundRule = roundsReached && cur.limitAt && t - cur.limitAt >= hold;
+        const timeRule = useTime ? t >= cur.sessionEndsAt : (!stageAlive && t >= cur.sessionEndsAt + 60000) || (!countable && t >= cur.sessionEndsAt + 30000); // "rounds only" without a stage page / a countable game: do not wait forever
+        if (roundRule) this._endSession("round limit reached", true);
         else if (timeRule) this._endSession("time is up", false);
         break;
       }
@@ -523,6 +560,7 @@ class AutopilotEngine {
         if (!v) { this._choose(); break; }
         const c = this.config.vote;
         if (c.extendSecondsIfClose > 0 && !v.extended && v.endsAt - t < 5000 && this._isClose(v)) { v.endsAt += c.extendSecondsIfClose * 1000; r.phaseEndsAt = v.endsAt; v.extended = true; this._log("info", "Close vote - " + c.extendSecondsIfClose + " s added."); this._broadcast(true); }
+        this._practiceVoters(t, v);
         if (t >= v.endsAt) this._finishVote(false);
         break;
       }
@@ -531,6 +569,20 @@ class AutopilotEngine {
       default: break;
     }
     this._maybeHeartbeat();
+  }
+  // update 115: in Offline / Test mode there is no chat, so nobody could ever vote and every vote ended with "nobody voted - random pick".
+  // A few practice voters (clearly marked on the stage) take part instead. In Live mode this never runs.
+  _practiceVoters(t, v) {
+    const h = this._hubState();
+    if (!this.config.vote.simulateWhenNotLive || v.preview || (h && h.mode === "live")) return;
+    if (v.simAt && t - v.simAt < 1800) return;
+    v.simAt = t;
+    if ((v.simCount || 0) >= 14) return;
+    if (!v.simLogged) { v.simLogged = true; v.simulated = true; this._log("info", "Platform is not in Live mode - practice voters are voting (chat cannot reach the vote)."); }
+    const n = 1 + rnd(3), fav = v.simFav === undefined ? (v.simFav = rnd(v.options.length)) : v.simFav;
+    for (let k = 0; k < n; k++) { const i = Math.random() < 0.45 ? fav : rnd(v.options.length); v.ballots.set("practice_voter_" + ((v.simCount || 0) + 1 + k), { i, w: 1, at: t }); }
+    v.simCount = (v.simCount || 0) + n;
+    this._tally(v); this._broadcast(false);
   }
   _maybeHeartbeat() {
     if (now() - this._lastBroadcast > 4000) this._broadcast(true);
@@ -574,13 +626,19 @@ class AutopilotEngine {
     if (!g) return;
     const minutes = gc.minutes > 0 ? gc.minutes : c.session.minutes;
     const roundsLimit = gc.rounds > 0 ? gc.rounds : c.session.rounds;
+    // update 115: the rounds / minutes typed for THIS game in the Games tab are always honoured, whatever the global rule is
+    let rule = c.session.endRule;
+    if (gc.rounds > 0 && rule === "time") rule = "either";
+    if (gc.minutes > 0 && rule === "rounds") rule = "either";
     r.loadSeq += 1; r.applySeq += 1;
-    r.current = { id, startedAt: t, sessionEndsAt: t + minutes * 60000, minutes, roundsLimit, roundsDone: 0, loadSeq: r.loadSeq, applySeq: r.applySeq, via: via || "" };
+    r.current = { id, startedAt: t, sessionEndsAt: t + minutes * 60000, minutes, roundsLimit, roundsDone: 0, rule, useRounds: rule !== "time", useTime: rule !== "rounds", loadSeq: r.loadSeq, applySeq: r.applySeq, via: via || "" };
+    r.stage.canCount = undefined; r.stage.linked = undefined;
+    this._linkGameNow(id); // update 115: the game joins the shared TikTok connection on the server BEFORE the stage page even opens it
     r.next = null; r.vote = null; r.result = null; r.leaderboard = [];
     r.stage.status = ""; r.stage.roundNumber = 0; r.stage.applied = 0;
     this._setPhase("playing", 0);
     r.phaseEndsAt = r.current.sessionEndsAt;
-    this._log("good", "▶ " + g.name + " (" + minutes + " min" + (c.session.endRule !== "time" ? " / " + roundsLimit + " rounds" : "") + ") - " + (via || ""));
+    this._log("good", "▶ " + g.name + " (" + (rule !== "rounds" ? minutes + " min" : "") + (rule === "either" ? " or " : "") + (rule !== "time" ? roundsLimit + " round" + (roundsLimit === 1 ? "" : "s") : "") + (rule === "either" ? ", whichever comes first" : "") + ") - " + (via || ""));
     this._broadcast(true);
   }
 
@@ -646,6 +704,15 @@ class AutopilotEngine {
       ids = ids.slice(0, vc.options);
       const cur = r0(this.rt.current);
       if (vc.includeReplayOption && cur && en.includes(cur) && !ids.includes(cur)) { if (ids.length >= vc.options) ids.pop(); ids.push(cur); }
+      // update 115: with only a few games switched on, "do not repeat the last N games" used to leave ONE option, and the vote was skipped without a word.
+      // Now the options are topped up (games that waited longest first, the game that just ended last) so there is always a real vote while 2+ games are on.
+      if (ids.length < Math.min(vc.options, en.length, 2) || (ids.length < vc.options && en.length > ids.length && vc.optionPick !== "fixed")) {
+        const lastEnd = (id) => { for (let i = this.rt.history.length - 1; i >= 0; i--) if (this.rt.history[i].id === id) return this.rt.history[i].endedAt; return 0; };
+        const spare = en.filter((id) => !ids.includes(id) && id !== cur).sort((a, b) => lastEnd(a) - lastEnd(b));
+        const want = vc.optionPick === "fixed" ? Math.min(vc.options, 2) : vc.options;
+        while (ids.length < want && spare.length) ids.push(spare.shift());
+        if (ids.length < 2 && cur && en.includes(cur) && !ids.includes(cur)) ids.push(cur);
+      }
     }
     ids = ids.slice(0, 9);
     return ids.map((id, i) => { const g = gameById(id); return { n: i + 1, id, name: g.name, emoji: g.emoji, count: 0 }; });
@@ -777,6 +844,26 @@ class AutopilotEngine {
     this._tally(v);
     this._broadcast(false);
   }
+  /** update 115: a click / tap on an option of the vote screen. { option: 1-based number, client: random id of that browser } */
+  stageVote(b = {}) {
+    const r = this.rt, v = r.vote, vc = this.config.vote;
+    if (!r.running || r.paused || r.phase !== "voting" || !v) throw new Error("No vote is open right now.");
+    if (!vc.allowStageClicks) throw new Error("Voting by click is switched off (Voting tab).");
+    const n = Number(b.option);
+    if (!Number.isInteger(n) || n < 1 || n > v.options.length) throw new Error("Unknown option.");
+    const cid = String(b.client || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 24) || "stage";
+    const name = "click_" + cid, t = now();
+    const had = v.ballots.get(name);
+    if (!had) { let clicks = 0; for (const k of v.ballots.keys()) if (k.startsWith("click_")) clicks++; if (clicks >= 50) throw new Error("Too many click voters."); }
+    if (had && !vc.changeVote) return { already: true };
+    const hist = (v.rate.get(name) || []).filter((x) => t - x < 60000);
+    if (hist.length >= vc.maxVotesPerMinutePerUser) throw new Error("Slow down a little.");
+    hist.push(t); v.rate.set(name, hist);
+    v.ballots.set(name, { i: n - 1, w: 1, at: t });
+    this._tally(v);
+    this._broadcast(true);
+    return { voted: n };
+  }
   /** Panel "Test": adds fake voters so the host can watch the vote screen work (works any time a vote is open). */
   testVotes(b = {}) {
     const v = this.rt.vote;
@@ -799,6 +886,8 @@ class AutopilotEngine {
     if (typeof b.status === "string") s.status = b.status.slice(0, 12);
     if (Number.isFinite(Number(b.roundNumber))) s.roundNumber = Math.min(1e6, Math.max(0, Number(b.roundNumber)));
     if (typeof b.game === "string") s.game = b.game.slice(0, 30);
+    if (typeof b.canCount === "boolean") s.canCount = b.canCount;
+    if (b.linked === true || b.linked === false || b.linked === null) s.linked = b.linked;
     if (Number.isFinite(Number(b.applied))) s.applied = Number(b.applied);
     const cur = r.current;
     if (r.running && cur && b.game === cur.id && Number.isFinite(Number(b.roundsDone)) && Number(b.loadSeq) === cur.loadSeq) {
@@ -830,7 +919,7 @@ class AutopilotEngine {
     if (r.vote) {
       const v = r.vote;
       this._tally(v);
-      vote = { options: v.options.map((o) => ({ n: o.n, id: o.id, name: o.name, emoji: o.emoji, count: c.vote.showCounts ? o.count : null, ...this._notesFor(o.id) })), endsAt: v.endsAt, startedAt: v.startedAt, total: c.vote.showCounts ? v.total : null, voters: v.voters, revotes: v.revotes, preview: v.preview, first: v.first, rejected: v.rejected || 0 };
+      vote = { options: v.options.map((o) => ({ n: o.n, id: o.id, name: o.name, emoji: o.emoji, count: c.vote.showCounts ? o.count : null, ...this._notesFor(o.id) })), endsAt: v.endsAt, startedAt: v.startedAt, total: c.vote.showCounts ? v.total : null, voters: v.voters, revotes: v.revotes, preview: v.preview, first: v.first, rejected: v.rejected || 0, simulated: Boolean(v.simulated), clickable: Boolean(c.vote.allowStageClicks) };
     }
     const h = this._hubState();
     const e = c.eligibility;
@@ -840,12 +929,12 @@ class AutopilotEngine {
       serverNow: now(),
       running: r.running, paused: r.paused, autoPaused: r.autoPaused, preview: r.preview, phase: r.phase, phaseStartedAt: r.phaseStartedAt, phaseEndsAt: r.phaseEndsAt,
       runStartedAt: r.runStartedAt, runEndsAt: r.runEndsAt, gamesPlayed: r.gamesPlayed, stopReason: r.stopReason,
-      current: cur && g ? { id: g.id, name: g.name, emoji: g.emoji, path: g.path, family: g.family, ...this._notesFor(g.id), startedAt: cur.startedAt, sessionEndsAt: cur.sessionEndsAt, minutes: cur.minutes, roundsLimit: cur.roundsLimit, roundsDone: cur.roundsDone, loadSeq: cur.loadSeq, applySeq: cur.applySeq, via: cur.via, stopped: Boolean(cur.stopped), preset: this._presetFor(cur.id) } : null,
+      current: cur && g ? { id: g.id, name: g.name, emoji: g.emoji, path: g.path, family: g.family, ...this._notesFor(g.id), startedAt: cur.startedAt, sessionEndsAt: cur.sessionEndsAt, minutes: cur.minutes, roundsLimit: cur.roundsLimit, roundsDone: cur.roundsDone, useRounds: cur.useRounds !== undefined ? cur.useRounds : c.session.endRule !== "time", useTime: cur.useTime !== undefined ? cur.useTime : c.session.endRule !== "rounds", limitAt: cur.limitAt || 0, loadSeq: cur.loadSeq, applySeq: cur.applySeq, via: cur.via, stopped: Boolean(cur.stopped), preset: this._presetFor(cur.id) } : null,
       next: r.next && nextG ? { id: nextG.id, name: nextG.name, emoji: nextG.emoji, ...this._notesFor(nextG.id), via: r.next.via } : null,
       vote, result: r.result ? { ...r.result, ...this._notesFor(r.result.winnerId) } : null,
       leaderboard: r.leaderboard,
       history: r.history.slice(-12).map((h2) => ({ ...h2, name: (gameById(h2.id) || {}).name || h2.id, emoji: (gameById(h2.id) || {}).emoji || "" })),
-      stage: { seenAt: r.stage.seenAt, alive: now() - r.stage.seenAt < STAGE_STALE_MS, status: r.stage.status, roundNumber: r.stage.roundNumber, applied: r.stage.applied },
+      stage: { seenAt: r.stage.seenAt, alive: now() - r.stage.seenAt < STAGE_STALE_MS, status: r.stage.status, roundNumber: r.stage.roundNumber, applied: r.stage.applied, canCount: r.stage.canCount, linked: r.stage.linked },
       platform: h ? { mode: h.mode, status: h.status, username: h.username, viewers: h.viewers } : null,
       warnings: this._warnings(),
       voteInfo: { how, who, hint: c.display.voteHint || how + (who !== "everyone" ? " - " + who + " can vote" : ""), letters: c.vote.method === "letter" },
