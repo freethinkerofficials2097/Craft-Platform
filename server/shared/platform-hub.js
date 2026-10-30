@@ -389,6 +389,26 @@ class PlatformHubClass {
     }
   }
 
+  /** update 115: link ONE game to the shared connection right now (the AFK autopilot calls this whenever it switches to a game, and keeps
+   *  checking while the game runs). Returns "linked" | "already" | "unavailable" (not Live / not connected / game does not register itself). */
+  async linkGame(name) {
+    if (this.mode !== "live" || this.status !== "connected" || !this.master) return "unavailable";
+    const g = this.games.get(String(name));
+    if (!g) return "unavailable";
+    const user = this.username;
+    try {
+      if (g.isLinked && g.isLinked(user)) return "already";
+      await g.link(user);
+      return "linked";
+    } catch (e) { console.warn("[platform] could not link " + name + " (autopilot): " + msgOf(e)); return "unavailable"; }
+  }
+  isGameLinked(name) {
+    if (this.mode !== "live" || this.status !== "connected" || !this.master) return null; // nothing to link to
+    const g = this.games.get(String(name));
+    if (!g || !g.isLinked) return null;
+    try { return Boolean(g.isLinked(this.username)); } catch (e) { return null; }
+  }
+
   /** update 109: listen to every event of the ONE shared connection: fn(eventName, argsArray). Returns an unsubscribe function. */
   subscribe(fn) {
     if (typeof fn !== "function") return () => {};
