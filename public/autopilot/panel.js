@@ -280,7 +280,8 @@
     d.appendChild(grid(card("One game session", "How long each game runs. Every game can override this in the Games tab."), [
       num("session.minutes", "Session length", 1, 240, "", "minutes"),
       sel("session.endRule", "A session ends…", [["time", "when the time is up"], ["rounds", "after N finished rounds"], ["either", "at the time OR the rounds, whichever is first"]], "", true),
-      get("session.endRule") !== "time" ? num("session.rounds", "Rounds per session", 1, 100, "Needs the stage page open (it counts the finished rounds).") : null,
+      get("session.endRule") !== "time" ? num("session.rounds", "Rounds per session", 1, 100, "Needs the stage page open (it counts the finished rounds). A number of rounds typed for one game in the Games tab always counts for that game, even when this rule says “time”.") : null,
+      get("session.endRule") !== "time" ? num("session.resultSeconds", "After the last round keep the result on screen", 0, 60, "Then the game changes (0 = at once).", "seconds") : null,
       chk("session.finishRound", "When time is up, let the running round finish first"),
       num("session.graceSeconds", "…but wait at most", 5, 900, "", "seconds"),
       num("session.showLeaderboardSeconds", "Show the session leaderboard for", 0, 60, "0 = skip it.", "seconds")
@@ -628,6 +629,8 @@
       sel("vote.optionPick", "Which games are offered", [["random", "Random games"], ["weighted", "Random, favouring higher weight"], ["all", "Every switched-on game (max 9)"], ["fixed", "Always my list below"]], "", true),
       get("vote.optionPick") === "fixed" ? gameList("vote.fixedOptions", "My vote list", "Up to 9 games.", false) : null,
       chk("vote.includeReplayOption", "Also offer “play the current game again”"),
+      chk("vote.allowStageClicks", "A click / tap on an option of the stage also counts as a vote"),
+      chk("vote.simulateWhenNotLive", "Practice voters vote when the platform is not in Live mode (nobody can type in chat then)"),
       sel("vote.method", "Viewers vote by typing…", [["number", "the number (1, 2, 3…)"], ["letter", "a letter (A, B, C…)"], ["name", "the game name"], ["any", "number or name"]]),
       chk("vote.changeVote", "A viewer can change their vote (last one counts)"),
       chk("vote.showCounts", "Show live vote counts on screen"),

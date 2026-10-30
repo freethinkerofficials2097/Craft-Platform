@@ -56,4 +56,12 @@ body.light .tip{ color:#1d1a22; text-shadow:none; }
 .bar button,.bar a{ font:inherit; font-weight:600; border:0; border-radius:10px; padding:7px 12px; background:#3a3f63; color:#fff; cursor:pointer; text-decoration:none; }
 .bar .danger{ background:#c0392b; }
 .bar span{ opacity:.8; }
+/* update 115: full-screen button (faint; shows fully on hover, hides itself in full screen) + clickable vote options */
+.fsbtn{ position:fixed; z-index:45; right:max(10px,env(safe-area-inset-right)); bottom:max(10px,env(safe-area-inset-bottom)); width:42px; height:42px; border-radius:50%; border:1px solid rgba(255,255,255,.3); background:rgba(10,12,24,.62); color:#fff; font-size:21px; line-height:1; cursor:pointer; opacity:.45; transition:opacity .25s; }
+.fsbtn:hover{ opacity:1; }
+body.fs-on .fsbtn{ opacity:0; }
+body.fs-on .fsbtn:hover{ opacity:.9; }
+.opt.clickable{ cursor:pointer; touch-action:manipulation; user-select:none; }
+.opt.clickable:hover{ border-color:var(--accent); }
+.opt.mine{ outline:3px solid var(--accent); }
 [hidden]{ display:none !important; }

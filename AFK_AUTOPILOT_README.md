@@ -73,3 +73,6 @@ Games forget their settings when the server restarts, so the autopilot must not 
 ## 💾 Save & Apply as default - for every game (update 114)
 In every game's **Settings** screen, next to **Save & Apply**, there is **💾 Save & Apply as default**. It applies the settings and remembers them on the server (`data/game-defaults.json`); after a restart the game starts with them again. Remembered: difficulty, word length (fixed / range), pause between rounds, starter word, repeating digits, regions, Expandle lengths / round time (Twistle, Crossdle and Findle: their own values), and for Flagle / Travle the values of their settings controls. Contexto keeps its own existing button. The AFK Autopilot setup file now also contains every game's saved default, so **Download my setup file / Restore from a file** moves them too.
 On hosting that wipes its disk at each deploy, put your downloaded setup file into the `data/` folder before deploying (or restore it once after deploying).
+
+## Update 115
+Vote always shown (2+ games on), restart no longer shortens a game, practice voters in Test/Offline mode, tap-to-vote on the stage, per-game rounds always honoured, result pause after the last round (Schedule tab), stage-wide full screen (⛶ / F), games kept linked to TikTok after every change. See CHANGES_UPDATE_115.md.

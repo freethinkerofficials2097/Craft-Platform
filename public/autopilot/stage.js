@@ -9,8 +9,9 @@
   var frame = $("game"), ov = $("ov"), card = $("card"), tipEl = $("tip"), chip = $("chip"), banner = $("banner"), cover = $("cover"), coverText = $("coverText"), bar = $("bar");
   var S = null, skew = 0;
   var loaded = { loadSeq: -1, id: "" }, appliedSeq = -1, applyTimer = null, loadedAt = 0, coverUntil = 0;
-  var roundsDone = 0, lastCounted = -1, lastTipAt = 0, tipIdx = 0;
+  var roundsBase = 0, lastTipAt = 0, tipIdx = 0, lastRelink = 0, relinkTries = 0, myVote = { at: 0, n: 0 };
   var lastSig = "";
+  var client = (function () { try { var c = localStorage.getItem("apClient"); if (!c) { c = Math.random().toString(36).slice(2, 12); localStorage.setItem("apClient", c); } return c; } catch (e) { return "stage"; } })();
   var key = function () { try { return localStorage.getItem("apEditKey") || ""; } catch (e) { return ""; } };
 
   function nowS() { return Date.now() + skew; }
@@ -27,37 +28,61 @@
   }
 
   /* ---------- the game frame ---------- */
+  var MAX_COVER_MS = 20000; // the loading screen never stays longer than this, even if a game cannot confirm its link
   function loadGame(cur) {
     loaded = { loadSeq: cur.loadSeq, id: cur.id };
-    appliedSeq = -1; roundsDone = 0; lastCounted = -1; loadedAt = Date.now();
+    appliedSeq = -1; roundsBase = Number(cur.roundsDone) || 0; loadedAt = Date.now(); lastRelink = 0; relinkTries = 0;
     var hold = ((S.display && S.display.transitionSeconds) || 4) * 1000;
-    coverUntil = Date.now() + hold;
+    coverUntil = Date.now() + hold; // update 115: the loading screen stays until the game has been applied AND is linked to TikTok (checkCover), not just for a fixed time
     coverText.textContent = (cur.emoji || "🎮") + " " + cur.name;
     cover.hidden = false;
-    frame.hidden = true;
-    frame.onload = function () {
-      frame.hidden = false;
-      setTimeout(function () { if (Date.now() >= coverUntil - 50) cover.hidden = true; }, Math.max(300, coverUntil - Date.now()));
-    };
+    frame.hidden = true; frameLoaded = false;
+    frame.onload = function () { frameLoaded = true; frame.hidden = false; };
     frame.src = cur.path + (cur.path.indexOf("?") < 0 ? "?" : "&") + "nobadge&autopilot=1";
     clearInterval(applyTimer);
     var tries = 0;
-    applyTimer = setInterval(function () { tries++; if (tryApply(cur) || tries > 60) clearInterval(applyTimer); }, 800);
+    applyTimer = setInterval(function () { tries++; if (tryApply(cur) || tries > 75) clearInterval(applyTimer); }, 800);
   }
+  var frameLoaded = false;
   function ps() { try { return frame.contentWindow && frame.contentWindow.PlatformSync; } catch (e) { return null; } }
+  function liveNow() { var plat = S && S.platform; return !!(plat && plat.mode === "live" && plat.status === "connected"); }
+  function isLinked() { var p = ps(); if (!p || !p.linked) return null; try { return p.linked(); } catch (e) { return null; } }
   function tryApply(cur) {
     var p = ps();
     if (!p || !p.ready || !p.ready()) return false;
-    var gs = p.gameState && p.gameState();
-    if (!cur.family) { appliedSeq = cur.applySeq; return true; } // these games run with the settings saved inside them
-    var plat = S.platform || {};
-    // in Live mode wait until the game itself is linked to the shared connection (platform-sync does that), at most ~12 s
-    if (plat.mode === "live" && !(gs && gs.game && gs.game.mode === "live") && Date.now() - loadedAt < 12000) return false;
+    // update 115: in Live mode the game is first made to follow the shared TikTok connection (the settings come after), for at most ~15 s
+    if (liveNow() && isLinked() === false) {
+      if (Date.now() - lastRelink > 2500) { lastRelink = Date.now(); relinkTries++; try { p.relink && p.relink(); } catch (e) {} }
+      if (Date.now() - loadedAt < 15000) return false;
+    }
+    if (!cur.family) { try { p.armRounds && p.armRounds(); } catch (e) {} appliedSeq = cur.applySeq; return true; } // these games run with the settings saved inside them
     p.act("reset_total_leaderboard", {});               // the session leaderboard starts from zero
     p.act("apply_settings", cur.preset || { autoContinue: true }); // same message as the game's own Settings screen (starts a fresh round)
+    try { p.armRounds && p.armRounds(); } catch (e) {}  // finished rounds are counted from here
     appliedSeq = cur.applySeq;
     return true;
   }
+  // the loading screen goes away when the game is applied and linked (or after at most MAX_COVER_MS)
+  function checkCover() {
+    if (cover.hidden || !S) return;
+    var t = Date.now();
+    if (!S.current && !S.running) { cover.hidden = true; return; }
+    var applied = appliedSeq === (S.current && S.current.applySeq);
+    var ready = frameLoaded && applied && (!liveNow() || isLinked() !== false);
+    if ((ready && t >= coverUntil) || t - loadedAt > MAX_COVER_MS) { cover.hidden = true; frame.hidden = false; }
+  }
+  // update 115: while a game runs, keep it joined to the shared TikTok connection. If it ever drops out (the page was reloaded, the game restarted,
+  // the connection came back) it is linked again at once - nobody has to reconnect by hand after a game change.
+  function keepLinked() {
+    if (!S || !S.running || S.paused || !S.current || loaded.loadSeq !== S.current.loadSeq || !frameLoaded) return;
+    if (!liveNow()) { relinkTries = 0; return; }
+    var lk = isLinked();
+    if (lk === false && Date.now() - loadedAt > 3000 && Date.now() - lastRelink > 4000) {
+      lastRelink = Date.now(); relinkTries++;
+      var p = ps(); try { p && p.relink && p.relink(); } catch (e) {}
+    } else if (lk === true) relinkTries = 0;
+  }
+  setInterval(function () { try { keepLinked(); checkCover(); } catch (e) {} }, 1000);
 
   /* ---------- reporting back ---------- */
   function report() {
@@ -65,14 +90,15 @@
     var p = ps(), gs = p && p.gameState ? p.gameState() : null, g = gs && gs.game;
     var status = g && g.status ? String(g.status) : "";
     var rn = g && Number(g.roundNumber) || 0;
-    if (S.current.family && g) {
-      if (status && status !== "live" && status !== "idle" && rn !== lastCounted && Date.now() - loadedAt > 4000) { lastCounted = rn; roundsDone += 1; }
-    }
+    var rounds = 0, can = false, linked = null;
+    try { if (p && appliedSeq === S.current.applySeq) { rounds = roundsBase + (p.rounds ? Number(p.rounds()) || 0 : 0); can = p.canCount ? !!p.canCount() : false; } else rounds = roundsBase; linked = isLinked(); } catch (e) {}
     var lb = gs && gs.totalLeaderboard ? gs.totalLeaderboard : [];
-    fetch("/api/autopilot/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-      game: S.current.id, loadSeq: S.current.loadSeq, applied: appliedSeq, status: status, roundNumber: rn, roundsDone: roundsDone,
-      leaderboard: lb.slice(0, 10).map(function (x) { return { username: x.username, score: x.score, avatarUrl: x.avatarUrl || null }; })
-    }) }).then(function (r) { return r.json(); }).then(function (j) { if (j && j.serverNow) skew = j.serverNow - Date.now(); }).catch(function () {});
+    var body = { game: S.current.id, loadSeq: S.current.loadSeq, applied: appliedSeq, status: status, roundNumber: rn, roundsDone: rounds, linked: linked,
+      leaderboard: lb.slice(0, 10).map(function (x) { return { username: x.username, score: x.score, avatarUrl: x.avatarUrl || null }; }) };
+    // a game whose rounds cannot be counted is only reported as such after it had time to start (so the engine falls back to the clock for it)
+    if (appliedSeq === S.current.applySeq && (can || Date.now() - loadedAt > 25000)) body.canCount = can;
+    fetch("/api/autopilot/report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json(); }).then(function (j) { if (j && j.serverNow) skew = j.serverNow - Date.now(); }).catch(function () {});
   }
   setInterval(report, 2000);
 
@@ -104,7 +130,8 @@
     var total = v.total || 0, max = Math.max.apply(null, v.options.map(function (o) { return o.count || 0; }).concat([1]));
     var box = el("div", "opts" + (v.options.length >= 6 ? " dense" : ""));
     v.options.forEach(function (o) {
-      var row = el("div", "opt"), fill = el("div", "fill");
+      var row = el("div", "opt" + (v.clickable && !v.preview ? " clickable" : "") + (myVote.at === v.startedAt && myVote.n === o.n ? " mine" : "")), fill = el("div", "fill");
+      if (v.clickable && !v.preview) row.addEventListener("pointerdown", function (ev) { ev.preventDefault(); castVote(o.n, v.startedAt); });
       fill.style.width = o.count == null ? "0" : (total ? Math.round((o.count / Math.max(total, 1)) * 100) : 0) + "%";
       row.appendChild(fill);
       row.appendChild(el("div", "n", S.voteInfo.letters ? String.fromCharCode(64 + o.n) : String(o.n)));
@@ -118,8 +145,13 @@
     card.appendChild(box);
     var secs = left(v.endsAt), dur = Math.max(1, (v.endsAt - v.startedAt) / 1000);
     var b = el("div", "bar2"), i = el("i"); i.style.width = Math.min(100, (secs / dur) * 100) + "%"; b.appendChild(i); card.appendChild(b);
-    card.appendChild(el("div", "meta", "⏱ " + secs + " s left" + (v.total != null ? " · " + v.voters + " voter" + (v.voters === 1 ? "" : "s") : "")));
+    card.appendChild(el("div", "meta", "⏱ " + secs + " s left" + (v.total != null ? " · " + v.voters + " voter" + (v.voters === 1 ? "" : "s") : "") + (v.simulated ? " · 🧪 practice voters (platform is not in Live mode)" : "") + (v.clickable && !v.preview ? " · tap an option to vote" : "")));
     tipEl.textContent = tipLine();
+  }
+  function castVote(n, at) {
+    myVote = { at: at, n: n };
+    fetch("/api/autopilot/stage-vote", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ option: n, client: client }) }).catch(function () {});
+    render();
   }
   function drawResult() {
     var r = S.result; if (!r) return;
@@ -172,6 +204,9 @@
 
   function render() {
     if (!S) return;
+    try { renderNow(); } catch (e) { if (window.console) console.error("[autopilot stage] render:", e); }
+  }
+  function renderNow() {
     document.body.classList.toggle("light", S.display && S.display.theme === "light");
     document.body.classList.toggle("dark", !(S.display && S.display.theme === "light"));
     if (S.display && S.display.accent) document.documentElement.style.setProperty("--accent", S.display.accent);
@@ -179,10 +214,11 @@
     // which game is in the frame
     if (S.current && (S.running || S.current.stopped) && (loaded.loadSeq !== S.current.loadSeq)) loadGame(S.current);
     if (S.current && loaded.loadSeq === S.current.loadSeq && S.current.applySeq !== appliedSeq && S.running && !applyTimerActive()) {
-      var cur = S.current; clearInterval(applyTimer); var t = 0; applyTimer = setInterval(function () { t++; if (tryApply(cur) || t > 40) clearInterval(applyTimer); }, 800);
+      var cur = S.current; clearInterval(applyTimer); var t = 0; roundsBase = Number(cur.roundsDone) || 0; loadedAt = Math.min(loadedAt, Date.now() - 16000);
+      applyTimer = setInterval(function () { t++; if (tryApply(cur) || t > 40) clearInterval(applyTimer); }, 800);
     }
     if (!S.current && !S.running) { frame.hidden = true; cover.hidden = true; }
-    if (!cover.hidden && Date.now() >= coverUntil && !frame.hidden) cover.hidden = true;
+    checkCover();
 
     var ph = S.running ? S.phase : "idle";
     var overlay = false;
@@ -205,9 +241,11 @@
       chip.className = "chip" + (ph === "wrapup" ? " warn" : "");
       chip.appendChild(el("span", "dot"));
       chip.appendChild(el("span", "", S.current.emoji + " " + S.current.name));
-      var rem = left(S.current.sessionEndsAt);
-      chip.appendChild(el("i", "", ph === "wrapup" ? "last round…" : "⏱ " + mmss(rem)));
-      if (S.display.showUpNext && ph === "playing" && rem <= 60) chip.appendChild(el("i", "", "· vote soon"));
+      var rem = left(S.current.sessionEndsAt), cu = S.current;
+      if (cu.useRounds && cu.roundsLimit > 0) chip.appendChild(el("i", "", "🎯 round " + Math.min(cu.roundsLimit, (cu.roundsDone || 0) + (cu.limitAt ? 0 : 1)) + "/" + cu.roundsLimit));
+      if (ph === "wrapup") chip.appendChild(el("i", "", "last round…"));
+      else if (cu.useTime !== false) chip.appendChild(el("i", "", "⏱ " + mmss(rem)));
+      if (S.display.showUpNext && ph === "playing" && ((cu.useTime !== false && rem <= 60) || (cu.limitAt))) chip.appendChild(el("i", "", "· vote soon"));
     }
     $("barState").textContent = S.running ? (S.paused ? "paused" : ph) + (S.current ? " · " + S.current.name : "") : "off";
     $("bPause").textContent = S.paused ? "▶ Resume" : "⏸ Pause";
@@ -216,19 +254,50 @@
 
   /* ---------- feed from the server ---------- */
   function onState(st) { S = st; if (st.serverNow) skew = st.serverNow - Date.now(); render(); }
+  var es = null, lastMsg = 0;
   function connect() {
-    var es;
+    try { if (es) es.close(); } catch (e) {}
     try { es = new EventSource("/api/autopilot/stream"); } catch (e) { return poll(); }
-    es.onmessage = function (e) { try { onState(JSON.parse(e.data)); } catch (x) {} };
-    es.onerror = function () { /* the browser reconnects by itself; polling below is the safety net */ };
+    es.onmessage = function (e) { lastMsg = Date.now(); try { onState(JSON.parse(e.data)); } catch (x) {} };
+    // update 115: the browser reconnects by itself, but when it gives up (a proxy cut the stream, the laptop slept) the stream is opened again here
+    es.onerror = function () { if (es && es.readyState === 2) setTimeout(connect, 1500); };
   }
+  // a silent stream (no message for 12 s while the server heartbeats every ~4 s) is replaced by a new one; coming back online / to the tab does the same
+  setInterval(function () { if (lastMsg && Date.now() - lastMsg > 12000) { lastMsg = Date.now(); connect(); } }, 4000);
+  window.addEventListener("online", function () { connect(); poll(); });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { poll(); if (Date.now() - lastMsg > 6000) connect(); } });
   function poll() { fetch("/api/autopilot", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) { if (j && j.state) onState(j.state); }).catch(function () {}); }
   connect(); poll(); setInterval(poll, 6000);
   setInterval(render, 500); // countdowns
 
+  /* ---------- full screen (update 115) ----------
+     The STAGE page goes full screen (not a game frame), so it stays in full screen when the autopilot changes the game. The game's own full-screen
+     buttons do the same thing (platform-sync.js maps them to the stage). Browsers only allow it from a click / key press: button, F key, or double-click. */
+  var fsBtn = $("fsBtn");
+  function fsOn() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function toggleFs(force) {
+    var want = force === undefined ? !fsOn() : !!force;
+    var root = document.documentElement;
+    try {
+      if (want && !fsOn()) { var f = root.requestFullscreen || root.webkitRequestFullscreen; if (f) { var pr = f.call(root); if (pr && pr.catch) pr.catch(function () {}); } }
+      else if (!want && fsOn()) { var x = document.exitFullscreen || document.webkitExitFullscreen; if (x) { var p2 = x.call(document); if (p2 && p2.catch) p2.catch(function () {}); } }
+    } catch (e) {}
+  }
+  function syncFs() { document.body.classList.toggle("fs-on", fsOn()); if (fsBtn) { fsBtn.textContent = fsOn() ? "⤓" : "⛶"; fsBtn.title = fsOn() ? "Leave full screen (F)" : "Full screen (F)"; } var bf = $("bFs"); if (bf) bf.textContent = fsOn() ? "⤓ Leave full screen" : "⛶ Full screen"; }
+  document.addEventListener("fullscreenchange", syncFs); document.addEventListener("webkitfullscreenchange", syncFs);
+  if (fsBtn) fsBtn.addEventListener("click", function () { toggleFs(); });
+  if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) { if (fsBtn) fsBtn.hidden = true; if ($("bFs")) $("bFs").hidden = true; }
+  window.addEventListener("message", function (e) { if (e.origin === location.origin && e.data && e.data.type === "ap-fullscreen") toggleFs(e.data.on); });
+  document.addEventListener("dblclick", function (e) { if (e.target && (e.target.closest && e.target.closest(".bar"))) return; toggleFs(); });
+  syncFs();
+
   /* ---------- host bar (Esc) ---------- */
   function toggleBar(on) { bar.hidden = on === undefined ? !bar.hidden : !on; }
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") toggleBar(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") toggleBar();
+    else if ((e.key === "f" || e.key === "F") && !e.ctrlKey && !e.metaKey && !e.altKey) toggleFs();
+  });
+  if ($("bFs")) $("bFs").onclick = function () { toggleFs(); };
   $("bHide").onclick = function () { toggleBar(false); };
   $("bPause").onclick = function () { api(S && S.paused ? "/api/autopilot/resume" : "/api/autopilot/pause"); };
   $("bSkip").onclick = function () { api("/api/autopilot/skip"); };
