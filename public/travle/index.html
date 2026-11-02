@@ -67,6 +67,7 @@
         <div id="globeMount" class="globe-mount"></div>
         <button id="globeExitBtn" class="globe-exit-btn" aria-label="Exit full screen" title="Exit full screen">✕</button>
       </div>
+      <div id="roundClock" class="post-round-timer round-clock" hidden></div>
       <div id="postRoundTimer" class="post-round-timer" hidden></div>
       <p class="globe-caption">Drag to rotate · pinch or use +/− to zoom · tap Enlarge for full screen</p>
     </section>
@@ -210,6 +211,12 @@
       <span class="field-label">Delay before next round (seconds)</span>
       <input id="autoContinueDelay" type="number" min="5" max="60" value="12" class="field-input small" />
     </label>
+
+    <label class="field" id="giveUpField">
+      <span class="field-label">Give up a round after (seconds, 0 = never)</span>
+      <input id="giveUpSeconds" type="number" min="0" max="900" value="0" class="field-input small" />
+    </label>
+    <p class="field-note">When the time is up the answer is shown and the next round starts by itself (needs "Auto-continue" above). Handy when nobody solves the trail - the AFK Autopilot uses it so a round can never get stuck.</p>
 
     <button id="applySettingsBtn" class="primary-btn" style="width:100%">Apply settings &amp; start new round</button>
     <p class="field-note" id="applyNote">Changes here only take effect once you tap Apply.</p>

@@ -76,3 +76,6 @@ On hosting that wipes its disk at each deploy, put your downloaded setup file in
 
 ## Update 115
 Vote always shown (2+ games on), restart no longer shortens a game, practice voters in Test/Offline mode, tap-to-vote on the stage, per-game rounds always honoured, result pause after the last round (Schedule tab), stage-wide full screen (⛶ / F), games kept linked to TikTok after every change. See CHANGES_UPDATE_115.md.
+
+## Update 116
+Varied votes (kinds of games, no recent repeats, always-include list), Travle rounds / give-up timer / settings, safety cap, larger notes with size sliders, kind tags. See CHANGES_UPDATE_116.md.

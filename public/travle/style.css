@@ -309,6 +309,8 @@ button, input, select {
 
 .globe-wrap.expanded ~ .globe-caption { display: none; }
 
+.round-clock { animation: none; font-size: 14px; }
+.round-clock.urgent { color: #fff; background: #d9534f; border-color: #b52b27; animation: post-round-pulse 0.8s ease-in-out infinite; }
 .post-round-timer {
   margin: 8px auto 0;
   width: max-content;

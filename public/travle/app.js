@@ -281,6 +281,8 @@
   const globeExpandBtn = $("globeExpandBtn");
   const globeExitBtn = $("globeExitBtn");
   const postRoundTimer = $("postRoundTimer");
+  const roundClock = $("roundClock");
+  const giveUpInput = $("giveUpSeconds");
 
   const tiktokUsername = $("tiktokUsername");
   const tiktokConnectBtn = $("tiktokConnectBtn");
@@ -296,6 +298,8 @@
   let leaderboardTab = "travle";
   let autoTimer = null;
   let round = null;
+  // update 116: give-up timer (a round nobody solves ends by itself) + the state the AFK Autopilot reads to COUNT rounds
+  let roundLimitSec = 0, limitTimer = null, roundNo = 0;
   let tiktokConnected = false;
 
   /* ------------------------------------------------------------------ *
@@ -370,6 +374,44 @@
     }, 1000);
   }
 
+  /* ---- update 116: give-up timer ---- */
+  function fmtClock(sec) { return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+  function stopLimitTimer() {
+    if (limitTimer) { clearInterval(limitTimer); limitTimer = null; }
+    if (roundClock) roundClock.hidden = true;
+  }
+  function startLimitTimer() {
+    stopLimitTimer();
+    if (!(roundLimitSec > 0) || !round || !round.active || !roundClock) return;
+    const end = Date.now() + roundLimitSec * 1000;
+    const tick = () => {
+      if (!round || !round.active) { stopLimitTimer(); return; }
+      const left = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      roundClock.textContent = "⏱ " + fmtClock(left);
+      roundClock.classList.toggle("urgent", left <= 15);
+      roundClock.hidden = false;
+      if (left <= 0) {
+        stopLimitTimer();
+        addFeed("Time is up - here is the shortest trail.");
+        revealRound();
+      }
+    };
+    tick();
+    limitTimer = setInterval(tick, 500);
+  }
+
+  /* ---- update 116: what the AFK Autopilot reads (the same "state" shape the word games publish), so Travle rounds are COUNTED ---- */
+  function publishAFK() {
+    try {
+      if (!window.PlatformSync || typeof window.PlatformSync.setGameState !== "function") return;
+      const status = !round ? "" : round.active ? "live" : (round.solved ? "won" : "lost");
+      const lb = Object.entries(sessionScores).sort((a, b) => b[1] - a[1]).slice(0, 10)
+        .map(([username, score]) => ({ username, score, avatarUrl: avatarsByUser.get(String(username).trim().toLowerCase()) || null }));
+      window.PlatformSync.setGameState({ game: { status, roundNumber: roundNo, mode }, totalLeaderboard: lb });
+    } catch (e) { /* never break the game */ }
+  }
+  setInterval(publishAFK, 2000);
+
   function startNewRound() {
     stopBots();
     stopCompletionWatchdog();
@@ -407,6 +449,9 @@
     renderRound();
     if (mode === "test") startBots();
     startCompletionWatchdog();
+    roundNo++;
+    startLimitTimer();
+    publishAFK();
   }
 
   function buildCountryStateMap() {
@@ -953,7 +998,10 @@
   function finishRound(solved) {
     stopBots();
     stopCompletionWatchdog();
+    stopLimitTimer();
     round.active = false;
+    round.solved = Boolean(solved);
+    publishAFK();
     round.hintedOutline = null;
     round.hintedLetters = false;
     publishHints();
@@ -1408,6 +1456,7 @@
   });
 
   applySettingsBtn.addEventListener("click", () => {
+    roundLimitSec = Math.min(900, Math.max(0, parseInt(giveUpInput && giveUpInput.value, 10) || 0));
     mode = modeSelect.value;
     applyModeUI();
     closeDrawer(settingsDrawer);
@@ -1431,6 +1480,32 @@
       renderLeaderboard();
     });
   });
+
+  /* ------------------------------------------------------------------ *
+   * 8b. AFK AUTOPILOT HOOK (update 116)
+   * The autopilot stage page sets Travle's settings through this (same effect as typing them in Settings and pressing Apply),
+   * so trail length, the give-up time and the pause between rounds are really used when Travle comes up in a session.
+   * ------------------------------------------------------------------ */
+  const afkPageStart = Date.now();
+  window.TravleAFK = {
+    // (waits ~2.5 s after the page opened so the saved "Save & Apply as default" form of settings-shell.js has been put back first - the autopilot's values come after it)
+    ready() { return Boolean(round) && Date.now() - afkPageStart > 2500; },
+    apply(p) {
+      p = p || {};
+      const n = (v, lo, hi) => Math.min(hi, Math.max(lo, parseInt(v, 10)));
+      if (Number.isFinite(n(p.minHops, 2, 9))) minHopsInput.value = n(p.minHops, 2, 9);
+      if (Number.isFinite(n(p.maxHops, 2, 9))) maxHopsInput.value = n(p.maxHops, 2, 9);
+      if (parseInt(minHopsInput.value, 10) > parseInt(maxHopsInput.value, 10)) maxHopsInput.value = minHopsInput.value;
+      autoContinueToggle.checked = true;                         // an AFK live must always go on to the next round
+      if (Number.isFinite(n(p.autoContinueDelaySeconds, 5, 60))) autoContinueDelay.value = n(p.autoContinueDelaySeconds, 5, 60);
+      const gu = Number.isFinite(n(p.giveUpSeconds, 0, 900)) ? n(p.giveUpSeconds, 0, 900) : 0;
+      if (giveUpInput) giveUpInput.value = gu;
+      roundLimitSec = gu;
+      resetSessionScores();
+      startNewRound();
+      return true;
+    }
+  };
 
   /* ------------------------------------------------------------------ *
    * 9. INIT

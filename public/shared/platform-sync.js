@@ -355,6 +355,9 @@
     state: null, game: GAME, family: !!FAMILY[GAME],
     ready: function () { try { return !!adapter && !!adapter.ready(); } catch (e) { return false; } },
     gameState: function () { return cap.gs; },
+    // update 116: games that keep their rounds in the page (Travle) publish a small state of their own: { game: { status: "live" | "won" | "lost", roundNumber }, totalLeaderboard: [...] }
+    // - the autopilot counts finished rounds from it exactly like it does for the word games
+    setGameState: function (gs) { try { cap.gs = gs; trackRounds(gs); } catch (e) {} },
     act: function (type, payload) { if (!FAMILY[GAME]) return false; famSend(type, payload); return true; },
     /* update 115 - used by the autopilot stage */
     hubState: function () { return hub; },

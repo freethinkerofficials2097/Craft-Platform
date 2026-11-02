@@ -55,7 +55,16 @@
       if (Date.now() - lastRelink > 2500) { lastRelink = Date.now(); relinkTries++; try { p.relink && p.relink(); } catch (e) {} }
       if (Date.now() - loadedAt < 15000) return false;
     }
-    if (!cur.family) { try { p.armRounds && p.armRounds(); } catch (e) {} appliedSeq = cur.applySeq; return true; } // these games run with the settings saved inside them
+    if (!cur.family) {
+      // update 116: Travle - its settings (trail length, give-up time, pause) are set inside the game page itself, and rounds are counted from its own state
+      if (cur.stageSet) {
+        var ga = null; try { ga = frame.contentWindow && frame.contentWindow.TravleAFK; } catch (e) {}
+        if (!ga || !ga.ready || !ga.ready()) return false;
+        try { ga.apply(cur.preset || {}); } catch (e) {}
+      }
+      try { p.armRounds && p.armRounds(); } catch (e) {}
+      appliedSeq = cur.applySeq; return true; // the other games run with the settings saved inside them
+    }
     p.act("reset_total_leaderboard", {});               // the session leaderboard starts from zero
     p.act("apply_settings", cur.preset || { autoContinue: true }); // same message as the game's own Settings screen (starts a fresh round)
     try { p.armRounds && p.armRounds(); } catch (e) {}  // finished rounds are counted from here
@@ -121,6 +130,11 @@
     if (showNote && o.note) box.appendChild(el("div", "nt", "📝 " + o.note));
     return box.childNodes.length ? box : null;
   }
+  // update 116: a small tag with the KIND of the game (Geography, Colour clues ...), switched with display.showKind
+  function kindTag(o, solo) {
+    if (!o || !o.kindLabel || !(S.display && S.display.showKind !== false)) return null;
+    return el("span", "kind" + (solo ? " solo" : ""), (o.kindEmoji ? o.kindEmoji + " " : "") + o.kindLabel);
+  }
   function drawVote() {
     var v = S.vote, d = S.display;
     clear(card);
@@ -136,7 +150,7 @@
       row.appendChild(fill);
       row.appendChild(el("div", "n", S.voteInfo.letters ? String.fromCharCode(64 + o.n) : String(o.n)));
       row.appendChild(el("div", "e", o.emoji));
-      var tcell = el("div", "t"); tcell.appendChild(el("div", "nm", o.name));
+      var tcell = el("div", "t"), nmEl = el("div", "nm", o.name), kt = kindTag(o); if (kt) nmEl.appendChild(kt); tcell.appendChild(nmEl);
       var nb = notesBlock(o, "vote"); if (nb) tcell.appendChild(nb);
       row.appendChild(tcell);
       if (o.count != null) { var c = el("div", "c", String(o.count)); c.appendChild(el("small", "", total ? Math.round((o.count / total) * 100) + "%" : "0%")); row.appendChild(c); }
@@ -189,6 +203,7 @@
     clear(card);
     card.appendChild(el("p", "sub", S.display.breakTitle || "Next game"));
     card.appendChild(el("h1", "", n.emoji + " " + n.name));
+    var kt2 = kindTag(n, true); if (kt2) card.appendChild(kt2);
     var bn = notesBlock(n, "splash"); if (bn) { bn.classList.add("center"); card.appendChild(bn); }
     if (S.display.showHowTo && n.howTo) card.appendChild(el("div", "how", n.howTo));
     card.appendChild(el("div", "big", String(left(S.phaseEndsAt))));
@@ -210,6 +225,9 @@
     document.body.classList.toggle("light", S.display && S.display.theme === "light");
     document.body.classList.toggle("dark", !(S.display && S.display.theme === "light"));
     if (S.display && S.display.accent) document.documentElement.style.setProperty("--accent", S.display.accent);
+    // update 116: size of the notes / names in the vote (settings: Stage look)
+    document.documentElement.style.setProperty("--ns", String(Math.min(2.5, Math.max(0.6, (Number(S.display && S.display.noteSize) || 100) / 100))));
+    document.documentElement.style.setProperty("--vs", String(Math.min(2, Math.max(0.6, (Number(S.display && S.display.voteSize) || 100) / 100))));
 
     // which game is in the frame
     if (S.current && (S.running || S.current.stopped) && (loaded.loadSeq !== S.current.loadSeq)) loadGame(S.current);
@@ -242,7 +260,7 @@
       chip.appendChild(el("span", "dot"));
       chip.appendChild(el("span", "", S.current.emoji + " " + S.current.name));
       var rem = left(S.current.sessionEndsAt), cu = S.current;
-      if (cu.useRounds && cu.roundsLimit > 0) chip.appendChild(el("i", "", "🎯 round " + Math.min(cu.roundsLimit, (cu.roundsDone || 0) + (cu.limitAt ? 0 : 1)) + "/" + cu.roundsLimit));
+      if (cu.useRounds && cu.roundsLimit > 0 && S.display.showRounds !== false) chip.appendChild(el("i", "", "🎯 round " + Math.min(cu.roundsLimit, (cu.roundsDone || 0) + (cu.limitAt ? 0 : 1)) + "/" + cu.roundsLimit));
       if (ph === "wrapup") chip.appendChild(el("i", "", "last round…"));
       else if (cu.useTime !== false) chip.appendChild(el("i", "", "⏱ " + mmss(rem)));
       if (S.display.showUpNext && ph === "playing" && ((cu.useTime !== false && rem <= 60) || (cu.limitAt))) chip.appendChild(el("i", "", "· vote soon"));

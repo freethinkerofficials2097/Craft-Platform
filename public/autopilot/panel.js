@@ -284,6 +284,7 @@
       get("session.endRule") !== "time" ? num("session.resultSeconds", "After the last round keep the result on screen", 0, 60, "Then the game changes (0 = at once).", "seconds") : null,
       chk("session.finishRound", "When time is up, let the running round finish first"),
       num("session.graceSeconds", "…but wait at most", 5, 900, "", "seconds"),
+      num("session.hardCapMinutes", "Safety: no game runs longer than", 0, 480, "Stops a game that never reaches its round count (for example a round nobody solves). A session you set longer than this keeps its own length. 0 = no cap.", "minutes"),
       num("session.showLeaderboardSeconds", "Show the session leaderboard for", 0, 60, "0 = skip it.", "seconds")
     ]));
     d.appendChild(grid(card("Start & stop of the whole run"), [
@@ -306,6 +307,13 @@
   function valText(k, v) { if (typeof v === "boolean") return v ? "on" : "off"; if (Array.isArray(v)) return v.join(", "); return catalog.fields[k] && catalog.fields[k].options ? optLabel(k, v).replace(/ \(.*\)/, "") : String(v); }
   // short chips that tell, at a glance, what this game will use: { t: text, ov: true when the autopilot overrides the game's own value }
   function summaryOf(g) {
+    if (g.stageSet) { // update 116 (Travle)
+      var ts = get("games." + g.id + ".settings") || {}, o = [];
+      if (ts.minHops !== undefined || ts.maxHops !== undefined) o.push({ t: (ts.minHops || "?") + "–" + (ts.maxHops || "?") + " hops", ov: true });
+      o.push({ t: ts.giveUpSeconds === 0 ? "never gives up" : "gives up after " + (ts.giveUpSeconds === undefined ? 180 : ts.giveUpSeconds) + " s", ov: ts.giveUpSeconds !== undefined });
+      if (ts.autoContinueDelaySeconds) o.push({ t: "pause " + ts.autoContinueDelaySeconds + " s", ov: true });
+      return o;
+    }
     if (!g.family) {
       var l0 = liveOf(g), ks = Object.keys(l0);
       if (!(isRO(g) && ks.length)) return [{ t: "its own saved settings", ov: false }];
@@ -373,6 +381,11 @@
     }
     if (has("startLength")) row("Starting length", segmented(fieldInfo("startLength").options.map(function (o) { return [o[0], o[1]]; }), st.startLength === undefined ? undefined : String(st.startLength), function (v) { write("startLength", v === undefined ? undefined : Number(v)); rebuild(); }, KEEP, inh.startLength), now("startLength").trim() || null);
     if (has("maxLength")) row("Longest word", numBox(st.maxLength, fieldInfo("maxLength"), function (v) { write("maxLength", v); }, "(keep)", inh.maxLength), "0 = automatic.");
+    if (has("minHops") && has("maxHops")) { // update 116 (Travle)
+      var hh = el("div", "two"); hh.appendChild(numBox(st.minHops, fieldInfo("minHops"), function (v) { write("minHops", v); }, "shortest", inh.minHops)); hh.appendChild(el("span", "", "to")); hh.appendChild(numBox(st.maxHops, fieldInfo("maxHops"), function (v) { write("maxHops", v); }, "longest", inh.maxHops));
+      row("Trail length (hops)", hh, "How many steps lie between the two countries. Shorter = quicker rounds, longer = harder.");
+    }
+    if (has("giveUpSeconds")) row("Give up a round after", numBox(st.giveUpSeconds, fieldInfo("giveUpSeconds"), function (v) { write("giveUpSeconds", v); }, "180 (standard)", inh.giveUpSeconds), "seconds. If nobody solves the trail in this time the answer is shown and the next round starts, so an AFK live never gets stuck. Empty = 180 s, 0 = never give up.");
     if (has("roundSeconds")) row("Round time", numBox(st.roundSeconds, fieldInfo("roundSeconds"), function (v) { write("roundSeconds", v); }, null, inh.roundSeconds), "seconds");
     if (has("starterWord")) row("Starter word", segmented([["true", "On"], ["false", "Off"]], st.starterWord === undefined ? undefined : String(st.starterWord), function (v) { write("starterWord", v === undefined ? undefined : v === "true"); rebuild(); }, KEEP, inh.starterWord), "Opens every round with one free word." + now("starterWord"));
     if (has("allowRepeats")) row("Digits may repeat", segmented([["true", "Yes"], ["false", "No"]], st.allowRepeats === undefined ? undefined : String(st.allowRepeats), function (v) { write("allowRepeats", v === undefined ? undefined : v === "true"); rebuild(); }, KEEP, inh.allowRepeats), now("allowRepeats").trim() || null);
@@ -410,6 +423,12 @@
       clear(body);
       body.appendChild(status());
       var lv = liveOf(g);
+      if (!g.family && g.stageSet) { // update 116: Travle - the stage page sets these inside the game every time it starts
+        body.appendChild(el("p", "help", "These are set inside Travle by the autopilot every time it starts in a session (the game's other settings stay as you saved them in the game). Leave a box empty to keep the game's own value."));
+        var trs = el("button", "b sm", "↺ Use the game's own settings"); trs.onclick = function () { set(path, {}); build(); onChange(); }; var trw = el("div", "btns tight"); trw.appendChild(trs); body.appendChild(trw);
+        body.appendChild(settingsForm(g, function () { return get(path) || {}; }, function (k, v) { setPreset(path, k, v); onChange(); }, build, {}));
+        return;
+      }
       if (!g.family) {
         if (isRO(g) && Object.keys(lv).length) {
           body.appendChild(el("p", "help", "This game keeps its settings inside the game itself, so they are shown here to check only. Change them in the game (open it once, ⚙ Settings); the autopilot starts, times and switches it."));
@@ -536,6 +555,7 @@
       top.appendChild(nums); node.appendChild(top);
       function refreshChips() {
         clear(chips);
+        var kd = catalog.kinds && catalog.kinds[g.cat]; if (kd) { var kc = el("span", "gc kind", kd.emoji + " " + kd.label); kc.title = "The vote mixes different kinds of games"; chips.appendChild(kc); }
         summaryOf(g).forEach(function (s) { var cc = el("span", "gc" + (s.ov ? " ov" : ""), s.t); cc.title = s.ov ? "Set in the autopilot" : "What the game uses now"; chips.appendChild(cc); });
         var n = get(p + ".aka") || [], hasNote = n.length || get(p + ".inspiredBy") || get(p + ".voteNote");
         var nb = el("span", "gc note" + (hasNote ? " has" : ""), hasNote ? "📝 notes" : "📝 no notes"); nb.title = "Edit in the Notes tab"; nb.onclick = function () { tab = "notes"; ui.notesFilter = "all"; render(); window.scrollTo(0, 0); }; chips.appendChild(nb);
@@ -556,7 +576,8 @@
     grid(intro, [
       chk("display.showAka", "Show “Also known as” and “Inspired by” under each game", "", true),
       chk("display.showVoteNotes", "Show my note under each game during the vote", "", true),
-      chk("display.showNotesOnSplash", "Show my note on the winner screen and the next-game splash", "", true)
+      chk("display.showNotesOnSplash", "Show my note on the winner screen and the next-game splash", "", true),
+      num("display.noteSize", "Size of the notes on the stage", 60, 250, "Percent. 100 = the standard (larger than before update 116). More options: Stage look tab.")
     ]);
     d.appendChild(intro);
 
@@ -573,7 +594,7 @@
       if (!on.length) { pvBox.appendChild(el("p", "help", "Switch on some games in the Games tab first.")); return; }
       on.forEach(function (g, i) {
         var p = "games." + g.id, row = el("div", "popt"); row.appendChild(el("div", "pn", String(i + 1))); row.appendChild(el("div", "pe", g.emoji));
-        var t = el("div", "pt"); t.appendChild(el("div", "pnm", g.name));
+        var t = el("div", "pt"), pnm = el("div", "pnm", g.name); if (get("display.showKind") !== false && catalog.kinds && catalog.kinds[g.cat]) pnm.appendChild(el("span", "gc kind", catalog.kinds[g.cat].emoji + " " + catalog.kinds[g.cat].label)); t.appendChild(pnm);
         var aka = get(p + ".aka") || [], ins = get(p + ".inspiredBy"), note = get(p + ".voteNote");
         if (get("display.showAka") && aka.length) t.appendChild(el("div", "paka", "Also known as: " + aka.join(" · ")));
         if (get("display.showAka") && ins) t.appendChild(el("div", "paka", "💡 " + ins));
@@ -636,6 +657,7 @@
       chk("vote.showCounts", "Show live vote counts on screen"),
       num("vote.maxVotesPerMinutePerUser", "Anti-spam: max votes per viewer per minute", 1, 120)
     ]));
+    d.appendChild(varietyCard());
     d.appendChild(grid(card("When the vote ends"), [
       num("vote.minVotes", "Minimum total votes", 1, 1000, "Fewer than this = no result (see below)."),
       sel("vote.tie", "A tie is decided by", [["random", "chance"], ["first", "the first listed game"], ["longest-waiting", "the game that waited longest"], ["revote", "a short second vote (max 2)"]]),
@@ -666,6 +688,39 @@
     return d;
   }
 
+  /* update 116: text size of the vote, with a live preview */
+  function sizeCard() {
+    var c = card("🔠 Text size in the vote", "The notes under each game (other names, inspired by, your note) are larger since update 116. Change the sizes here - 100 % is the standard.");
+    var pv = el("div", "pv"), row = el("div", "popt"); row.appendChild(el("div", "pn", "1")); row.appendChild(el("div", "pe", "🧭"));
+    var t = el("div", "pt"), nm = el("div", "pnm", "Travle"), a = el("div", "paka", "Also known as: Worldle trails · Path game"), n = el("div", "pnt", "📝 Name the countries between the two ends");
+    t.appendChild(nm); t.appendChild(a); t.appendChild(n); row.appendChild(t); pv.appendChild(row); 
+    function paint() { var ns = (get("display.noteSize") || 100) / 100, vs = (get("display.voteSize") || 100) / 100; nm.style.fontSize = Math.round(17 * vs) + "px"; a.style.fontSize = (13 * ns).toFixed(1) + "px"; n.style.fontSize = (14 * ns).toFixed(1) + "px"; }
+    paint();
+    function sz(path, label, lo, hi, help) { var i = el("input"); i.type = "range"; i.min = lo; i.max = hi; i.step = 5; i.value = get(path); var out = el("span", "", i.value + " %"); i.oninput = function () { set(path, Number(i.value)); out.textContent = i.value + " %"; paint(); }; var w = wrap(label, help, i); w.appendChild(out); return w; }
+    grid(c, [sz("display.noteSize", "Notes under each game", 60, 250, "Other names, “inspired by” and your note."), sz("display.voteSize", "Game names and vote counts", 60, 200, "")]);
+    c.appendChild(pv); return c;
+  }
+  /* update 116: how many of the switched-on games there are of each KIND (the vote mixes the kinds) */
+  function kindSummary() {
+    var box = el("div", "help"), cnt = {}, total = 0;
+    catalog.games.forEach(function (g) { if (get("games." + g.id + ".enabled")) { cnt[g.cat] = (cnt[g.cat] || 0) + 1; total++; } });
+    var kinds = Object.keys(catalog.kinds || {}), parts = kinds.filter(function (k) { return cnt[k]; }).map(function (k) { return catalog.kinds[k].emoji + " " + catalog.kinds[k].label + " " + cnt[k]; });
+    var n = Object.keys(cnt).length;
+    box.textContent = "Your switched-on games by kind: " + (parts.length ? parts.join(" · ") : "none") + ". " + (n < 2 && total > 1 ? "⚠ Only one kind is switched on, so the vote cannot be mixed - switch on games of other kinds in the Games tab." : n >= 2 ? "The vote takes games from different kinds first." : "");
+    return box;
+  }
+  function varietyCard() {
+    var c = card("🎲 Variety - not the same games every time", "Most of the games are word guessers, so a plain random pick often offers look-alikes. The vote now mixes the KINDS of games (🌍 geography, 🎨 colour clues, 🔣 code & symbols, 🔤 classic word, 🧩 puzzle, 🧠 meaning). Works with “Random games” and “Random, favouring higher weight”.");
+    grid(c, [
+      num("vote.maxPerCategory", "At most … games of the same kind in one vote", 0, 9, "0 = no limit. 1 = every option is a different kind (as long as there are enough kinds switched on)."),
+      num("vote.avoidRecentOffers", "Do not offer games that were options in the last … votes", 0, 5, "Keeps the next vote fresh. 0 = off. Used only while enough other games are switched on."),
+      chk("vote.preferWaiting", "Offer games that were played longest ago (or never) first"),
+      gameList("vote.alwaysInclude", "Always on the vote", "Up to 3 games that are offered every time (while switched on).", false)
+    ]);
+    c.appendChild(kindSummary());
+    return c;
+  }
+
   function tDisplay() {
     var d = document.createDocumentFragment();
     d.appendChild(grid(card("Texts on the stage"), [
@@ -678,8 +733,11 @@
       sel("display.theme", "Theme", [["dark", "Dark"], ["light", "Light"]]), color("display.accent", "Accent colour"),
       chk("display.showTimer", "Show the small session timer on the game"), chk("display.showUpNext", "Show “vote soon” in the last minute"),
       chk("display.showHowTo", "Show a one-line “how to play” on the next-game splash"),
-      num("display.transitionSeconds", "Black loading screen between games", 1, 30, "", "seconds")
+      num("display.transitionSeconds", "Black loading screen between games", 1, 30, "", "seconds"),
+      chk("display.showKind", "Show the kind of each game in the vote (🌍 Geography, 🎨 Colour clues …)"),
+      chk("display.showRounds", "Show “round 2/6” in the small chip on the game")
     ]));
+    d.appendChild(sizeCard());
     return d;
   }
 
@@ -703,7 +761,7 @@
     var c = card("✅ Ready check", "Everything you prepared, at a glance.");
     var en = catalog.games.filter(function (g) { return get("games." + g.id + ".enabled"); });
     var withNotes = en.filter(function (g) { var p = "games." + g.id; return (get(p + ".aka") || []).length || get(p + ".inspiredBy") || get(p + ".voteNote"); });
-    var withSet = en.filter(function (g) { return g.family && Object.keys(get("games." + g.id + ".settings") || {}).length; });
+    var withSet = en.filter(function (g) { return (g.family || g.stageSet) && Object.keys(get("games." + g.id + ".settings") || {}).length; });
     function line(level, text, linkText, tabName) {
       var r = el("div", "warn " + level, (level === "good" ? "✅ " : level === "bad" ? "⛔ " : "ℹ️ ") + text);
       if (linkText) { var a = el("a", "", " " + linkText + " →"); a.href = "#"; a.onclick = function (e) { e.preventDefault(); tab = tabName; render(); window.scrollTo(0, 0); }; r.appendChild(a); }
