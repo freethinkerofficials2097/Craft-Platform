@@ -14,34 +14,44 @@
 // family: true  -> one of the 21 games that share the "apply_settings" host message, so their gameplay settings can be preset.
 // family: false -> the game runs with the settings the host last saved inside that game (the autopilot still starts / stops / switches it).
 export const GAMES = [
-  { id: "flagle", name: "Flagle", emoji: "🚩", path: "/flagle/", family: false, howTo: "Guess the country from its flag, one clue at a time." },
-  { id: "travle", name: "Travle", emoji: "🧭", path: "/travle/", family: false, howTo: "Name the countries that connect the start and the end of the route." },
-  { id: "blindle", name: "Blindle", emoji: "🔤", path: "/blindle/", family: true, howTo: "Chat guesses the hidden word from colourless clues." },
-  { id: "findle", name: "Findle", emoji: "🔎", path: "/findle", family: false, howTo: "Find the hidden words in the letter grid." },
-  { id: "crossdle", name: "Crossdle", emoji: "🧩", path: "/crossdle/", family: false, howTo: "Fill the crossword together with chat." },
-  { id: "twistle", name: "Twistle", emoji: "🌀", path: "/twistle/", family: false, howTo: "Unscramble the twisted word." },
-  { id: "oracle", name: "Oracle", emoji: "🔮", path: "/oracle/", family: true, howTo: "Guess the word from shuffled, uncoloured clue columns." },
-  { id: "colorblindle", name: "Colorblindle", emoji: "🎨", path: "/colorblindle/", family: true, howTo: "Four shuffled colours - work out what they mean." },
-  { id: "colordle", name: "Colordle", emoji: "🌈", path: "/colordle/", family: true, howTo: "Match the empty colour boxes with the keyboard colours." },
-  { id: "structle", name: "Structle", emoji: "📐", path: "/structle/", family: true, howTo: "Clues are line and curve counts - find the word." },
-  { id: "textle", name: "Textle", emoji: "📝", path: "/textle/", family: true, howTo: "Guesses are cut into green, yellow and grey segments." },
-  { id: "rangedle", name: "Rangedle", emoji: "📏", path: "/rangedle/", family: true, howTo: "Every letter is coloured by how far it is in the alphabet." },
-  { id: "codedle", name: "Codedle", emoji: "🔢", path: "/codedle/", family: true, howTo: "Use the number code to crack the word." },
-  { id: "shapedle", name: "Shapedle", emoji: "🔷", path: "/shapedle/", family: true, howTo: "Symbols hide the letters - decode the word." },
-  { id: "forbackle", name: "Forbackle", emoji: "↔️", path: "/forbackle/", family: true, howTo: "Forward or backward in the alphabet? Find the word." },
-  { id: "shiftle", name: "Shiftle", emoji: "🔀", path: "/shiftle/", family: true, howTo: "The colour meanings shuffle every round." },
-  { id: "wordle", name: "Wordle", emoji: "🟩", path: "/wordle/", family: true, howTo: "Classic green / yellow / grey word guessing." },
-  { id: "betweendle", name: "Betweendle", emoji: "📚", path: "/betweendle/", family: true, howTo: "Narrow down the word in a giant alphabetical list." },
-  { id: "comparable", name: "Comparable", emoji: "⚖️", path: "/comparable/", family: true, howTo: "Match the pattern of comparison signs." },
-  { id: "minedle", name: "Minedle", emoji: "💣", path: "/minedle/", family: true, howTo: "Sweep the letter grid, then guess the word." },
-  { id: "expandle", name: "Expandle", emoji: "➕", path: "/expandle/", family: true, howTo: "Grow the word by one letter every row." },
-  { id: "citydle", name: "Citydle", emoji: "🏙️", path: "/citydle/", family: true, howTo: "Find the secret city with distance and direction clues." },
-  { id: "towndle", name: "Towndle", emoji: "🇲🇾", path: "/towndle/", family: true, howTo: "Find the secret place in Malaysia with distance clues." },
-  { id: "linedle", name: "Linedle", emoji: "〰️", path: "/linedle/", family: true, howTo: "Match the wave line with your word." },
-  { id: "fixle", name: "Fixle", emoji: "🧷", path: "/fixle/", family: true, howTo: "Score words by matching start and end letters." },
-  { id: "contexto", name: "Contexto", emoji: "🧠", path: "/contexto/", family: false, howTo: "The closer the meaning, the lower the rank." },
-  { id: "numberblindle", name: "Numberblindle", emoji: "#️⃣", path: "/numberblindle/", family: true, howTo: "Crack the secret number code." }
+  { id: "flagle", name: "Flagle", emoji: "🚩", path: "/flagle/", family: false, cat: "geo", howTo: "Guess the country from its flag, one clue at a time." },
+  { id: "travle", name: "Travle", emoji: "🧭", path: "/travle/", family: false, cat: "geo", howTo: "Name the countries that connect the start and the end of the route." },
+  { id: "blindle", name: "Blindle", emoji: "🔤", path: "/blindle/", family: true, cat: "colour", howTo: "Chat guesses the hidden word from colourless clues." },
+  { id: "findle", name: "Findle", emoji: "🔎", path: "/findle", family: false, cat: "puzzle", howTo: "Find the hidden words in the letter grid." },
+  { id: "crossdle", name: "Crossdle", emoji: "🧩", path: "/crossdle/", family: false, cat: "puzzle", howTo: "Fill the crossword together with chat." },
+  { id: "twistle", name: "Twistle", emoji: "🌀", path: "/twistle/", family: false, cat: "puzzle", howTo: "Unscramble the twisted word." },
+  { id: "oracle", name: "Oracle", emoji: "🔮", path: "/oracle/", family: true, cat: "colour", howTo: "Guess the word from shuffled, uncoloured clue columns." },
+  { id: "colorblindle", name: "Colorblindle", emoji: "🎨", path: "/colorblindle/", family: true, cat: "colour", howTo: "Four shuffled colours - work out what they mean." },
+  { id: "colordle", name: "Colordle", emoji: "🌈", path: "/colordle/", family: true, cat: "colour", howTo: "Match the empty colour boxes with the keyboard colours." },
+  { id: "structle", name: "Structle", emoji: "📐", path: "/structle/", family: true, cat: "code", howTo: "Clues are line and curve counts - find the word." },
+  { id: "textle", name: "Textle", emoji: "📝", path: "/textle/", family: true, cat: "word", howTo: "Guesses are cut into green, yellow and grey segments." },
+  { id: "rangedle", name: "Rangedle", emoji: "📏", path: "/rangedle/", family: true, cat: "code", howTo: "Every letter is coloured by how far it is in the alphabet." },
+  { id: "codedle", name: "Codedle", emoji: "🔢", path: "/codedle/", family: true, cat: "code", howTo: "Use the number code to crack the word." },
+  { id: "shapedle", name: "Shapedle", emoji: "🔷", path: "/shapedle/", family: true, cat: "code", howTo: "Symbols hide the letters - decode the word." },
+  { id: "forbackle", name: "Forbackle", emoji: "↔️", path: "/forbackle/", family: true, cat: "code", howTo: "Forward or backward in the alphabet? Find the word." },
+  { id: "shiftle", name: "Shiftle", emoji: "🔀", path: "/shiftle/", family: true, cat: "colour", howTo: "The colour meanings shuffle every round." },
+  { id: "wordle", name: "Wordle", emoji: "🟩", path: "/wordle/", family: true, cat: "word", howTo: "Classic green / yellow / grey word guessing." },
+  { id: "betweendle", name: "Betweendle", emoji: "📚", path: "/betweendle/", family: true, cat: "word", howTo: "Narrow down the word in a giant alphabetical list." },
+  { id: "comparable", name: "Comparable", emoji: "⚖️", path: "/comparable/", family: true, cat: "code", howTo: "Match the pattern of comparison signs." },
+  { id: "minedle", name: "Minedle", emoji: "💣", path: "/minedle/", family: true, cat: "puzzle", howTo: "Sweep the letter grid, then guess the word." },
+  { id: "expandle", name: "Expandle", emoji: "➕", path: "/expandle/", family: true, cat: "puzzle", howTo: "Grow the word by one letter every row." },
+  { id: "citydle", name: "Citydle", emoji: "🏙️", path: "/citydle/", family: true, cat: "geo", howTo: "Find the secret city with distance and direction clues." },
+  { id: "towndle", name: "Towndle", emoji: "🇲🇾", path: "/towndle/", family: true, cat: "geo", howTo: "Find the secret place in Malaysia with distance clues." },
+  { id: "linedle", name: "Linedle", emoji: "〰️", path: "/linedle/", family: true, cat: "code", howTo: "Match the wave line with your word." },
+  { id: "fixle", name: "Fixle", emoji: "🧷", path: "/fixle/", family: true, cat: "word", howTo: "Score words by matching start and end letters." },
+  { id: "contexto", name: "Contexto", emoji: "🧠", path: "/contexto/", family: false, cat: "meaning", howTo: "The closer the meaning, the lower the rank." },
+  { id: "numberblindle", name: "Numberblindle", emoji: "#️⃣", path: "/numberblindle/", family: true, cat: "code", howTo: "Crack the secret number code." }
 ];
+// update 116: the KIND of each game. The vote uses it so the options are not four look-alike word games (21 of the 27 games are word guessers).
+export const KINDS = {
+  geo: { label: "Geography", emoji: "🌍" },
+  colour: { label: "Colour clues", emoji: "🎨" },
+  code: { label: "Code & symbols", emoji: "🔣" },
+  word: { label: "Classic word", emoji: "🔤" },
+  puzzle: { label: "Puzzle", emoji: "🧩" },
+  meaning: { label: "Meaning", emoji: "🧠" }
+};
+export const kindOf = (id) => { const g = GAMES.find((x) => x.id === id); return g && g.cat ? g.cat : "word"; };
 export const GAME_IDS = GAMES.map((g) => g.id);
 export const gameById = (id) => GAMES.find((g) => g.id === id) || null;
 
@@ -55,8 +65,12 @@ export const PRESET_KEYS = {
   numberblindle: ["lengthMode", "wordLength", "lengthMin", "lengthMax", "autoContinueDelaySeconds", "allowRepeats"],
   citydle: ["difficulty", "regions", "autoContinueDelaySeconds"],
   towndle: ["difficulty", "regions", "autoContinueDelaySeconds"],
-  expandle: ["difficulty", "startLength", "maxLength", "roundSeconds", "autoContinueDelaySeconds"]
+  expandle: ["difficulty", "startLength", "maxLength", "roundSeconds", "autoContinueDelaySeconds"],
+  // update 116: Travle keeps its settings in the browser, so until now the autopilot could not set anything for it. The stage page now sets these in the game itself.
+  travle: ["minHops", "maxHops", "giveUpSeconds", "autoContinueDelaySeconds"]
 };
+// update 116: games that are not on the shared protocol but whose settings the stage page CAN set (through the game page itself)
+export const STAGE_SET = { travle: true };
 export const REGION_CHOICES = {
   citydle: [["EU", "Europe"], ["AS", "Asia"], ["AF", "Africa"], ["NA", "North America"], ["SA", "South America"], ["OC", "Oceania"]],
   towndle: [["JH", "Johor"], ["KD", "Kedah"], ["KN", "Kelantan"], ["ML", "Melaka"], ["NS", "Negeri Sembilan"], ["PH", "Pahang"], ["PK", "Perak"], ["PL", "Perlis"],
@@ -75,8 +89,12 @@ export const PRESET_FIELDS = {
   regions: { type: "regions", label: "Where the secret place can be" },
   startLength: { type: "select", label: "Starting word length", options: [["3", "3 letters"], ["4", "4 letters"], ["5", "5 letters"], ["0", "Random 3-5"]] },
   maxLength: { type: "number", label: "Longest word (0 = automatic)", min: 0, max: 20 },
-  roundSeconds: { type: "number", label: "Round time (seconds)", min: 20, max: 300 }
+  roundSeconds: { type: "number", label: "Round time (seconds)", min: 20, max: 300 },
+  minHops: { type: "number", label: "Shortest trail (hops)", min: 2, max: 9 },
+  maxHops: { type: "number", label: "Longest trail (hops)", min: 2, max: 9 },
+  giveUpSeconds: { type: "number", label: "Give up a round nobody solves after (seconds, 0 = never)", min: 0, max: 900 }
 };
+export const TRAVLE_GIVE_UP_DEFAULT = 180; // update 116: used when the host leaves it empty - an AFK live must never wait forever for a trail nobody solves
 
 // ---- defaults ------------------------------------------------------------------------------------------------------
 export const DEFAULT_TIPS = [
@@ -107,7 +125,8 @@ export const DEFAULT_CONFIG = {
     finishRound: true,            // when the time is up, let the running round finish first
     graceSeconds: 90,             // ... but never wait longer than this
     showLeaderboardSeconds: 10,   // session leaderboard before voting (0 = skip)
-    resultSeconds: 8              // update 115: after the LAST round of a session, keep the result on screen this long before the game changes
+    resultSeconds: 8,             // update 115: after the LAST round of a session, keep the result on screen this long before the game changes
+    hardCapMinutes: 45            // update 116: safety - no game session runs longer than this, even in "rounds" mode when a round never finishes (0 = no cap)
   },
   rotation: {
     mode: "vote",                 // vote | sequence | random | weighted
@@ -134,7 +153,11 @@ export const DEFAULT_CONFIG = {
     includeReplayOption: false,   // add "Play <current game> again" as an option
     maxVotesPerMinutePerUser: 20, // anti-spam
     simulateWhenNotLive: true,    // update 115: in Offline / Test mode nobody can type in chat, so a few practice voters vote (otherwise every vote would end with "nobody voted")
-    allowStageClicks: true        // update 115: a click / tap on an option of the stage page also counts as a vote (host, or a phone)
+    allowStageClicks: true,       // update 115: a click / tap on an option of the stage page also counts as a vote (host, or a phone)
+    maxPerCategory: 2,            // update 116: at most this many games of the same KIND (geography, colour clues, code, classic word, puzzle, meaning) in one vote. 0 = no limit
+    avoidRecentOffers: 2,         // update 116: games that were options in the last N votes go to the back of the queue (while enough other games exist). 0 = off
+    preferWaiting: true,          // update 116: among equals, the games that were played longest ago (or never) are offered first
+    alwaysInclude: []             // update 116: up to 3 games that are on every vote (only while they are switched on)
   },
   eligibility: {
     everyone: true,
@@ -165,7 +188,11 @@ export const DEFAULT_CONFIG = {
     showAka: true,                // "Also known as ..." / "Inspired by ..." under each game on the vote, result and splash screens (update 112)
     showVoteNotes: true,          // the host's short note for each game, shown under it during the vote
     showNotesOnSplash: true,      // the same notes on the winner screen and the next-game splash
-    transitionSeconds: 4          // black "loading" moment while the stage switches game
+    transitionSeconds: 4,         // black "loading" moment while the stage switches game
+    noteSize: 100,                // update 116: size of the notes under every game in the vote (percent; 100 = the new, larger standard)
+    voteSize: 100,                // update 116: size of the game names / counts in the vote (percent)
+    showKind: true,               // update 116: a small tag with the KIND of each game (Geography, Colour clues ...) in the vote
+    showRounds: true              // update 116: "round 2/6" in the small chip on the game
   },
   sync: { mode: "stick" },         // update 114: "stick" = keep the host's saved settings, never auto-refresh from the games | "follow" = auto-refresh what the games use
   games: {}                       // id -> { enabled, minutes, rounds, weight, settings, aka, inspiredBy, voteNote, howTo }
@@ -236,6 +263,9 @@ export function sanitizePreset(gameId, raw) {
     }
   }
   if (out.lengthMin !== undefined && out.lengthMax !== undefined && out.lengthMin > out.lengthMax) [out.lengthMin, out.lengthMax] = [out.lengthMax, out.lengthMin];
+  if (out.minHops !== undefined && out.maxHops !== undefined && out.minHops > out.maxHops) [out.minHops, out.maxHops] = [out.maxHops, out.minHops];
+  if (out.giveUpSeconds !== undefined && out.giveUpSeconds > 0 && out.giveUpSeconds < 20) out.giveUpSeconds = 20;
+  if (gameId === "travle" && out.autoContinueDelaySeconds !== undefined) out.autoContinueDelaySeconds = Math.min(60, Math.max(5, out.autoContinueDelaySeconds));
   return out;
 }
 
@@ -304,7 +334,8 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       finishRound: bool(ses.finishRound, b.session.finishRound),
       graceSeconds: num(ses.graceSeconds, 5, 900, b.session.graceSeconds),
       showLeaderboardSeconds: num(ses.showLeaderboardSeconds, 0, 60, b.session.showLeaderboardSeconds),
-      resultSeconds: num(ses.resultSeconds, 0, 60, b.session.resultSeconds !== undefined ? b.session.resultSeconds : 8)
+      resultSeconds: num(ses.resultSeconds, 0, 60, b.session.resultSeconds !== undefined ? b.session.resultSeconds : 8),
+      hardCapMinutes: num(ses.hardCapMinutes, 0, 480, b.session.hardCapMinutes !== undefined ? b.session.hardCapMinutes : 45)
     },
     rotation: {
       mode: pick(rot.mode, ["vote", "sequence", "random", "weighted"], b.rotation.mode),
@@ -331,7 +362,11 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       includeReplayOption: bool(vt.includeReplayOption, b.vote.includeReplayOption),
       maxVotesPerMinutePerUser: num(vt.maxVotesPerMinutePerUser, 1, 120, b.vote.maxVotesPerMinutePerUser),
       simulateWhenNotLive: bool(vt.simulateWhenNotLive, b.vote.simulateWhenNotLive !== undefined ? b.vote.simulateWhenNotLive : true),
-      allowStageClicks: bool(vt.allowStageClicks, b.vote.allowStageClicks !== undefined ? b.vote.allowStageClicks : true)
+      allowStageClicks: bool(vt.allowStageClicks, b.vote.allowStageClicks !== undefined ? b.vote.allowStageClicks : true),
+      maxPerCategory: num(vt.maxPerCategory, 0, 9, b.vote.maxPerCategory !== undefined ? b.vote.maxPerCategory : 2),
+      avoidRecentOffers: num(vt.avoidRecentOffers, 0, 5, b.vote.avoidRecentOffers !== undefined ? b.vote.avoidRecentOffers : 2),
+      preferWaiting: bool(vt.preferWaiting, b.vote.preferWaiting !== undefined ? b.vote.preferWaiting : true),
+      alwaysInclude: idList(vt.alwaysInclude !== undefined ? vt.alwaysInclude : b.vote.alwaysInclude, 3)
     },
     eligibility: {
       everyone: bool(el.everyone, b.eligibility.everyone),
@@ -362,7 +397,11 @@ export function sanitizeConfig(input, base = DEFAULT_CONFIG) {
       showAka: bool(dp.showAka, b.display.showAka !== undefined ? b.display.showAka : true),
       showVoteNotes: bool(dp.showVoteNotes, b.display.showVoteNotes !== undefined ? b.display.showVoteNotes : true),
       showNotesOnSplash: bool(dp.showNotesOnSplash, b.display.showNotesOnSplash !== undefined ? b.display.showNotesOnSplash : true),
-      transitionSeconds: num(dp.transitionSeconds, 1, 30, b.display.transitionSeconds)
+      transitionSeconds: num(dp.transitionSeconds, 1, 30, b.display.transitionSeconds),
+      noteSize: num(dp.noteSize, 60, 250, b.display.noteSize !== undefined ? b.display.noteSize : 100),
+      voteSize: num(dp.voteSize, 60, 200, b.display.voteSize !== undefined ? b.display.voteSize : 100),
+      showKind: bool(dp.showKind, b.display.showKind !== undefined ? b.display.showKind : true),
+      showRounds: bool(dp.showRounds, b.display.showRounds !== undefined ? b.display.showRounds : true)
     },
     sync: { mode: pick((c.sync || {}).mode, ["stick", "follow"], (b.sync && b.sync.mode) || "stick") }, // update 114: stick to the saved settings (default) | follow the games' own settings
     games: {}

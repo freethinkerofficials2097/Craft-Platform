@@ -28,7 +28,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { GAMES, GAME_IDS, gameById, DEFAULT_CONFIG, PRESET_FIELDS, PRESET_KEYS, REGION_CHOICES, NOTE_LIMITS, sanitizeConfig, enabledGames, extractConfig, describeImport } from "./autopilot-config.js";
+import { GAMES, GAME_IDS, gameById, DEFAULT_CONFIG, PRESET_FIELDS, PRESET_KEYS, REGION_CHOICES, NOTE_LIMITS, KINDS, kindOf, STAGE_SET, TRAVLE_GIVE_UP_DEFAULT, sanitizeConfig, enabledGames, extractConfig, describeImport } from "./autopilot-config.js";
 import { readAllGameSettings, restoreDefault } from "../shared/game-settings-registry.js";
 import { GameDefaults } from "../shared/game-defaults-store.js"; // update 114 // update 113: what each game is using right now
 
@@ -124,6 +124,7 @@ class AutopilotEngine {
       vote: null,     // { options:[{n,id,name,emoji,count}], startedAt, endsAt, revotes, extended, ballots, total, tiedFrom }
       result: null,   // { winnerId, via, counts, total, note }
       history: [],
+      offers: [],     // update 116: the game ids that were offered in the last votes (so the next vote can offer something else)
       leaderboard: [],
       stage: { seenAt: 0, status: "", roundNumber: 0, game: "", applied: 0 },
       loadSeq: 0, applySeq: 0, wrapupStartedAt: 0, stopReason: ""
@@ -242,7 +243,7 @@ class AutopilotEngine {
   }
   _payload() {
     const r = this.rt;
-    const runtime = { running: r.running, phase: r.phase, phaseStartedAt: r.phaseStartedAt, phaseEndsAt: r.phaseEndsAt, runStartedAt: r.runStartedAt, runEndsAt: r.runEndsAt, gamesPlayed: r.gamesPlayed, seqIndex: r.seqIndex, current: r.current, next: r.next, history: r.history.slice(-30), loadSeq: r.loadSeq, applySeq: r.applySeq };
+    const runtime = { running: r.running, phase: r.phase, phaseStartedAt: r.phaseStartedAt, phaseEndsAt: r.phaseEndsAt, runStartedAt: r.runStartedAt, runEndsAt: r.runEndsAt, gamesPlayed: r.gamesPlayed, seqIndex: r.seqIndex, current: r.current, next: r.next, history: r.history.slice(-30), offers: (r.offers || []).slice(-10), loadSeq: r.loadSeq, applySeq: r.applySeq };
     return { format: "afk-autopilot-setup", version: 2, savedAt: this.meta.savedAt || now(), config: this.config, profiles: this.profiles, runtime };
   }
   // write right now, safely: temp file -> keep the previous file as .bak -> rename. Returns true when it really reached the disk.
@@ -426,7 +427,7 @@ class AutopilotEngine {
     if (!this.rt.running && this.rt.phase === "idle") return;
     const keep = this.rt.current;
     const history = this.rt.history;
-    this.rt = { ...this._fresh(), history, current: keep ? { ...keep, stopped: true } : null, loadSeq: this.rt.loadSeq, applySeq: this.rt.applySeq, stopReason: reason || "" };
+    this.rt = { ...this._fresh(), history, offers: this.rt.offers || [], current: keep ? { ...keep, stopped: true } : null, loadSeq: this.rt.loadSeq, applySeq: this.rt.applySeq, stopReason: reason || "" };
     this._setPhase("idle", 0);
     this._log("warn", "Autopilot STOPPED" + (reason ? " - " + reason : "") + ". The last game stays on screen so you can carry on by hand.");
   }
@@ -545,8 +546,12 @@ class AutopilotEngine {
         const hold = Math.max(0, Number(this.config.session.resultSeconds) || 0) * 1000;
         const roundRule = roundsReached && cur.limitAt && t - cur.limitAt >= hold;
         const timeRule = useTime ? t >= cur.sessionEndsAt : (!stageAlive && t >= cur.sessionEndsAt + 60000) || (!countable && t >= cur.sessionEndsAt + 30000); // "rounds only" without a stage page / a countable game: do not wait forever
+        // update 116: safety cap - a session never runs longer than "hardCapMinutes" (a "rounds only" game whose round nobody solves used to wait for ever)
+        const capMin = Number(this.config.session.hardCapMinutes) || 0;
+        const capRule = capMin > 0 && t >= Math.max(cur.startedAt + capMin * 60000, cur.sessionEndsAt);
         if (roundRule) this._endSession("round limit reached", true);
         else if (timeRule) this._endSession("time is up", false);
+        else if (capRule) { this._log("warn", "Safety cap: " + capMin + " min is the longest one game may run - moving on."); this._endSession("time is up", false); }
         break;
       }
       case "wrapup": {
@@ -688,6 +693,51 @@ class AutopilotEngine {
   }
 
   // ---- voting
+  // update 116: picks the vote options so they are VARIED:
+  //   1. the games the host always wants (alwaysInclude) go first
+  //   2. games that were NOT offered in the last N votes come before those that were (avoidRecentOffers)
+  //   3. among them, games played longest ago / never played are favoured (preferWaiting) - with a random factor, so it is never the same list
+  //   4. the options are taken round-robin over the KINDS of games (geography, colour clues, code & symbols, classic word, puzzle, meaning), at most maxPerCategory of one kind
+  //   5. only if the kinds run out (few games switched on) the rest is filled up without the limit
+  _lastEnded(id) { const h = this.rt.history; for (let i = h.length - 1; i >= 0; i--) if (h[i].id === id) return h[i].endedAt; return 0; }
+  _pickVaried(pool, n) {
+    const vc = this.config.vote, r = this.rt, weighted = vc.optionPick === "weighted", cur = r.current && r.current.id;
+    const en = enabledGames(this.config).map((g) => g.id);
+    const picked = [];
+    for (const id of vc.alwaysInclude || []) { if (picked.length >= Math.min(3, n - 1) ) break; if (en.includes(id) && !picked.includes(id) && (id !== cur || this.config.rotation.allowReplay)) picked.push(id); }
+    const recent = new Set(vc.avoidRecentOffers > 0 ? (r.offers || []).slice(-vc.avoidRecentOffers).flat() : []);
+    const rest = pool.filter((id) => !picked.includes(id));
+    // "waiting" rank 0..1: 1 = never played / played longest ago
+    const order = rest.slice().sort((a, b) => this._lastEnded(b) - this._lastEnded(a)); // newest first
+    const waitRank = (id) => (order.length > 1 ? order.indexOf(id) / (order.length - 1) : 0);
+    const score = (id) => { const w = weighted ? Math.max(1, this._cfgFor(id).weight) : 1; return Math.pow(Math.random(), 1 / w) + (vc.preferWaiting ? 0.6 * waitRank(id) : 0); };
+    const mk = (id) => ({ id, kind: kindOf(id), s: score(id) });
+    const freshList = rest.filter((id) => !recent.has(id)).map(mk), staleList = rest.filter((id) => recent.has(id)).map(mk);
+    const counts = {};
+    picked.forEach((id) => { const k = kindOf(id); counts[k] = (counts[k] || 0) + 1; });
+    const take = (list, cap) => {
+      const left = list.slice().sort((a, b) => b.s - a.s);
+      while (picked.length < n && left.length) {
+        const avail = left.filter((x) => (counts[x.kind] || 0) < cap);
+        if (!avail.length) break;
+        const low = Math.min(...avail.map((x) => counts[x.kind] || 0));
+        const tier = avail.filter((x) => (counts[x.kind] || 0) === low);
+        const kinds = [...new Set(tier.map((x) => x.kind))];
+        let kind = kinds[rnd(kinds.length)];
+        if (weighted && kinds.length > 1) { // a kind is chosen in proportion to the weights of its games
+          const w = kinds.map((k) => tier.filter((x) => x.kind === k).reduce((a, x) => a + this._cfgFor(x.id).weight, 0)); let t = Math.random() * w.reduce((a, b) => a + b, 0);
+          kind = kinds[w.findIndex((x) => (t -= x) <= 0)] || kinds[0];
+        }
+        const best = tier.find((x) => x.kind === kind);
+        picked.push(best.id); counts[kind] = (counts[kind] || 0) + 1; left.splice(left.indexOf(best), 1);
+      }
+    };
+    const cap = vc.maxPerCategory > 0 ? vc.maxPerCategory : 99;
+    take(freshList, cap);
+    if (picked.length < n) take(staleList, cap);       // not enough "new" games: the recently offered ones come back
+    if (picked.length < n) take(freshList.concat(staleList).filter((x) => !picked.includes(x.id)), 99); // not enough kinds: fill up without the limit
+    return picked;
+  }
   _buildOptions(restrictTo) {
     const c = this.config, vc = c.vote;
     let ids;
@@ -697,9 +747,7 @@ class AutopilotEngine {
       if (vc.optionPick === "fixed") ids = vc.fixedOptions.filter((id) => en.includes(id));
       else if (vc.optionPick === "all") ids = this._pool();
       else {
-        const pool = this._pool();
-        ids = vc.optionPick === "weighted" ? [] : shuffle(pool);
-        if (vc.optionPick === "weighted") { const left = pool.slice(); while (left.length && ids.length < vc.options) { const id = this._weightedPick(left); ids.push(id); left.splice(left.indexOf(id), 1); } }
+        ids = this._pickVaried(this._pool(), vc.options); // update 116: mixed KINDS of games, not the same few look-alikes again and again
       }
       ids = ids.slice(0, vc.options);
       const cur = r0(this.rt.current);
@@ -734,6 +782,7 @@ class AutopilotEngine {
       this._setPhase("break", this.config.rotation.breakSeconds);
       return;
     }
+    if (!restrictTo && !preview) { r.offers = (r.offers || []).concat([options.map((o) => o.id)]).slice(-10); } // update 116
     r.vote = { options, startedAt: t, endsAt: t + vc.seconds * 1000, revotes: revotes || 0, extended: false, ballots: new Map(), rate: new Map(), total: 0, voters: 0, first: Boolean(first), preview: Boolean(preview) };
     r.next = null; r.result = null;
     this._setPhase("voting", vc.seconds);
@@ -929,7 +978,7 @@ class AutopilotEngine {
       serverNow: now(),
       running: r.running, paused: r.paused, autoPaused: r.autoPaused, preview: r.preview, phase: r.phase, phaseStartedAt: r.phaseStartedAt, phaseEndsAt: r.phaseEndsAt,
       runStartedAt: r.runStartedAt, runEndsAt: r.runEndsAt, gamesPlayed: r.gamesPlayed, stopReason: r.stopReason,
-      current: cur && g ? { id: g.id, name: g.name, emoji: g.emoji, path: g.path, family: g.family, ...this._notesFor(g.id), startedAt: cur.startedAt, sessionEndsAt: cur.sessionEndsAt, minutes: cur.minutes, roundsLimit: cur.roundsLimit, roundsDone: cur.roundsDone, useRounds: cur.useRounds !== undefined ? cur.useRounds : c.session.endRule !== "time", useTime: cur.useTime !== undefined ? cur.useTime : c.session.endRule !== "rounds", limitAt: cur.limitAt || 0, loadSeq: cur.loadSeq, applySeq: cur.applySeq, via: cur.via, stopped: Boolean(cur.stopped), preset: this._presetFor(cur.id) } : null,
+      current: cur && g ? { id: g.id, name: g.name, emoji: g.emoji, path: g.path, family: g.family, stageSet: Boolean(STAGE_SET[g.id]), ...this._notesFor(g.id), startedAt: cur.startedAt, sessionEndsAt: cur.sessionEndsAt, minutes: cur.minutes, roundsLimit: cur.roundsLimit, roundsDone: cur.roundsDone, useRounds: cur.useRounds !== undefined ? cur.useRounds : c.session.endRule !== "time", useTime: cur.useTime !== undefined ? cur.useTime : c.session.endRule !== "rounds", limitAt: cur.limitAt || 0, loadSeq: cur.loadSeq, applySeq: cur.applySeq, via: cur.via, stopped: Boolean(cur.stopped), preset: this._presetFor(cur.id) } : null,
       next: r.next && nextG ? { id: nextG.id, name: nextG.name, emoji: nextG.emoji, ...this._notesFor(nextG.id), via: r.next.via } : null,
       vote, result: r.result ? { ...r.result, ...this._notesFor(r.result.winnerId) } : null,
       leaderboard: r.leaderboard,
@@ -947,11 +996,18 @@ class AutopilotEngine {
   // update 112: the host's notes for a game (other names, inspired by, vote note, how-to). Read live from the config, so a note edited during a vote shows at once.
   _notesFor(id) {
     const gc = this._cfgFor(id) || {}, g = gameById(id) || {};
-    return { aka: Array.isArray(gc.aka) ? gc.aka : [], inspiredBy: gc.inspiredBy || "", note: gc.voteNote || "", howTo: gc.howTo || g.howTo || "" };
+    const k = KINDS[kindOf(id)] || {};
+    return { aka: Array.isArray(gc.aka) ? gc.aka : [], inspiredBy: gc.inspiredBy || "", note: gc.voteNote || "", howTo: gc.howTo || g.howTo || "", kind: kindOf(id), kindLabel: k.label || "", kindEmoji: k.emoji || "" };
   }
   _presetFor(id) {
     const gc = this._cfgFor(id), g = gameById(id);
-    if (!g || !g.family) return {};
+    if (!g) return {};
+    if (!g.family) { // update 116: Travle - the stage page sets these inside the game itself (trail length, give up time, pause)
+      if (!STAGE_SET[g.id]) return {};
+      const out = { ...(gc.settings || {}), autoContinue: true };
+      if (g.id === "travle" && out.giveUpSeconds === undefined) out.giveUpSeconds = TRAVLE_GIVE_UP_DEFAULT;
+      return out;
+    }
     return { ...(gc.settings || {}), autoContinue: true };
   }
   snapshot() {
@@ -962,7 +1018,8 @@ class AutopilotEngine {
       meta: { ...this.meta },
       profiles: Object.keys(this.profiles),
       catalog: {
-        games: GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, family: g.family, keys: PRESET_KEYS[g.id] || [], howTo: g.howTo })),
+        games: GAMES.map((g) => ({ id: g.id, name: g.name, emoji: g.emoji, family: g.family, stageSet: Boolean(STAGE_SET[g.id]), cat: g.cat || "word", keys: PRESET_KEYS[g.id] || [], howTo: g.howTo })),
+        kinds: KINDS,
         fields: PRESET_FIELDS,
         regions: REGION_CHOICES,
         noteLimits: NOTE_LIMITS
