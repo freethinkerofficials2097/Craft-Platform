@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>BOXDLE — Live Word Hunt</title>
+<meta name="description" content="A live word-hunt game: build real words from a grid of letter tiles by chaining touching tiles - up, down, sideways and corners - before the clock runs out. Powered by TikTok LIVE chat." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+/>
+<link rel="stylesheet" href="/shared/theme.css" />
+<script src="/shared/theme.js"></script>
+<script src="/shared/session.js"></script>
+<script src="/shared/platform-sync.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Fredoka:wght@500;600;700&family=Patrick+Hand&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="boxdle-style.css" />
+<link rel="stylesheet" href="/shared/game-chrome.css" />
+<link rel="stylesheet" href="/shared/settings-shell.css" />
+<link rel="stylesheet" href="/shared/game-colors.css" />
+<link rel="stylesheet" href="/shared/color-shades.css" />
+<script src="/shared/color-shades.js" data-game="boxdle"></script>
+<link rel="stylesheet" href="/shared/legend.css" />
+<script src="/shared/legend.js" data-game="boxdle"></script>
+<script src="/shared/title-font.js" defer></script>
+<script src="/shared/score-ticker.js"></script>
+<script src="/shared/word-language.js"></script>
+<script src="/shared/settings-shell.js"></script>
+</head>
+<body data-game="boxdle">
+  <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
+
+  <div class="app" id="app">
+
+    <div class="heroBand" id="heroBand">
+      <span class="heroDeco d1" aria-hidden="true">✨</span>
+      <span class="heroDeco d2" aria-hidden="true">🎀</span>
+      <span class="heroDeco d3" aria-hidden="true">⭐</span>
+      <span class="heroDeco d4" aria-hidden="true">🧸</span>
+      <span class="heroDeco d5" aria-hidden="true">💗</span>
+      <span class="heroCrown" aria-hidden="true">👑</span>
+      <h1 class="heroTitle"><span class="hT1">BOX</span><span class="hT2">DLE</span></h1>
+      <div class="heroRibbon">WORD HUNT</div>
+      <p class="heroTagline">Chain touching tiles into real words — every letter is a point! Your chat plays live.</p>
+    </div>
+
+    <header class="topbar">
+      <div class="brandRow">
+        <span class="brandDot" id="brandDot"></span>
+        <div class="brandText">
+          <div class="brandTitle">BOXDLE</div>
+          <div class="brandSubtitle">grid · words · points</div>
+        </div>
+      </div>
+      <div class="toolbarRow">
+        <a href="/" class="iconBtn" id="homeBtn" aria-label="Choose another game">🏠</a>
+        <span class="modeBadge" id="modeBadge">TEST</span>
+        <span class="lengthBadge" id="lengthBadge">⏱ 60s</span>
+        <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint" title="Hint: points at the first tile of a hidden word">💡</button>
+        <button class="iconBtn" id="languageBtn" type="button" aria-label="Choose game languages" title="Languages">🌏</button>
+        <button class="iconBtn" id="helpBtn" type="button" aria-label="How to play">❓</button>
+        <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
+        <button class="iconBtn" id="settingsBtn" type="button" aria-label="Settings">⚙️</button>
+        <button class="iconBtn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">⛶</button>
+      </div>
+    </header>
+
+    <!-- 1. The floating message window: its own reserved slot, ABOVE everything in the card, so it never covers anything. -->
+    <div class="toastSlot"><div class="rejectionToast" id="rejectionToast" hidden></div></div>
+
+    <main class="stage" id="stage">
+      <section class="round-card">
+
+        <!-- The largest box (this card) holds, top to bottom, in one normal flow where nothing is positioned over anything else:
+               1. the legend - /shared/legend.js puts it right here, as the first block of this card (the floating message window is
+                  its own reserved slot above the card)
+               2. BOX 1: the round clock (time left, words, points) and a fixed-height status line
+               3. BOX 2: the letter grid
+               4. BOX 3: the guessed words (fixed height, scrolls by itself so it never pushes the other boxes) -->
+
+        <div class="bxClock" id="bxClock" hidden>
+          <div class="bxClockTop">
+            <span class="bxClockNum" id="bxClockNum">1:00</span>
+            <span class="bxClockStats">
+              <span class="bxChip" id="bxWordsChip">📝 0 words</span>
+              <span class="bxChip bxChipPts" id="bxPointsChip">⭐ 0 pts</span>
+            </span>
+          </div>
+          <div class="bxBar"><div class="bxBarFill" id="bxBarFill"></div></div>
+          <div class="bxStatus">
+            <span class="bxStatusText" id="bxStatusText"></span>
+            <button class="btn btnGold bxNewBtn" id="playAgainBtn" type="button">New round</button>
+          </div>
+        </div>
+
+        <section class="bxGridSection" id="bxGridSection" aria-label="Letter grid" hidden>
+          <div class="bxGridWrap" id="bxGridWrap">
+            <div class="bxGrid" id="bxGrid"></div>
+            <svg class="bxPathSvg" id="bxPathSvg" aria-hidden="true"></svg>
+          </div>
+        </section>
+
+        <div class="idleBanner" id="idleBanner">
+          <p>🧸 Open <strong>Settings</strong> (⚙️ top right) to choose a mode, grid size and round time, then tap Apply to begin.</p>
+        </div>
+
+        <section class="bxBoard" id="tilesWrap" aria-label="Guessed words" hidden>
+          <div class="bxBoardHead">
+            <span class="bxBoardTitle">✅ Guessed words</span>
+            <span class="bxBoardMeta" id="bxBoardMeta">0 words · 0 points</span>
+          </div>
+          <ol class="bxWordList" id="bxWordList" aria-live="polite"></ol>
+        </section>
+
+      </section>
+    </main>
+
+    <footer class="controls" id="controls">
+      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="true" aria-controls="controlsBody">
+        <span>Host controls</span>
+        <span id="handleArrow" class="handleArrow">▾</span>
+      </button>
+
+      <div class="controlsBody" id="controlsBody">
+
+        <div class="modeControls" id="liveControls" hidden>
+          <div class="row">
+            <input
+              id="tiktokUsernameBottom"
+              class="textInput"
+              placeholder="TikTok username (no @)"
+              autocapitalize="off" autocorrect="off" spellcheck="false"
+            />
+            <button id="connectBtnBottom" class="btn btnPrimary" type="button">Connect</button>
+          </div>
+        </div>
+
+        <div class="modeControls" id="testControls" hidden>
+          <p class="sectionNote">Test Mode is simulating chat automatically — nothing to connect.</p>
+        </div>
+
+        <div class="modeControls" id="offlineControls" hidden>
+          <div class="row">
+            <input
+              id="offlineGuessInput"
+              class="textInput"
+              placeholder="Type a word from the grid…"
+              autocapitalize="off" autocorrect="off" spellcheck="false"
+            />
+            <button id="offlineGuessBtn" class="btn btnPrimary" type="button">Guess</button>
+          </div>
+          <p class="miniStatus" id="offlineError"></p>
+        </div>
+
+        <button id="giveUpBtn" class="btn btnGhost btnFull" type="button">End round now</button>
+        <p class="miniStatus" id="miniStatus"></p>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Settings drawer -->
+  <div class="drawerOverlay" id="settingsOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Settings</h3>
+        <button class="iconBtn" id="closeSettings" type="button" aria-label="Close">✕</button>
+      </div>
+
+      <div class="statusChips">
+        <div class="statusChip" id="modeChip">Mode: —</div>
+        <div class="statusChip" id="connChip">Connection: —</div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Appearance</h4>
+        <p class="sectionNote">Pick one of the 6 plain colors or one of the 15 cute "Box colors &amp; looks" designs (Strawberry, Lavender, Mint, Peach, Sky, Night, Bubblegum, Lemon Cream, Ocean, Cocoa Bear, Sakura, Matcha, Coral Sunset, Blueberry, Cotton Candy). It colors the whole platform (hub and every game); in BOXDLE it paints the boxes, tiles, text and title.</p>
+        <label class="theme-picker">
+          🎨
+          <select data-theme-select aria-label="Platform theme color">
+            <option value="cream">Cream</option>
+            <option value="blue">Sky Blue</option>
+            <option value="green">Meadow Green</option>
+            <option value="pink">Blossom Pink</option>
+            <option value="violet">Lavender Violet</option>
+            <option value="honey">Honey Gold</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Title font</h4>
+        <p class="sectionNote">Pick the font used for the game name at the top of the screen. Saved on this device and shared by every game.</p>
+        <div data-title-font-picker></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Mode</h4>
+        <button class="pickerRow" id="modePickerBtn" type="button">
+          <span id="modePickerLabel">Test — practice, scores not saved</span>
+          <span class="chev">▾</span>
+        </button>
+      </div>
+
+      <div class="drawerSection" id="tiktokSection">
+        <h4>TikTok auto-chat</h4>
+        <p class="sectionNote">
+          Connects to your LIVE room and feeds real chat guesses straight into the game. Only used in Live mode.
+        </p>
+        <label class="fieldLabel">Your TikTok username</label>
+        <input id="tiktokUsername" class="textInput" placeholder="e.g. yourhandle (no @)" autocapitalize="off" autocorrect="off" spellcheck="false" />
+        <div class="row">
+          <button id="connectBtn" class="btn btnGold" type="button">Connect</button>
+          <button id="disconnectBtn" class="btn btnGhost" type="button">Disconnect</button>
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Grid size</h4>
+        <select id="gridSizeSelect" class="selectInput">
+          <option value="6">6 × 6 — 36 tiles (quick &amp; easy to read)</option>
+          <option value="8">8 × 8 — 64 tiles</option>
+          <option value="10">10 × 10 — 100 tiles</option>
+          <option value="12">12 × 12 — 144 tiles (big hunt)</option>
+        </select>
+        <p class="sectionNote">Every round gets a new random grid of this size. Bigger grids hold more words but the tiles get smaller on a phone screen.</p>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Letters &amp; tiles</h4>
+        <label class="switchRow">
+          <input type="checkbox" id="reuseToggle" />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Tiles may be reused inside one word</span>
+        </label>
+        <p class="sectionNote">Off (default): every tile can be used only once in a word (classic word hunt). On: a word may come back to a tile it already used, so words with repeated letters like LEVEL or BANANA can be made from fewer tiles. A tile always has to touch the next one - up, down, sideways or corner.</p>
+        <label class="fieldLabel" for="minLenSelect">Shortest word that counts</label>
+        <select id="minLenSelect" class="selectInput"></select>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Round time</h4>
+        <div class="row">
+          <label class="fieldLabel delayLabel" for="roundSecondsInput">Seconds per round</label>
+          <input type="number" id="roundSecondsInput" class="textInput selectNarrow" min="10" max="3600" value="60" />
+        </div>
+        <div class="presetRow" id="roundPresets">
+          <button type="button" class="presetBtn" data-seconds="30">30 s</button>
+          <button type="button" class="presetBtn" data-seconds="60">1 min</button>
+          <button type="button" class="presetBtn" data-seconds="90">1½ min</button>
+          <button type="button" class="presetBtn" data-seconds="120">2 min</button>
+          <button type="button" class="presetBtn" data-seconds="180">3 min</button>
+          <button type="button" class="presetBtn" data-seconds="300">5 min</button>
+        </div>
+        <p class="sectionNote">Default: 1 minute (60 seconds). Choose any time from 10 seconds to 1 hour. The clock starts when the round starts; when it reaches zero the round ends and the player with the most points is celebrated.</p>
+      </div>
+
+      <div class="drawerSection">
+        <label class="switchRow">
+          <input type="checkbox" id="autoContinueToggle" checked />
+          <span class="switchTrack"><span class="switchThumb"></span></span>
+          <span class="switchLabel">Auto-continue after each round</span>
+        </label>
+        <div class="row" id="delayRow">
+          <label class="fieldLabel delayLabel">Delay before next round (seconds)</label>
+          <input type="number" id="delayInput" class="textInput selectNarrow" min="3" max="120" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Color shades</h4>
+        <p class="sectionNote">Choose how strong each of the special colors (the highlighted word path, valid words, the hint tile, the last-seconds red and the round clock) looks, in the grid, the board and the legend. Ten shades per color, from lightest to darkest (the middle one is the standard look). It applies right away - no new round needed - and every screen connected to this game changes together.</p>
+        <div id="shadePicker"></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Box colors &amp; look</h4>
+        <p class="sectionNote">Pick one of the 15 cute looks (the same ones as in the Appearance list above), or color every part yourself: the page, the largest box, its border and the three boxes inside it (clock, letter grid, guessed words), the tiles and their letters, the text, the pink accent and the navy title. Changes apply right away on every screen connected to this game and are remembered.</p>
+        <div id="colorPanel"></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Win celebration</h4>
+        <p class="sectionNote">When a round ends, the winner and the leaderboards pop up automatically, then close on their own. Auto-continue (above) always waits for this celebration to finish before starting the next round.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show leaderboard for (seconds)</label>
+          <input type="number" id="leaderboardShowInput" class="textInput selectNarrow" min="1" max="30" value="3" />
+        </div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Floating message window</h4>
+        <p class="sectionNote">Shows each new valid word (✓ with its points) and each skipped word (✗ with the reason) for a few seconds.</p>
+        <div class="row">
+          <label class="fieldLabel delayLabel">Show each message for (seconds)</label>
+          <input type="number" id="rejectionToastShowInput" class="textInput selectNarrow" min="1" max="30" value="4" />
+        </div>
+      </div>
+
+      <button class="btn btnGold btnFull" id="applyBtn" type="button">Apply settings &amp; start new round</button>
+      <p class="sectionNote">Grid size, tile reuse, shortest word, round time, auto-continue and its delay only take effect once you tap Apply. Win-celebration and message durations apply right away.</p>
+
+      <div class="drawerSection">
+        <h4>Scores</h4>
+        <button class="btn btnDanger btnFull" id="resetRoundBtn" type="button">Reset this round's leaderboard</button>
+        <button class="btn btnDanger btnFull" id="resetTotalBtn" type="button">Reset all-time leaderboard</button>
+      </div>
+
+      <div class="drawerSection">
+        <h4>
+          Diagnostics
+          <button id="diagToggle" class="linkBtn" type="button" aria-expanded="true">hide</button>
+        </h4>
+        <div class="diagGrid" id="diagGrid"></div>
+      </div>
+
+      <div class="drawerSection">
+        <h4>Live event tools</h4>
+        <div data-engagement-tools></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode picker popup -->
+  <div class="pickerOverlay" id="modePickerOverlay" hidden>
+    <div class="pickerSheet">
+      <button class="pickerOption" data-mode="live" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Live</span>
+          <span class="pickerDesc">Counts for the chat leaderboard</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="test" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Test</span>
+          <span class="pickerDesc">Practice — scores not saved</span>
+        </span>
+      </button>
+      <button class="pickerOption" data-mode="offline" type="button">
+        <span class="pickerRadio"></span>
+        <span class="pickerTextWrap">
+          <span class="pickerTitle">Offline</span>
+          <span class="pickerDesc">Host plays solo</span>
+        </span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Leaderboard drawer -->
+  <div class="drawerOverlay" id="leaderboardOverlay" hidden>
+    <div class="drawer">
+      <div class="drawerHead">
+        <h3>Leaderboard</h3>
+        <button class="iconBtn" id="closeLeaderboard" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="tabRow">
+        <button class="tabBtn active" id="tabThisRound" type="button">This round</button>
+        <button class="tabBtn" id="tabAllTime" type="button">All-time</button>
+      </div>
+      <ol class="leaderboard" id="leaderboardList"></ol>
+      <p class="sectionNote" id="leaderboardNote" hidden></p>
+    </div>
+  </div>
+
+  <!-- Win celebration: a sequence of floating windows -->
+  <div class="celebrationOverlay" id="celebrationOverlay" hidden>
+    <div class="celebrationCard" id="celebrationCard">
+      <button class="iconBtn celebrationClose" id="closeCelebration" type="button" aria-label="Close">✕</button>
+      <div class="celebrationBody" id="celebrationBody"></div>
+      <div class="celebrationDots" id="celebrationDots">
+        <span class="celebDot" data-stage="0"></span>
+        <span class="celebDot" data-stage="1"></span>
+        <span class="celebDot" data-stage="2"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Languages popup (update 64): choose which languages to play -->
+  <div class="modalOverlay" id="languageOverlay" hidden>
+    <div class="modal" role="dialog" aria-labelledby="languageTitle">
+      <div class="modalHead">
+        <h3 id="languageTitle">Languages to play</h3>
+        <button class="iconBtn" id="closeLanguage" type="button" aria-label="Close">✕</button>
+      </div>
+      <p class="sectionNote">Tick one language, or several to mix them. Secret words AND accepted guesses use the languages you pick; mixed rounds give every ticked language a fair share.</p>
+      <label class="switchRow langRow">
+        <input type="checkbox" id="langEn" value="en" />
+        <span class="switchTrack"><span class="switchThumb"></span></span>
+        <span class="switchLabel">🇬🇧 English</span>
+      </label>
+      <label class="switchRow langRow">
+        <input type="checkbox" id="langId" value="id" />
+        <span class="switchTrack"><span class="switchThumb"></span></span>
+        <span class="switchLabel">🇮🇩 Bahasa Indonesia</span>
+      </label>
+      <label class="switchRow langRow">
+        <input type="checkbox" id="langMs" value="ms" />
+        <span class="switchTrack"><span class="switchThumb"></span></span>
+        <span class="switchLabel">🇲🇾 Bahasa Melayu (Malaysia)</span>
+      </label>
+      <p class="sectionNote" id="languageInfo"></p>
+      <p class="sectionNote langWarn" id="languageWarn" hidden>Pick at least one language.</p>
+      <button class="btn btnGold btnFull" id="applyLanguageBtn" type="button">Apply language</button>
+      <p class="sectionNote">A round that is already running restarts in the new language. Your choice is remembered.</p>
+    </div>
+  </div>
+
+  <!-- How-to-play modal -->
+  <div class="modalOverlay" id="howToOverlay" hidden>
+    <div class="modal">
+      <div class="modalHead">
+        <h3>How to play</h3>
+        <button class="iconBtn" id="closeHowTo" type="button" aria-label="Close">✕</button>
+      </div>
+      <ul class="howToList">
+        <li>The board is a <strong>grid of letter tiles</strong> — 6 × 6, 8 × 8, 10 × 10 or 12 × 12, chosen in Settings. Everyone sees the same grid.</li>
+        <li>Make words by chaining tiles that <strong>touch</strong> each other in <strong>every direction</strong>: up, down, left, right <em>and the four corners</em>. Type the word in the chat — anyone can play, anytime.</li>
+        <li>Only <strong>real words</strong> count (no made-up words). A word must be at least <strong>4 letters</strong> (the host can change this) and can be as long as you can find — 15 or even 20 letters on the big grids and each word scores <strong>once per round</strong> — the first person to type it gets it.</li>
+        <li><strong>Tiles:</strong> by default each tile can be used only once per word. The host can switch on <em>Tiles may be reused</em>, so a word may come back to a tile it already used.</li>
+        <li><strong>Scoring:</strong> points = the number of letters. <span class="legendTile bxOk">5</span> a 5-letter word is 5 points, a 10-letter word is 10 points. Points count for the chat leaderboards in Live mode.</li>
+        <li>Each new word lights up its path on the grid (<span class="legendTile bxPath">A</span> gold tiles). Every valid word is listed in the <strong>Guessed words</strong> board with its points and who found it.</li>
+        <li>The round lasts <strong>1 minute</strong> unless the host picks another time. When the clock hits zero the player with the most points wins the round and a new grid starts.</li>
+        <li>💡 shows the first tile of a hidden word (<span class="legendTile bxHint">A</span> purple tile) and its length — never the word itself. Unlimited.</li>
+        <li><strong>Live</strong> = real TikTok chat. <strong>Test</strong> = simulated chat, nothing saved. <strong>Offline</strong> = just you, type words directly.</li>
+      </ul>
+      <button class="btn btnGold" id="closeHowTo2" type="button">Got it</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/engagement.js"></script>
+  <script src="boxdle-game.js"></script>
+</body>
+</html>
