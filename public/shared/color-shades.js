@@ -130,6 +130,13 @@
       { id: "wave", label: "Light blue", hint: "the secret word's wave-line (wave board & legend)", std: "#8FD3FF", stdDark: "#4FA8E0", vars: ["--ln-wave"], darkVars: ["--ln-wave-dark"], inkVars: ["--ln-wave-ink"] },
       { id: "guess", label: "White", hint: "the guess wave-line (wave board & legend)", std: "#FFFFFF", stdDark: "#CFD6E4", vars: ["--ln-guess"], darkVars: ["--ln-guess-dark"], inkVars: ["--ln-guess-ink"] }
     ],
+    boxdle: [
+      { id: "path", label: "Gold", hint: "the tiles and line of the word just found (grid & legend)", std: "#F2B01E", stdDark: "#B9820A", vars: ["--bx-path"], darkVars: ["--bx-path-dark"], inkVars: ["--bx-path-ink"] },
+      { id: "found", label: "Green", hint: "valid words and their points (board & legend)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--bx-found"], darkVars: ["--bx-found-dark"], inkVars: ["--bx-found-ink"] },
+      { id: "hint", label: "Purple", hint: "the hint tile (grid & legend)", std: "#7B4FC9", stdDark: "#57338F", vars: ["--bx-hint"], darkVars: ["--bx-hint-dark"], inkVars: ["--bx-hint-ink"] },
+      { id: "reject", label: "Red", hint: "the last 10 seconds of the clock (clock & legend)", std: "#D64550", stdDark: "#A32B35", vars: ["--bx-reject"], darkVars: ["--bx-reject-dark"], inkVars: ["--bx-reject-ink"] },
+      { id: "timer", label: "Teal", hint: "the round clock and its bar (clock & legend)", std: "#1F8A8A", stdDark: "#146363", vars: ["--bx-timer"], darkVars: ["--bx-timer-dark"], inkVars: ["--bx-timer-ink"] }
+    ],
     minedle: [
       { id: "green", label: "Green", hint: "right letter, right spot (guess tiles & legend)", std: "#2E7D32", stdDark: "#1F5E24", vars: ["--mn-green"], darkVars: ["--mn-green-dark"], inkVars: ["--mn-green-ink"] },
       { id: "yellow", label: "Yellow", hint: "in the word, wrong spot (guess tiles & legend)", std: "#D9A700", stdDark: "#A98200", vars: ["--mn-yellow"], darkVars: ["--mn-yellow-dark"], inkVars: ["--mn-yellow-ink"] },

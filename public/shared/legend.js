@@ -241,6 +241,18 @@
         { id: "float", glyph: "!", label: "Floating window — announces each new guess or a skipped one", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
       ]
     },
+    boxdle: {
+      title: "What the tiles and colors mean",
+      items: [
+        { id: "tile", glyph: "A", label: "Letter tile — chain tiles that touch (up, down, sides and corners) to spell a real word", c: { bg: "rgba(60,40,20,.19)", fg: "var(--text, #222)", bd: "var(--border, rgba(0,0,0,.35))" } },
+        { id: "path", glyph: "A", label: "Gold — the tiles (and line) of the word that was just found", c: V("--bx-path", "#F2B01E", "#1B1B1F", "#B9820A") },
+        { id: "found", glyph: "+5", label: "Green — a valid word; points = its number of letters (5 letters = 5 points)", c: V("--bx-found", "#2E7D32", "#F3F1E6", "#1F5E24") },
+        { id: "hint", glyph: "A", label: "Purple — hint: a hidden word starts on this tile", c: V("--bx-hint", "#7B4FC9", "#fff", "#57338F") },
+        { id: "timer", glyph: "1:00", label: "Teal clock — time left in the round (1 minute unless the host changes it)", c: V("--bx-timer", "#1F8A8A", "#fff", "#146363") },
+        { id: "low", glyph: "!", label: "Red clock — the last 10 seconds", c: V("--bx-reject", "#D64550", "#fff", "#A32B35") },
+        { id: "float", glyph: "!", label: "Floating window — announces each new word (✓) or a skipped one (✗: not a real word, repeated or not on the grid)", c: { bg: "transparent", fg: "var(--coral, #E5484D)", bd: "var(--coral, #E5484D)" } }
+      ]
+    },
     minedle: {
       title: "What the tiles, marks and colors mean",
       items: [

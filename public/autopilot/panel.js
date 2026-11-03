@@ -333,6 +333,8 @@
     if (m.regions && m.regions.length) add(m.regions.length + " region" + (m.regions.length === 1 ? "" : "s"), ["regions"]);
     if (m.startLength !== undefined) add("start " + (m.startLength || "3–5"), ["startLength"]);
     if (m.maxLength !== undefined) add("max " + (m.maxLength || "auto"), ["maxLength"]);
+    if (m.gridSize) add(m.gridSize + "×" + m.gridSize + " grid", ["gridSize"]);
+    if (m.allowReuse !== undefined) add(m.allowReuse ? "tiles reusable" : "tiles once", ["allowReuse"]);
     if (m.roundSeconds) add(m.roundSeconds + " s round", ["roundSeconds"]);
     if (m.starterWord !== undefined) add(m.starterWord ? "starter word" : "no starter word", ["starterWord"]);
     if (m.allowRepeats !== undefined) add(m.allowRepeats ? "digits repeat" : "no repeats", ["allowRepeats"]);
@@ -387,6 +389,9 @@
     }
     if (has("giveUpSeconds")) row("Give up a round after", numBox(st.giveUpSeconds, fieldInfo("giveUpSeconds"), function (v) { write("giveUpSeconds", v); }, "180 (standard)", inh.giveUpSeconds), "seconds. If nobody solves the trail in this time the answer is shown and the next round starts, so an AFK live never gets stuck. Empty = 180 s, 0 = never give up.");
     if (has("roundSeconds")) row("Round time", numBox(st.roundSeconds, fieldInfo("roundSeconds"), function (v) { write("roundSeconds", v); }, null, inh.roundSeconds), "seconds");
+    if (has("gridSize")) row("Grid size", segmented(fieldInfo("gridSize").options.map(function (o) { return [o[0], o[1]]; }), st.gridSize === undefined ? undefined : String(st.gridSize), function (v) { write("gridSize", v === undefined ? undefined : Number(v)); rebuild(); }, KEEP, inh.gridSize === undefined ? undefined : String(inh.gridSize)), "Letter grid of every round." + now("gridSize"));
+    if (has("allowReuse")) row("Tiles may be reused", segmented([["true", "Yes"], ["false", "No"]], st.allowReuse === undefined ? undefined : String(st.allowReuse), function (v) { write("allowReuse", v === undefined ? undefined : v === "true"); rebuild(); }, KEEP, inh.allowReuse), "A tile may appear again inside one word." + now("allowReuse"));
+    if (has("minWordLength")) row("Shortest word", numBox(st.minWordLength, fieldInfo("minWordLength"), function (v) { write("minWordLength", v); }, null, inh.minWordLength), "letters");
     if (has("starterWord")) row("Starter word", segmented([["true", "On"], ["false", "Off"]], st.starterWord === undefined ? undefined : String(st.starterWord), function (v) { write("starterWord", v === undefined ? undefined : v === "true"); rebuild(); }, KEEP, inh.starterWord), "Opens every round with one free word." + now("starterWord"));
     if (has("allowRepeats")) row("Digits may repeat", segmented([["true", "Yes"], ["false", "No"]], st.allowRepeats === undefined ? undefined : String(st.allowRepeats), function (v) { write("allowRepeats", v === undefined ? undefined : v === "true"); rebuild(); }, KEEP, inh.allowRepeats), now("allowRepeats").trim() || null);
     if (has("regions")) {

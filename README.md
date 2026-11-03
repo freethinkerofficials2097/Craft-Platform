@@ -1,3 +1,5 @@
+> **Update 120:** BOXDLE: newest guess on top of the guessed-words box + 3D tiles; 15 "Box colors & looks" designs now in the Appearance dropdown of EVERY game (next to the 6 plain colors). See CHANGES_UPDATE_120.md.
+
 > **Update 107:** new game TOWNDLE (Malaysia only: guess the secret city / municipal / district / town; green = the place, yellow = right state with the 3 Federal Territories counted as the 14th, orange = direct neighbour (same or touching district), grey = wrong; arrow + distance; Normal / Medium / Hard / Random tiers) at `/towndle/`. See `CHANGES_UPDATE_107.md` and `data/README-towns.txt`.
 
 > **Update 95:** CITYDLE: City colors card (legend always matches) + 6,300+ cities (and a way to load every city of the world); NEW game EXPANDLE (grow a word one letter per row in 60 s, 1 point per word) at `/expandle/`. See `CHANGES_UPDATE_95.md`.
@@ -9,6 +11,10 @@
 > **Update 92:** LINEDLE wave panel is fully customizable (Settings -> Wave panel look): colors, line thickness, show / hide the horizontal letter lines and the A-Z letters on the left, pillars, dots, trails, 5 ready looks. See `CHANGES_UPDATE_92.md`.
 
 > **Update 91:** new game LINEDLE (pillars + a light-blue secret wave-line and a white guess wave-line, height = letter from A (low) to Z (high); green/yellow/grey clues; 1 point for solving) at `/linedle/`. See `CHANGES_UPDATE_91.md`.
+
+> **Update 119:** BOXDLE: 4-letter default, long words (up to 20), cute scrapbook design with color presets and pickers, auto-scrolling guessed-words box, Test Mode bot that really solves the grid. See CHANGES_UPDATE_119.md.
+
+> **Update 118:** new game BOXDLE (word hunt on a 6x6 / 8x8 / 10x10 / 12x12 letter grid; chain touching tiles; points = letters; 60-second rounds by default; tile-reuse switch; legend; board of guessed words). See CHANGES_UPDATE_118.md.
 
 > **Update 102:** new game NUMBERBLINDLE (BLINDLE with a secret number / PIN; green, yellow and red count columns; one-row 0-9 keyboard with show/hide; colour legend; 1 point per fitting guess, 5 for solving; Number length panel) at `/numberblindle/`. See `CHANGES_UPDATE_102.md`.
 > **Update 89:** new game MINEDLE (Sweep-O style letter + number grid, blue/red marks, Letter bank, green/yellow/grey clues; 1 point for solving) at `/minedle/`. See `CHANGES_UPDATE_89.md`.

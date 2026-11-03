@@ -30,6 +30,7 @@
 //   /citydle/ - CITYDLE (Socket.IO namespace /citydle)
 //   /towndle/ - TOWNDLE (Socket.IO namespace /towndle)
 //   /expandle/ - EXPANDLE (Socket.IO namespace /expandle)
+//   /boxdle/   - BOXDLE   (Socket.IO namespace /boxdle)
 //   /fixle/ - FIXLE (Socket.IO namespace /fixle)
 //   /contexto/ - CONTEXTO (Socket.IO namespace /contexto)
 //   /numberblindle/ - NUMBERBLINDLE (its own WebSocket path /numberblindle-ws)
@@ -73,6 +74,7 @@ import { mountExpandle } from "./server/expandle/expandle-server.js";
 import { mountFixle } from "./server/fixle/fixle-server.js";
 import { mountContexto } from "./server/contexto/contexto-server.js";
 import { mountNumberblindle } from "./server/numberblindle/numberblindle-server.js";
+import { mountBoxdle } from "./server/boxdle/boxdle-server.js";
 import { mountOracle } from "./server/oracle/oracle-server.js";
 import { mountColorblindle } from "./server/colorblindle/colorblindle-server.js";
 import { mountColordle } from "./server/colordle/colordle-server.js";
@@ -342,6 +344,12 @@ await mountContexto(app, io, { mountPath: "/contexto" });
 // board, 5 points for solving the round. Like BLINDLE it uses its own WebSocket path (/numberblindle-ws) on the shared http server and
 // needs no dictionary.
 await mountNumberblindle(app, server, { mountPath: "/numberblindle", wsPath: "/numberblindle-ws" });
+
+// BOXDLE is a BLINDLE sibling built on the word-hunt idea: a grid of letter tiles (6x6, 8x8, 10x10 or 12x12) and chat builds real words by
+// chaining TOUCHING tiles (up, down, sides and corners) before the round clock (60 seconds by default) runs out. Points = letters of the word,
+// every word scores once per round. The host can allow or forbid reusing a tile inside one word. A legend above the board explains the colors.
+// Own Socket.IO namespace /boxdle; reuses BLINDLE's word bank + dictionary (loaded once).
+await mountBoxdle(app, io, { mountPath: "/boxdle" });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
