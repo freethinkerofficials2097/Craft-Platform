@@ -93,6 +93,29 @@
   }
   setInterval(function () { try { keepLinked(); checkCover(); } catch (e) {} }, 1000);
 
+  /* update 117: the round / timer chip used to sit at the very top of the screen, behind TikTok's own top information. It now sits in its own
+     clear strip under the game's title banner: a blank spacer is added inside the game page (between the banner and the toolbar), so the chip
+     covers nothing of the game and the game simply starts a few pixels lower. The chip is centred on that strip. */
+  function placeChip(on) {
+    try {
+      var d = frame.contentDocument, slot = d && d.getElementById("apChipSlot");
+      if (!on || !d || !d.body || frame.hidden) { if (slot) slot.style.display = "none"; chip.classList.remove("slotted"); chip.style.top = ""; return; }
+      if (!slot) {
+        slot = d.createElement("div"); slot.id = "apChipSlot"; slot.setAttribute("aria-hidden", "true");
+        slot.style.cssText = "flex:0 0 auto;width:100%;pointer-events:none;";
+        var hero = d.getElementById("heroBand");
+        if (hero && hero.parentNode) hero.parentNode.insertBefore(slot, hero.nextSibling);
+        else { var host = d.getElementById("app") || d.querySelector(".app") || d.body; host.insertBefore(slot, host.firstChild); }
+      }
+      var h = Math.max(34, chip.offsetHeight + 8);
+      slot.style.display = "block"; slot.style.height = h + "px";
+      var fr = frame.getBoundingClientRect(), r = slot.getBoundingClientRect();
+      chip.classList.add("slotted");
+      chip.style.top = Math.round(fr.top + r.top + (r.height - chip.offsetHeight) / 2) + "px";
+    } catch (e) {}
+  }
+  setInterval(function () { try { if (S && !chip.hidden) placeChip(true); } catch (e) {} }, 1000);
+
   /* ---------- reporting back ---------- */
   function report() {
     if (!S || !S.current || loaded.loadSeq !== S.current.loadSeq) return;
@@ -254,6 +277,7 @@
     // small timer chip while a game runs
     var showChip = S.running && (ph === "playing" || ph === "wrapup") && S.current && S.display && S.display.showTimer;
     chip.hidden = !showChip;
+    if (!showChip) placeChip(false);
     if (showChip) {
       clear(chip);
       chip.className = "chip" + (ph === "wrapup" ? " warn" : "");
@@ -264,6 +288,7 @@
       if (ph === "wrapup") chip.appendChild(el("i", "", "last round…"));
       else if (cu.useTime !== false) chip.appendChild(el("i", "", "⏱ " + mmss(rem)));
       if (S.display.showUpNext && ph === "playing" && ((cu.useTime !== false && rem <= 60) || (cu.limitAt))) chip.appendChild(el("i", "", "· vote soon"));
+      placeChip(true);
     }
     $("barState").textContent = S.running ? (S.paused ? "paused" : ph) + (S.current ? " · " + S.current.name : "") : "off";
     $("bPause").textContent = S.paused ? "▶ Resume" : "⏸ Pause";

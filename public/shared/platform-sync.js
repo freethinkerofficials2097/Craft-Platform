@@ -19,6 +19,30 @@
   if (window.__platformSync) return;
   window.__platformSync = true;
 
+  /* ---------- update 117: the bottom "Host controls" panel stays CLOSED in the AFK autopilot ----------
+     Every game page is loaded fresh at the start of each autopilot game, and its bottom Host controls panel is built open - so the
+     panel popped up by itself after every vote. Inside the stage frame (?autopilot=1) it is now closed once, right after the page loads,
+     using the game's own toggle button. The host can still open it any time by tapping "Host controls" (it is never closed again by this code).
+     Normal (non-autopilot) play is unchanged. */
+  (function autopilotCollapseHostPanel() {
+    try {
+      if (window.parent === window || !/[?&]autopilot=1\b/.test(location.search)) return;
+      var tries = 0, timer = null;
+      function step() {
+        tries++;
+        var h = document.getElementById("controlsHandle");                       // word games + Twistle
+        if (!h && document.getElementById("dockCollapsible")) h = document.getElementById("dockToggle"); // Travle
+        if (h) {
+          if (h.getAttribute("aria-expanded") === "true") { try { h.click(); } catch (e) {} }
+          if (h.getAttribute("aria-expanded") === "false") { clearInterval(timer); return; }
+        }
+        if (tries > 30) clearInterval(timer);
+      }
+      timer = setInterval(step, 150);
+      step();
+    } catch (e) {}
+  })();
+
   /* ---------- update 115: FULL SCREEN inside the AFK autopilot stage ----------
      A game's own full-screen button (and the F11-like button on every game) used to put only THIS frame in full screen. The frame is replaced
      every time the autopilot switches game, and the browser leaves full screen whenever the page in it is replaced - so every new game
