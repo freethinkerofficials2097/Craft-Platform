@@ -24,7 +24,7 @@ export function registerGameSettings(id, getter, keys, opts = {}) {
   restoreDefault(id); // update 114: a saved "Save & Apply as default" is put back as soon as the game starts
 }
 
-const WORD_ONLY = new Set(["difficulty", "lengthMode", "wordLength", "lengthMin", "lengthMax", "autoContinueDelaySeconds", "starterWord", "allowRepeats", "regions", "startLength", "maxLength", "roundSeconds"]);
+const WORD_ONLY = new Set(["difficulty", "lengthMode", "wordLength", "lengthMin", "lengthMax", "autoContinueDelaySeconds", "starterWord", "allowRepeats", "regions", "startLength", "maxLength", "roundSeconds", "gridSize", "allowReuse", "minWordLength"]);
 // the saved default for a game, cleaned the same way the autopilot cleans its own game settings
 function cleanDefault(id, raw) {
   const r = reg.get(id);
