@@ -49,37 +49,37 @@
    each chosen dark and saturated enough to stay easy to read on
    their theme's light panels.
    ============================================================ */
-:root[data-theme="cream"] {
+:root[data-ctx="cream"] {
   --bg: #faf5ea; --bg-2: #f2e9d8; --panel: #fffdf9; --panel-2: #efe6d2; --line: #ddd0b0;
   --text: #2c2417; --muted: #7d7059;
   --brand-cyan: #0d7d78; --brand-pink: #c23a63; --brand-pink-2: #e0698d; --gold: #a8720d;
   --tier-exact: #a8720d; --tier-dark-green: #1f7a3d; --tier-green: #2f9e52; --tier-orange: #bd611a; --tier-red: #c03a3a;
 }
-:root[data-theme="sky"] {
+:root[data-ctx="sky"] {
   --bg: #eaf4fb; --bg-2: #dcecf7; --panel: #ffffff; --panel-2: #d7e9f5; --line: #b7d7ec;
   --text: #132c42; --muted: #557791;
   --brand-cyan: #0072a8; --brand-pink: #c93f72; --brand-pink-2: #e0699a; --gold: #a97313;
   --tier-exact: #a97313; --tier-dark-green: #157a45; --tier-green: #1f9d5c; --tier-orange: #bd611a; --tier-red: #c03a4d;
 }
-:root[data-theme="meadow"] {
+:root[data-ctx="meadow"] {
   --bg: #eff8ea; --bg-2: #e1f1d9; --panel: #ffffff; --panel-2: #daecce; --line: #b9dca5;
   --text: #1c3714; --muted: #587a4b;
   --brand-cyan: #0d7d78; --brand-pink: #bf3c66; --brand-pink-2: #dd6b93; --gold: #93720f;
   --tier-exact: #93720f; --tier-dark-green: #1c7a3d; --tier-green: #2f9e52; --tier-orange: #b5601c; --tier-red: #b93b3b;
 }
-:root[data-theme="blossom"] {
+:root[data-ctx="blossom"] {
   --bg: #fdf1f4; --bg-2: #fbe3ea; --panel: #ffffff; --panel-2: #f6d9e3; --line: #f0bccf;
   --text: #4a1a2c; --muted: #966078;
   --brand-cyan: #0d7d80; --brand-pink: #bd3d76; --brand-pink-2: #e26a9c; --gold: #a97313;
   --tier-exact: #a97313; --tier-dark-green: #1c7a3d; --tier-green: #2f9e52; --tier-orange: #b5601c; --tier-red: #bd3358;
 }
-:root[data-theme="lavender"] {
+:root[data-ctx="lavender"] {
   --bg: #f4f0fb; --bg-2: #e9e0f6; --panel: #ffffff; --panel-2: #e3d6f3; --line: #cbb3e6;
   --text: #2c1d49; --muted: #6f5f8f;
   --brand-cyan: #0d7d80; --brand-pink: #a83a8e; --brand-pink-2: #c569ac; --gold: #93720f;
   --tier-exact: #93720f; --tier-dark-green: #1c7a3d; --tier-green: #2f9e52; --tier-orange: #b5601c; --tier-red: #a83a6a;
 }
-:root[data-theme="honey"] {
+:root[data-ctx="honey"] {
   --bg: #fdf6e3; --bg-2: #faecc1; --panel: #fffdf5; --panel-2: #f5e2a0; --line: #e3c876;
   --text: #463608; --muted: #8a7135;
   --brand-cyan: #0d7d78; --brand-pink: #bd3a62; --brand-pink-2: #dd6a8e; --gold: #8f6108;
@@ -944,8 +944,8 @@ button { font-family: inherit; }
 }
 
 /* Rank tier colors on the light themes (darker for contrast) */
-:root[data-theme="cream"], :root[data-theme="sky"], :root[data-theme="meadow"],
-:root[data-theme="blossom"], :root[data-theme="lavender"], :root[data-theme="honey"] {
+:root[data-ctx="cream"], :root[data-ctx="sky"], :root[data-ctx="meadow"],
+:root[data-ctx="blossom"], :root[data-ctx="lavender"], :root[data-ctx="honey"] {
   --tier-blue: #1d63c4; --tier-purple: #7a3fc2; --tier-pink: #c4287c;
 }
 
@@ -980,3 +980,77 @@ button { font-family: inherit; }
 /* ===== Platform integration (update 101) ===== */
 a.icon-btn { text-decoration: none; font-size: 16px; line-height: 1; }
 .engagement-tools-wrap { margin-top: 14px; }
+
+/* ============================================================
+   Appearance menu (update 121): 7 classic colors + 15 cute "Box colors & looks"
+   ============================================================ */
+.theme-menu { max-height: min(70vh, 520px); overflow-y: auto; min-width: 210px; }
+.theme-group {
+  font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); padding: 8px 10px 4px;
+}
+.theme-group:first-child { padding-top: 4px; }
+
+/* ============================================================
+   CUTE SCRAPBOOK LOOK (only while one of the 15 looks is active)
+   graph-paper page, stitched edges, washi tape, raised 3D buttons and rows,
+   rounded friendly fonts, sparkles on the title.
+   Rank colors (gold / green / orange / red) are NOT changed by a look.
+   ============================================================ */
+:root[data-ctx="look"] body { font-family: 'Quicksand', 'Inter', system-ui, sans-serif; }
+:root[data-ctx="look"] h1, :root[data-ctx="look"] h2, :root[data-ctx="look"] h3 { font-family: 'Fredoka', 'Baloo 2', 'Quicksand', sans-serif; }
+:root[data-ctx="look"] html, :root[data-ctx="look"] body,
+html[data-ctx="look"] body {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--look-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--look-grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+:root[data-ctx="look"] #diagnostics { border-bottom: 2px dashed var(--line); box-shadow: 0 6px 16px var(--look-shadow); background: var(--panel); backdrop-filter: none; }
+:root[data-ctx="look"] .hero {
+  position: relative; margin: 4px 0 14px; padding: 16px 14px 14px;
+  background: color-mix(in srgb, var(--panel) 80%, transparent);
+  border: 2px dashed var(--line); border-radius: 18px; box-shadow: 0 4px 0 var(--look-shadow);
+}
+:root[data-ctx="look"] .hero::before, :root[data-ctx="look"] .hero::after {
+  content: ""; position: absolute; top: -9px; width: 74px; height: 18px; border-radius: 3px;
+  box-shadow: 0 1px 2px var(--look-shadow);
+}
+:root[data-ctx="look"] .hero::before { left: -12px; background: var(--look-tape1); transform: rotate(-24deg); }
+:root[data-ctx="look"] .hero::after  { right: -12px; background: var(--look-tape2); transform: rotate(24deg); }
+:root[data-ctx="look"] .wordmark {
+  font-family: 'Fredoka', 'Baloo 2', sans-serif; font-weight: 700; color: var(--brand-cyan);
+  filter: drop-shadow(0 2px 0 var(--look-sticker)) drop-shadow(0 4px 8px var(--look-shadow));
+  position: relative; display: inline-block;
+}
+:root[data-ctx="look"] .wordmark::before { content: "✨"; position: absolute; left: -.85em; top: -.25em; font-size: .55em; }
+:root[data-ctx="look"] .wordmark::after  { content: "💖"; position: absolute; right: -.8em; top: -.2em; font-size: .5em; }
+:root[data-ctx="look"] .hero-sub { font-weight: 600; }
+:root[data-ctx="look"] .board,
+:root[data-ctx="look"] .sheet,
+:root[data-ctx="look"] .theme-menu {
+  border: 2px dashed var(--line); box-shadow: 0 4px 0 var(--look-shadow), 0 10px 22px -14px var(--look-shadow);
+}
+:root[data-ctx="look"] .sheet { border-bottom: none; border-radius: 22px 22px 0 0; }
+:root[data-ctx="look"] .theme-menu { border-radius: 16px; }
+:root[data-ctx="look"] .btn,
+:root[data-ctx="look"] .icon-pill, :root[data-ctx="look"] .icon-btn {
+  border-radius: 999px; font-weight: 700;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.45), inset 0 -3px 0 rgba(0,0,0,.14), 0 3px 0 var(--look-shadow);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+:root[data-ctx="look"] .btn:active:not(:disabled),
+:root[data-ctx="look"] .icon-pill:active, :root[data-ctx="look"] .icon-btn:active {
+  transform: translateY(3px);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.3), inset 0 -1px 0 rgba(0,0,0,.14), 0 0 0 var(--look-shadow);
+}
+:root[data-ctx="look"] .btn-primary { color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.18); }
+:root[data-ctx="look"] .btn-outline { border: 2px dashed var(--brand-cyan); background: var(--panel); }
+:root[data-ctx="look"] .guess-row {
+  border: 2px solid rgba(255,255,255,.7); border-radius: 14px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.7), inset 0 -3px 0 rgba(0,0,0,.09), 0 3px 0 var(--look-shadow);
+}
+:root[data-ctx="look"] .guess-row.is-empty { box-shadow: none; border: 2px dashed var(--line); background: transparent; color: var(--muted); }
+:root[data-ctx="look"] .win-banner { border-style: dashed; border-width: 2px; border-radius: 16px; }
+:root[data-ctx="look"] .guess-list { padding: 2px 2px 6px; }

@@ -286,7 +286,7 @@
   // Color themes — one symbol on the toolbar button, full names only
   // inside the opened dropdown. Remembered per device.
   // ============================================================
-  const THEMES = [
+  const CLASSIC = [
     { id: 'midnight', name: 'Midnight',        emoji: '🌙' },
     { id: 'cream',    name: 'Cream',           emoji: '🥛' },
     { id: 'sky',      name: 'Sky Blue',        emoji: '🌤️' },
@@ -295,33 +295,102 @@
     { id: 'lavender', name: 'Lavender Violet', emoji: '🪻' },
     { id: 'honey',    name: 'Honey Gold',      emoji: '🍯' },
   ];
+  // The 15 cute "Box colors & looks" (same palettes as BOXDLE and every other game, from /shared/theme.js)
+  const PT = window.PlatformTheme || null;
+  const LOOKS = PT && PT.looks ? PT.looks.map((l) => {
+    const m = l.name.match(/^(\S+)\s+(.*)$/);
+    return { id: l.theme, name: m ? m[2] : l.name, emoji: m ? m[1] : '🧸', look: l };
+  }) : [];
+  const THEMES = CLASSIC.concat(LOOKS);
   const THEME_KEY = 'contextoLive.theme';
+  const SEEN_KEY = 'contextoLive.platformSeen';
   const themeToggle = el('themeToggle');
   const themeIcon = el('themeIcon');
   const themeMenu = el('themeMenu');
   const themeMetaTag = document.querySelector('meta[name="theme-color"]');
+  const LOOK_VARS = ['--bg', '--bg-2', '--panel', '--panel-2', '--line', '--text', '--muted', '--brand-cyan', '--brand-pink',
+    '--brand-pink-2', '--gold', '--tier-exact', '--tier-dark-green', '--tier-green', '--tier-orange', '--tier-red',
+    '--tier-blue', '--tier-purple', '--tier-pink', '--look-grid', '--look-tape1', '--look-tape2', '--look-sticker', '--look-shadow'];
 
   function loadTheme() {
-    try { return localStorage.getItem(THEME_KEY) || 'midnight'; } catch (e) { return 'midnight'; }
+    let saved = null, plat = null, seen = null;
+    try { saved = localStorage.getItem(THEME_KEY); seen = localStorage.getItem(SEEN_KEY); } catch (e) { /* ignore */ }
+    if (PT) plat = PT.current();
+    // a look picked in ANY other game (or the hub) is followed the first time it changes
+    if (plat && PT.isLook(plat) && plat !== seen) {
+      try { localStorage.setItem(SEEN_KEY, plat); } catch (e) { /* ignore */ }
+      return plat;
+    }
+    if (plat) { try { localStorage.setItem(SEEN_KEY, plat); } catch (e) { /* ignore */ } }
+    return saved || 'midnight';
   }
   function saveTheme(id) {
     try { localStorage.setItem(THEME_KEY, id); } catch (e) { /* private mode etc. */ }
   }
-  function applyTheme(id) {
+  function clearLookVars(root) {
+    LOOK_VARS.forEach((v) => root.style.removeProperty(v));
+    root.removeAttribute('data-look-id');
+    root.removeAttribute('data-look-dark');
+  }
+  function paintLook(root, look) {
+    const c = PT.palette(look.theme), dark = PT.lum(c.page) < 0.2, mix = PT.mix, s = root.style;
+    s.setProperty('--bg', c.page);
+    s.setProperty('--bg-2', mix(c.page, c.cardBorder, 0.28));
+    s.setProperty('--panel', c.card);
+    s.setProperty('--panel-2', c.clockBox);
+    s.setProperty('--line', c.cardBorder);
+    s.setProperty('--text', c.ink);
+    s.setProperty('--muted', mix(c.ink, c.card, 0.42));
+    s.setProperty('--brand-pink', c.accent);
+    s.setProperty('--brand-pink-2', mix(c.accent, '#ffffff', 0.3));
+    s.setProperty('--brand-cyan', dark ? c.accent : c.navy);
+    s.setProperty('--gold', dark ? '#ffd166' : '#a8720d');
+    if (!dark) { // same readable rank colors the light classic themes use
+      s.setProperty('--tier-exact', '#a8720d'); s.setProperty('--tier-dark-green', '#1f7a3d'); s.setProperty('--tier-green', '#2f9e52');
+      s.setProperty('--tier-orange', '#bd611a'); s.setProperty('--tier-red', '#c03a3a');
+      s.setProperty('--tier-blue', '#1d63c4'); s.setProperty('--tier-purple', '#7a3fc2'); s.setProperty('--tier-pink', '#c4287c');
+    }
+    s.setProperty('--look-grid', dark ? 'rgba(255,255,255,.06)' : PT.rgba(c.accent, 0.13));
+    s.setProperty('--look-tape1', PT.rgba(c.accent, 0.45));
+    s.setProperty('--look-tape2', PT.rgba(mix(c.accent, '#a78be0', 0.55), 0.45));
+    s.setProperty('--look-sticker', dark ? c.page : '#ffffff');
+    s.setProperty('--look-shadow', dark ? 'rgba(0,0,0,.45)' : PT.rgba(c.navy, 0.2));
+    root.setAttribute('data-look-id', look.id);
+    if (dark) root.setAttribute('data-look-dark', '1');
+  }
+  function applyTheme(id, fromPlatform) {
     const theme = THEMES.find((t) => t.id === id) || THEMES[0];
-    if (theme.id === 'midnight') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', theme.id);
+    const root = document.documentElement;
+    clearLookVars(root);
+    root.removeAttribute('data-ctx');
+    if (theme.look) {
+      root.setAttribute('data-ctx', 'look');
+      paintLook(root, theme.look);
+      // share the choice with every other game (they follow it the next time they open)
+      if (PT && !fromPlatform && PT.current() !== theme.id) {
+        PT.apply(theme.id, { silent: true });
+        try { localStorage.setItem(SEEN_KEY, theme.id); } catch (e) { /* ignore */ }
+      }
+    } else if (theme.id !== 'midnight') {
+      root.setAttribute('data-ctx', theme.id);
+    }
     themeIcon.textContent = theme.emoji;
-    themeToggle.title = 'Theme (' + theme.name + ')';
+    themeToggle.title = 'Appearance (' + theme.name + ')';
     if (themeMetaTag) {
-      const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+      const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
       if (bg) themeMetaTag.setAttribute('content', bg);
     }
     $$('.theme-option').forEach((opt) => opt.setAttribute('aria-selected', String(opt.dataset.themeId === theme.id)));
     return theme;
   }
   let currentTheme = loadTheme();
-  THEMES.forEach((theme) => {
+  function addThemeHeading(text) {
+    const h = document.createElement('div');
+    h.className = 'theme-group';
+    h.textContent = text;
+    themeMenu.appendChild(h);
+  }
+  function addThemeOption(theme) {
     const opt = document.createElement('button');
     opt.type = 'button';
     opt.className = 'theme-option';
@@ -335,8 +404,11 @@
       closeThemeMenu();
     });
     themeMenu.appendChild(opt);
-  });
-  applyTheme(currentTheme);
+  }
+  addThemeHeading('Contexto colors');
+  CLASSIC.forEach(addThemeOption);
+  if (LOOKS.length) { addThemeHeading('🧸 Box colors & looks'); LOOKS.forEach(addThemeOption); }
+  applyTheme(currentTheme, true);
 
   function openThemeMenu() {
     const r = themeToggle.getBoundingClientRect();

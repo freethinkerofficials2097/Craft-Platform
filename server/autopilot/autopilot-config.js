@@ -40,7 +40,8 @@ export const GAMES = [
   { id: "linedle", name: "Linedle", emoji: "〰️", path: "/linedle/", family: true, cat: "code", howTo: "Match the wave line with your word." },
   { id: "fixle", name: "Fixle", emoji: "🧷", path: "/fixle/", family: true, cat: "word", howTo: "Score words by matching start and end letters." },
   { id: "contexto", name: "Contexto", emoji: "🧠", path: "/contexto/", family: false, cat: "meaning", howTo: "The closer the meaning, the lower the rank." },
-  { id: "numberblindle", name: "Numberblindle", emoji: "#️⃣", path: "/numberblindle/", family: true, cat: "code", howTo: "Crack the secret number code." }
+  { id: "numberblindle", name: "Numberblindle", emoji: "#️⃣", path: "/numberblindle/", family: true, cat: "code", howTo: "Crack the secret number code." },
+  { id: "boxdle", name: "Boxdle", emoji: "🔠", path: "/boxdle/", family: true, cat: "puzzle", howTo: "Chain touching letter tiles into real words before the clock runs out." }
 ];
 // update 116: the KIND of each game. The vote uses it so the options are not four look-alike word games (21 of the 27 games are word guessers).
 export const KINDS = {
@@ -63,6 +64,7 @@ export const PRESET_KEYS = {
   wordle: WORD, betweendle: WORD, comparable: WORD, minedle: WORD, linedle: WORD, fixle: WORD,
   codedle: [...WORD, "starterWord"], shapedle: [...WORD, "starterWord"],
   numberblindle: ["lengthMode", "wordLength", "lengthMin", "lengthMax", "autoContinueDelaySeconds", "allowRepeats"],
+  boxdle: ["gridSize", "allowReuse", "minWordLength", "roundSeconds", "autoContinueDelaySeconds"],
   citydle: ["difficulty", "regions", "autoContinueDelaySeconds"],
   towndle: ["difficulty", "regions", "autoContinueDelaySeconds"],
   expandle: ["difficulty", "startLength", "maxLength", "roundSeconds", "autoContinueDelaySeconds"],
@@ -89,7 +91,10 @@ export const PRESET_FIELDS = {
   regions: { type: "regions", label: "Where the secret place can be" },
   startLength: { type: "select", label: "Starting word length", options: [["3", "3 letters"], ["4", "4 letters"], ["5", "5 letters"], ["0", "Random 3-5"]] },
   maxLength: { type: "number", label: "Longest word (0 = automatic)", min: 0, max: 20 },
-  roundSeconds: { type: "number", label: "Round time (seconds)", min: 20, max: 300 },
+  roundSeconds: { type: "number", label: "Round time (seconds)", min: 10, max: 3600 },
+  gridSize: { type: "select", label: "Grid size", options: [["6", "6 × 6"], ["8", "8 × 8"], ["10", "10 × 10"], ["12", "12 × 12"]] },
+  allowReuse: { type: "bool", label: "Tiles may be reused inside a word" },
+  minWordLength: { type: "number", label: "Shortest word that counts", min: 2, max: 8 },
   minHops: { type: "number", label: "Shortest trail (hops)", min: 2, max: 9 },
   maxHops: { type: "number", label: "Longest trail (hops)", min: 2, max: 9 },
   giveUpSeconds: { type: "number", label: "Give up a round nobody solves after (seconds, 0 = never)", min: 0, max: 900 }
