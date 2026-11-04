@@ -791,7 +791,7 @@ function avatarColorFor(username) {
 }
 function avatarInitial(username) {
   const clean = String(username || "").trim();
-  return clean ? clean[0].toUpperCase() : "?";
+  return clean ? Array.from(clean)[0].toUpperCase() : "?";
 }
 
 // Builds an actual DOM avatar node (used inside the guess grid, where

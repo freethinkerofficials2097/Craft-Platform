@@ -562,22 +562,45 @@ let hl = null; // { path, until }
 let hlTimer = null;
 
 function gridMetrics(n) {
-  // The grid box is as wide as the card allows; tiles fill that width, so the letters are as big as the screen permits.
+  // The grid is as big as BOTH the width and the height that are left allow (update 126): the whole page - title down to the
+  // guessed words - fits one screen, so the grid never pushes the guessed words out of view.
   const secW = el.gridSection.clientWidth || 340;
   const avail = Math.max(120, secW - 16);
   const gap = n <= 6 ? 6 : n <= 8 ? 5 : n <= 10 ? 3 : 2;
-  const maxTile = n <= 6 ? 66 : n <= 8 ? 54 : n <= 10 ? 46 : 40;
-  const size = Math.max(18, Math.min(maxTile, Math.floor((avail - gap * (n - 1)) / n)));
+  const maxTile = n <= 6 ? 88 : n <= 8 ? 72 : n <= 10 ? 58 : 46;
+  let size = Math.max(18, Math.min(maxTile, Math.floor((avail - gap * (n - 1)) / n)));
+  try {
+    const card = el.gridSection.closest(".round-card");
+    if (card && card.clientHeight > 0) {
+      const px = (v) => parseFloat(v) || 0;
+      const cs = getComputedStyle(card);
+      let others = 0;
+      Array.prototype.forEach.call(card.children, (ch) => {
+        if (ch === el.gridSection || ch === el.board || ch.hidden || ch.offsetParent === null) return;
+        const m = getComputedStyle(ch);
+        others += ch.offsetHeight + px(m.marginTop) + px(m.marginBottom);
+      });
+      const sc = getComputedStyle(el.gridSection);
+      const secExtra = px(sc.paddingTop) + px(sc.paddingBottom) + px(sc.borderTopWidth) + px(sc.borderBottomWidth) + px(sc.marginTop) + px(sc.marginBottom);
+      const boardMin = (window.innerHeight < 780 ? 92 : 140) + 6;
+      const budget = card.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom) - px(cs.borderTopWidth) - px(cs.borderBottomWidth) - others - secExtra - boardMin;
+      const byH = Math.floor((budget - gap * (n - 1)) / n);
+      size = Math.max(18, Math.min(size, byH));
+    }
+  } catch (e) { /* measuring is best effort */ }
   return { n, size, gap, font: Math.max(12, Math.round(size * 0.6)) };
 }
 
+let lastGridState = null;
 function renderGrid(g) {
+  lastGridState = g;
   const n = g.boardSize || 0;
   const show = g.status !== "idle" && n > 0 && g.letters.length === n * n;
   el.gridSection.hidden = !show;
   if (!show) { lastGridSig = ""; tileEls = []; return; }
 
-  const sig = [g.roundNumber, n, el.gridSection.clientWidth].join("|");
+  const _card = el.gridSection.closest(".round-card");
+  const sig = [g.roundNumber, n, el.gridSection.clientWidth, _card ? _card.clientHeight : 0, el.clock ? el.clock.offsetHeight : 0, window.innerHeight].join("|");
   if (sig !== lastGridSig) {
     lastGridSig = sig;
     const m = gridMetrics(n);
@@ -586,6 +609,9 @@ function renderGrid(g) {
     el.gridWrap.style.width = w + "px";
     el.grid.style.gridTemplateColumns = "repeat(" + n + ", " + m.size + "px)";
     el.grid.style.gap = m.gap + "px";
+    const w1 = m.gap >= 5 ? 3 : m.gap >= 3 ? 2 : 1;
+    el.grid.style.setProperty("--bx-w1", w1 + "px"); el.grid.style.setProperty("--bx-w2", Math.min(w1 * 2, m.gap - 1) + "px");
+    el.grid.style.setProperty("--bx-lift", w1 + "px");
     el.grid.innerHTML = "";
     tileEls = [];
     const radius = Math.max(5, Math.round(m.size * 0.2)) + "px";
@@ -748,7 +774,7 @@ function renderStatus(g) {
     if (g.hint) html = "💡 A <b>" + g.hint.length + "-letter</b> word starts at the purple tile (letter <b>" + escapeHtml(g.hint.letter.toUpperCase()) + "</b>).";
     else if (g.hintNote) html = escapeHtml(g.hintNote.text);
     else if (g.mode === "offline") html = "✏️ Solo practice — type your word in the box below.";
-    else html = "✨ Type words you can trace on the grid in the chat — " + g.minWordLength + "+ letters, long words score big!";
+    // (update 128) the "Type words you can trace on the grid in the chat ..." line was removed on purpose: nothing replaces it.
   }
   if (ended && g.autoContinue) html += " <b>Next grid in " + g.autoContinueSecondsLeft + "s…</b>";
   el.statusText.innerHTML = html;
@@ -758,7 +784,7 @@ function renderStatus(g) {
 // Box colors & look: presets + a color picker for every part. The server keeps the choice (shared by every screen, remembered).
 // ------------------------------------------------------------
 const BX_DEFAULT = { page: "#fbf3e4", card: "#fff8ec", cardBorder: "#f4a6be", clockBox: "#ede4fa", gridBox: "#ffe9ef", wordsBox: "#fff2cf", tile: "#ffffff", tileInk: "#1f2a5c", ink: "#2b2a4c", accent: "#e8708f", navy: "#1f2a5c" };
-const PT = window.PlatformTheme; // /shared/theme.js: the 15 "Box colors & look" designs + the 6 plain colors
+const PT = window.PlatformTheme; // /shared/theme.js: the 30 "Box colors & look" designs + the 10 plain colors
 const BX_PRESETS = PT && PT.looks
   ? PT.looks.map((l) => ({ id: l.id, theme: l.theme, name: l.name, c: l.c }))
   : [{ id: "strawberry", theme: "look-strawberry", name: "🍓 Strawberry", c: BX_DEFAULT }];
@@ -785,13 +811,15 @@ function rgbaOf(h, a) { const c = hexRgb(h); return "rgba(" + c[0] + "," + c[1] 
 function applyColors(overrides) {
   const c = Object.assign({}, BX_DEFAULT, overrides || {});
   const root = document.documentElement.style;
-  Object.keys(c).forEach((k) => root.setProperty("--bxc-" + k, c[k]));
   const dark = lumOf(c.page) < 0.2;
+  // update 124 (eye comfort): on the light looks the tiles are a touch softer than pure white, so a bright phone screen does not glare
+  if (!dark && lumOf(c.tile) > 0.8) c.tile = mixHex(c.tile, c.page, 0.3);
+  Object.keys(c).forEach((k) => root.setProperty("--bxc-" + k, c[k]));
   root.setProperty("--bxc-line", mixHex(c.cardBorder, c.card, 0.12));
-  root.setProperty("--bxc-muted", mixHex(c.ink, c.card, 0.42));
+  root.setProperty("--bxc-muted", mixHex(c.ink, c.card, 0.3)); // darker than before: small grey text now reads at 4.5:1
   root.setProperty("--bxc-gridline", dark ? "rgba(255,255,255,0.06)" : rgbaOf(c.accent, 0.12));
   root.setProperty("--bxc-shadow", dark ? "rgba(0,0,0,0.45)" : rgbaOf(c.navy, 0.2));
-  root.setProperty("--bxc-sticker", dark ? c.page : "#ffffff");
+  root.setProperty("--bxc-sticker", dark ? c.page : mixHex("#ffffff", c.page, 0.3));
   root.setProperty("--bxc-accent-ink", lumOf(c.accent) > 0.45 ? "#241a05" : "#ffffff");
   root.setProperty("--bxc-tape1", rgbaOf(c.accent, 0.45));
   root.setProperty("--bxc-tape2", rgbaOf(mixHex(c.accent, "#a78be0", 0.55), 0.45));
@@ -801,7 +829,7 @@ function applyColors(overrides) {
   root.setProperty("--bxc-tile-lo", mixHex(c.tile, tdark ? "#000000" : c.cardBorder, tdark ? 0.25 : 0.38));
   root.setProperty("--bxc-tile-edge", mixHex(c.tile, tdark ? "#000000" : c.cardBorder, tdark ? 0.55 : 0.72));
   root.setProperty("--bxc-tile-edge2", mixHex(c.tile, tdark ? "#000000" : c.navy, tdark ? 0.7 : 0.55));
-  root.setProperty("--bxc-gloss", tdark ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.9)");
+  root.setProperty("--bxc-gloss", tdark ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.7)");
 }
 let colorSendTimer = null;
 function sendColors() {
@@ -861,7 +889,7 @@ function syncColorsFromState(g) {
   syncThemeOnce();
 }
 
-// The Appearance dropdown (plain colors + the 15 "Box colors & look" designs) is shared by every game. In BOXDLE, choosing any of them
+// The Appearance dropdown (plain colors + the 30 "Box colors & look" designs) is shared by every game. In BOXDLE, choosing any of them
 // paints the boxes, tiles, text, accent and title with that palette and saves it on the server (so every BOXDLE screen matches).
 function paintThemeInBox(theme) {
   if (!PT) return;
@@ -1100,3 +1128,19 @@ function renderLeaderboardTab() {
 function escapeHtml(str) {
   return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+
+
+// update 126: re-fit the grid whenever the room changes (rotation, the browser bar sliding away, the status line wrapping, ...)
+(function () {
+  let raf = 0;
+  function refit() { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (lastGridState) renderGrid(lastGridState); }); }
+  window.addEventListener("resize", refit);
+  window.addEventListener("orientationchange", () => setTimeout(refit, 250));
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", refit);
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(refit);
+    const card = document.querySelector(".round-card"); if (card) ro.observe(card);
+    if (el.clock) ro.observe(el.clock);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
+})();

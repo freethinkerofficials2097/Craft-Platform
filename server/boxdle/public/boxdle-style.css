@@ -1177,12 +1177,12 @@ body[data-game="boxdle"] .bxTile {
   box-shadow:
     inset 0 2px 1px rgba(255, 255, 255, 0.65),
     inset 0 -4px 3px rgba(0, 0, 0, 0.08),
-    0 3px 0 var(--bxc-tile-edge),
-    0 6px 0 var(--bxc-tile-edge2),
-    0 10px 10px -2px var(--bxc-shadow);
+    0 var(--bx-w1, 3px) 0 var(--bxc-tile-edge),
+    0 var(--bx-w2, 6px) 0 var(--bxc-tile-edge2),
+    0 calc(var(--bx-w2, 6px) + 4px) 10px -2px var(--bxc-shadow);
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7), 0 2px 2px rgba(0, 0, 0, 0.16);
   font-family: "Baloo 2", "Fredoka", sans-serif; font-weight: 800; padding-bottom: 0.08em;
-  transform: translateY(-3px);
+  transform: translateY(calc(var(--bx-lift, 3px) * -1));
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease, color 0.15s ease;
 }
 /* a tile on the chosen word path is "pressed down": it sinks into the board and takes the path color */
@@ -1195,7 +1195,7 @@ body[data-game="boxdle"] .bxTile.hl {
 body[data-game="boxdle"] .bxTile.hint {
   background: radial-gradient(ellipse 70% 45% at 30% 14%, rgba(255, 255, 255, 0.35), transparent 70%), linear-gradient(150deg, var(--bx-hint), var(--bx-hint-dark));
   color: var(--bx-hint-ink); border-color: var(--bx-hint-dark); text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
-  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.35), inset 0 -4px 3px rgba(0, 0, 0, 0.15), 0 3px 0 var(--bx-hint-dark), 0 6px 0 var(--bx-hint-dark), 0 10px 10px -2px var(--bxc-shadow);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.35), inset 0 -4px 3px rgba(0, 0, 0, 0.15), 0 var(--bx-w1, 3px) 0 var(--bx-hint-dark), 0 var(--bx-w2, 6px) 0 var(--bx-hint-dark), 0 calc(var(--bx-w2, 6px) + 4px) 10px -2px var(--bxc-shadow);
 }
 body[data-game="boxdle"] .bxGrid.over .bxTile { opacity: 0.85; }
 
@@ -1204,7 +1204,7 @@ body[data-game="boxdle"] .bxBoard { background: var(--bxc-wordsBox); border: 2px
 body[data-game="boxdle"] .bxBoardTitle { font-family: var(--font-display); color: var(--bxc-navy); letter-spacing: 0.04em; font-size: 14px; }
 body[data-game="boxdle"] .bxBoardMeta { font-family: var(--font-display); color: var(--bxc-ink); }
 body[data-game="boxdle"] .bxWordList {
-  height: clamp(190px, 31vh, 320px); max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 8px 0; gap: 7px;
+  height: clamp(190px, calc(var(--vh, 1vh) * 31), 320px); max-height: none; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 8px 0; gap: 7px;
 }
 body[data-game="boxdle"] .bxWordRow { background: linear-gradient(160deg, var(--bxc-tile-hi), var(--bxc-tile) 55%, var(--bxc-tile-lo)); border: 2px solid var(--bxc-tile-edge); border-radius: 14px; padding: 5px 8px; min-height: 44px; box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.6), 0 3px 0 var(--bxc-tile-edge), 0 5px 6px -1px var(--bxc-shadow); }
 .bxWordMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -1232,3 +1232,131 @@ body[data-game="boxdle"] .rejectionToast { font-family: var(--font-display); fon
 .bxColorRow label { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
 .bxColorRow label small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
 .bxColorRow input[type="color"] { flex: 0 0 52px; width: 52px; height: 34px; padding: 0; border: 2px solid var(--border); border-radius: 10px; background: none; cursor: pointer; }
+
+
+/* ============================================================================================================================
+   UPDATE 124 - BOXDLE on phones (Android) and desktop: comfortable colors, readable text, finger-sized buttons, no overflow.
+   ============================================================================================================================ */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body[data-game="boxdle"] { -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+body[data-game="boxdle"] button, body[data-game="boxdle"] .iconBtn, body[data-game="boxdle"] .bxTile { touch-action: manipulation; }
+/* small grey texts a little bigger + darker everywhere */
+body[data-game="boxdle"] .bxWho { font-size: 12.5px; }
+body[data-game="boxdle"] .bxMissedRow { font-size: 14px; }
+body[data-game="boxdle"] .bxChip { font-size: 13.5px; }
+body[data-game="boxdle"] .bxRuleNote { font-size: 12.5px; }
+body[data-game="boxdle"] .bxHintLine { font-size: 14px; }
+body[data-game="boxdle"] .bxStatusText { font-size: 15px; }
+body[data-game="boxdle"] .heroTagline { line-height: 1.3; }
+/* the safe areas of notched / gesture-bar phones */
+body[data-game="boxdle"] .controls { padding-bottom: env(safe-area-inset-bottom, 0px); }
+body[data-game="boxdle"] .stage { padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+
+@media (max-width: 520px) {
+  /* top bar: the title is already in the big banner, so the row gives its space to bigger, finger-sized buttons */
+  body[data-game="boxdle"] .brandText { display: none; }
+  body[data-game="boxdle"] .toolbarRow { gap: 4px; }
+  body[data-game="boxdle"] .toolbarRow .iconBtn { width: 36px; height: 36px; font-size: 17px; border-radius: 12px; }
+  body[data-game="boxdle"] .toolbarRow .modeBadge, body[data-game="boxdle"] .toolbarRow .lengthBadge { font-size: 11px; padding: 4px 8px; }
+  body[data-game="boxdle"] .topbar { padding-left: 8px; padding-right: 8px; }
+  /* banner: a little calmer and shorter, so the grid starts higher */
+  body[data-game="boxdle"] .heroBand { padding: 2px 10px 6px; }
+  body[data-game="boxdle"] .heroTitle { font-size: clamp(38px, 13.5vw, 58px); margin-top: 6px; }
+  body[data-game="boxdle"] .heroDeco.d2, body[data-game="boxdle"] .heroDeco.d5 { display: none; }
+  body[data-game="boxdle"] .heroDeco.d4 { font-size: 24px; }
+  body[data-game="boxdle"] .heroTagline { font-size: 14px; max-width: 94%; }
+  /* more width for the letter grid */
+  body[data-game="boxdle"] .stage { padding-top: 10px; padding-bottom: 14px; gap: 8px; }
+  body[data-game="boxdle"] .round-card { margin: 8px 0 0; padding: 10px 5px 8px; box-shadow: 0 0 0 4px var(--bxc-sticker), 0 10px 20px var(--bxc-shadow); }
+  body[data-game="boxdle"] .round-card::before { left: 16px; width: 76px; height: 20px; top: -15px; }
+  body[data-game="boxdle"] .round-card::after { font-size: 19px; right: 14px; top: -13px; }
+  body[data-game="boxdle"] .bxGridSection { padding: 8px 4px 14px; }
+  body[data-game="boxdle"] .bxClockNum { font-size: 26px; }
+  body[data-game="boxdle"] .bxWordText { font-size: 18px; }
+  .bxPreset { padding: 9px 12px; font-size: 13px; }       /* color presets: easy to tap */
+  .bxColorRow input[type="color"] { flex-basis: 56px; width: 56px; height: 40px; }
+}
+@media (max-width: 360px) {
+  body[data-game="boxdle"] .toolbarRow .iconBtn { width: 33px; height: 33px; font-size: 15px; }
+  body[data-game="boxdle"] .toolbarRow { gap: 3px; }
+}
+/* short screens (landscape phones, small browsers): drop the decorative banner so the game gets the room */
+@media (max-height: 520px) {
+  body[data-game="boxdle"] .heroBand { display: none; }
+  body[data-game="boxdle"] .bxWordList { height: clamp(120px, calc(var(--vh, 1vh) * 40), 200px); }
+}
+@media (max-height: 700px) and (max-width: 520px) {
+  body[data-game="boxdle"] .heroTagline { display: none; }
+  body[data-game="boxdle"] .heroDeco.d3 { display: none; }
+}
+/* large desktops: a little more room and bigger words so nothing looks lost */
+@media (min-width: 900px) {
+  body[data-game="boxdle"] .stage { max-width: 760px; }
+  body[data-game="boxdle"] .bxWordText { font-size: 20px; }
+  body[data-game="boxdle"] .bxWho { font-size: 13.5px; }
+}
+
+/* ============================================================================================================================
+   UPDATE 125 - BOXDLE follows the shared "Display & layout" settings (width, banner, info text, decorations, 3D depth)
+   ============================================================================================================================ */
+html[data-width="standard"] { --bx-max: 680px; }
+html[data-width="wide"]     { --bx-max: 860px; }
+html[data-width="full"]     { --bx-max: 100%; }
+html { --bx-max: 860px; }
+body[data-game="boxdle"] .stage { max-width: var(--bx-max, 860px); }
+@media (min-width: 900px) { body[data-game="boxdle"] .stage { max-width: var(--bx-max, 860px); } }
+html[data-banner="hidden"] body[data-game="boxdle"] .heroBand { display: none; }
+html[data-banner="compact"] body[data-game="boxdle"] .heroTitle { font-size: clamp(34px, 10.5vw, 50px); margin-top: 4px; }
+html[data-banner="compact"] body[data-game="boxdle"] .heroTagline { font-size: 13px; }
+html[data-banner="compact"] body[data-game="boxdle"] .heroDeco.d2, html[data-banner="compact"] body[data-game="boxdle"] .heroDeco.d5 { display: none; }
+html[data-itext="large"]  { --itz: 1.15; }
+html[data-itext="xlarge"] { --itz: 1.3; }
+body[data-game="boxdle"] .bxHintLine, body[data-game="boxdle"] .heroTagline, body[data-game="boxdle"] .bxRuleNote,
+body[data-game="boxdle"] .bxMissedRow, body[data-game="boxdle"] .idleBanner { zoom: var(--itz, 1); }
+html[data-deco="off"] body[data-game="boxdle"] .heroDeco, html[data-deco="off"] body[data-game="boxdle"] .heroCrown { display: none !important; }
+html[data-deco="off"] body[data-game="boxdle"] .round-card::before, html[data-deco="off"] body[data-game="boxdle"] .round-card::after { display: none; }
+/* Flat: no raised blocks */
+html[data-depth="off"] body[data-game="boxdle"] .bxTile, html[data-depth="off"] body[data-game="boxdle"] .bxWordRow, html[data-depth="off"] body[data-game="boxdle"] .iconBtn {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5) !important; transform: none;
+}
+html[data-depth="strong"] body[data-game="boxdle"] .bxTile { --bx-w1: 4px; --bx-w2: 8px; }
+
+
+/* ============================================================================================================================
+   UPDATE 126 - BOXDLE fits ONE screen: title, top bar, ticker, clock, letter grid and guessed words, with no page scrolling.
+   The page is a fixed-height column. Everything above the big card has a fixed (compact) height, the big card takes ALL the
+   rest, and inside it the grid is sized (by boxdle-game.js) to the room that is left, while the guessed-words list takes
+   the remainder and scrolls INSIDE itself.
+   ============================================================================================================================ */
+body[data-game="boxdle"] .app { overflow-x: hidden; overflow-y: auto; }
+body[data-game="boxdle"] .stage { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 0; padding-top: 4px; padding-bottom: 8px; }
+body[data-game="boxdle"] .round-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; margin-top: 12px; }
+body[data-game="boxdle"] .round-card > * { flex: 0 0 auto; }
+body[data-game="boxdle"] .round-card > .bxBoard { flex: 1 1 auto; min-height: 92px; display: flex; flex-direction: column; margin: 0; }
+body[data-game="boxdle"] .bxBoard .bxWordList { flex: 1 1 auto; min-height: 0; max-height: none; }
+body[data-game="boxdle"] .bxClock { margin-bottom: 8px; padding: 6px 8px 7px; }
+body[data-game="boxdle"] .bxGridSection { margin-bottom: 8px; padding: 8px 8px 6px; }
+body[data-game="boxdle"] .toolbarRow { flex-wrap: wrap; justify-content: center; overflow: visible; row-gap: 3px; }
+body[data-game="boxdle"] .topbar { overflow: visible; flex-wrap: wrap; }
+body[data-game="boxdle"] .toolbarRow .iconBtn { width: clamp(28px, 8.4vw, 38px); height: clamp(28px, 8.4vw, 38px); font-size: clamp(13px, 3.9vw, 17px); }
+body[data-game="boxdle"] .toolbarRow .modeBadge, body[data-game="boxdle"] .toolbarRow .lengthBadge {
+  white-space: nowrap; overflow: visible; text-overflow: clip; font-size: clamp(9.5px, 2.8vw, 11.5px); padding: 3px clamp(6px, 2vw, 10px);
+}
+@media (max-width: 520px) {
+  body[data-game="boxdle"] .heroBand { min-height: 0; padding: 2px 10px 4px; gap: 2px; }
+  body[data-game="boxdle"] .heroTitle { font-size: clamp(32px, 10vw, 42px); margin-top: 6px; }
+  body[data-game="boxdle"] .heroRibbon { font-size: 12px; padding: 1px 16px 2px; margin: 0 auto; }
+  body[data-game="boxdle"] .heroCrown { font-size: 20px; top: 0; }
+  body[data-game="boxdle"] .heroDeco.d1 { font-size: 15px; } body[data-game="boxdle"] .heroDeco.d3 { font-size: 15px; } body[data-game="boxdle"] .heroDeco.d4 { font-size: 22px; top: 30%; }
+  body[data-game="boxdle"] .stage { padding: 2px 6px 6px; }
+  body[data-game="boxdle"] .round-card { margin-top: 10px; padding: 8px 5px 6px; }
+  body[data-game="boxdle"] .bxStatusText { font-size: 13px; line-height: 1.25; }
+  body[data-game="boxdle"] .bxClockNum { font-size: 22px; min-width: 62px; }
+  body[data-game="boxdle"] .bxChip { font-size: 12.5px; padding: 3px 8px; }
+  body[data-game="boxdle"] .bxNewBtn { padding: 6px 12px; font-size: 13px; }
+  body[data-game="boxdle"] .bxBoardHead { margin-bottom: 4px; }
+  body[data-game="boxdle"] .bxWordRow { padding: 3px 8px; }
+  body[data-game="boxdle"] .controlsHandle { padding-top: 8px; padding-bottom: 8px; }
+}
+@media (max-height: 780px) and (max-width: 520px) { body[data-game="boxdle"] .heroTagline { display: none; } }
+@media (min-width: 521px) and (max-height: 760px) { body[data-game="boxdle"] .heroTagline { display: none; } body[data-game="boxdle"] .heroTitle { font-size: clamp(34px, 6vw, 46px); } }
