@@ -1157,7 +1157,14 @@ body[data-game="boxdle"] .bxChip { background: var(--bxc-tile); color: var(--bxc
 body[data-game="boxdle"] .bxChipPts { background: var(--bx-found); color: var(--bx-found-ink); border-color: var(--bx-found-dark); }
 body[data-game="boxdle"] .bxBar { height: 10px; background: var(--bxc-tile); border: 1.5px solid var(--bxc-line); }
 /* the status line has a FIXED height, so a hint / the result / the offline note never moves the boxes below it */
-.bxStatus { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 46px; margin-top: 7px; overflow: hidden; }
+.bxStatus { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 0; max-height: 46px; margin-top: 6px; overflow: hidden; }
+.bxStatus.bxEmpty { display: none; }
+/* update 129: a compact clock box - one slim row (time + words + points) with the bar right under it */
+body[data-game="boxdle"] .bxClock { padding: 5px 9px 6px; margin-bottom: 6px; }
+body[data-game="boxdle"] .bxClockTop { flex-wrap: nowrap; }
+body[data-game="boxdle"] .bxClockNum { font-size: 22px; min-width: 56px; padding: 0 10px; line-height: 1.25; }
+body[data-game="boxdle"] .bxChip { font-size: 12px; padding: 2px 8px; }
+body[data-game="boxdle"] .bxBar { height: 8px; margin-top: 5px; }
 .bxStatusText { flex: 1; min-width: 0; font: 700 13.5px/1.25 "Patrick Hand", "Quicksand", sans-serif; color: var(--bxc-ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .bxStatusText b { color: var(--bxc-navy); }
 .bxNewBtn { flex: 0 0 auto; padding: 7px 12px; font-size: 13px; visibility: hidden; }
@@ -1360,3 +1367,21 @@ body[data-game="boxdle"] .toolbarRow .modeBadge, body[data-game="boxdle"] .toolb
 }
 @media (max-height: 780px) and (max-width: 520px) { body[data-game="boxdle"] .heroTagline { display: none; } }
 @media (min-width: 521px) and (max-height: 760px) { body[data-game="boxdle"] .heroTagline { display: none; } body[data-game="boxdle"] .heroTitle { font-size: clamp(34px, 6vw, 46px); } }
+
+/* update 129 (last word): compact clock box */
+body[data-game="boxdle"] .bxClock { padding: 5px 9px 6px; margin-bottom: 6px; }
+body[data-game="boxdle"] .bxClockNum { font-size: 22px; min-width: 56px; line-height: 1.25; }
+body[data-game="boxdle"] .bxChip { font-size: 12px; padding: 2px 8px; }
+body[data-game="boxdle"] .bxBar { height: 8px; margin-top: 5px; }
+@media (max-width: 430px) { body[data-game="boxdle"] .bxClockNum { font-size: 20px; min-width: 52px; } body[data-game="boxdle"] .bxChip { font-size: 11.5px; padding: 2px 7px; } }
+
+/* update 130: the status line (hint, round result, solo note, New round) sits in the reserved message slot at the top.
+   The floating guess message (z-index 40) covers it for a few seconds, then it is visible again. Nothing changes size or moves. */
+body[data-game="boxdle"] .toastSlot .bxStatus {
+  position: absolute; top: 4px; bottom: 4px; left: 50%; transform: translateX(-50%); width: min(92vw, 480px); box-sizing: border-box;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; padding: 4px 10px; max-height: none; overflow: hidden;
+  background: var(--bxc-clockBox); border: 2px dashed var(--bxc-line); border-radius: 14px; pointer-events: none; z-index: 1;
+}
+body[data-game="boxdle"] .toastSlot .bxStatus.bxEmpty { display: flex; visibility: hidden; }
+body[data-game="boxdle"] .toastSlot .bxStatusText { font-size: 13.5px; line-height: 1.2; -webkit-line-clamp: 2; text-align: center; }
+body[data-game="boxdle"] .toastSlot .bxNewBtn { pointer-events: auto; padding: 5px 12px; }

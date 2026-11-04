@@ -69,7 +69,14 @@
     </header>
 
     <!-- 1. The floating message window: its own reserved slot, ABOVE everything in the card, so it never covers anything. -->
-    <div class="toastSlot"><div class="rejectionToast" id="rejectionToast" hidden></div></div>
+    <div class="toastSlot">
+      <!-- update 130: the hint / round result / solo note + "New round" live INSIDE this reserved slot (under the floating message), so the clock box has no extra row and nothing ever shifts -->
+      <div class="bxStatus">
+        <span class="bxStatusText" id="bxStatusText"></span>
+        <button class="btn btnGold bxNewBtn" id="playAgainBtn" type="button">New round</button>
+      </div>
+      <div class="rejectionToast" id="rejectionToast" hidden></div>
+    </div>
 
     <main class="stage" id="stage">
       <section class="round-card">
@@ -90,10 +97,6 @@
             </span>
           </div>
           <div class="bxBar"><div class="bxBarFill" id="bxBarFill"></div></div>
-          <div class="bxStatus">
-            <span class="bxStatusText" id="bxStatusText"></span>
-            <button class="btn btnGold bxNewBtn" id="playAgainBtn" type="button">New round</button>
-          </div>
         </div>
 
         <section class="bxGridSection" id="bxGridSection" aria-label="Letter grid" hidden>

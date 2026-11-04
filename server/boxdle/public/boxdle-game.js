@@ -778,6 +778,9 @@ function renderStatus(g) {
   }
   if (ended && g.autoContinue) html += " <b>Next grid in " + g.autoContinueSecondsLeft + "s…</b>";
   el.statusText.innerHTML = html;
+  // (update 130) the status box lives in the reserved message slot: when empty it is just invisible, nothing moves
+  const row = el.statusText.parentNode;
+  if (row && row.classList) row.classList.toggle("bxEmpty", !html && !ended);
 }
 
 // ------------------------------------------------------------
