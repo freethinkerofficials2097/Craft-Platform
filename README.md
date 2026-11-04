@@ -1,3 +1,5 @@
+> **Update 130:** BOXDLE: compact clock box with no extra row; hint / result / "New round" live in the reserved message slot at the top, so nothing ever shifts. See `CHANGES_UPDATE_130.md`.
+
 > **Update 128:** the floating guess / message window has its own reserved slot in every game and never overlaps the legend, keyboard, grid or board (FLAGLE included); BOXDLE: the "Type words you can trace on the grid in the chat..." line is removed. See `CHANGES_UPDATE_128.md`.
 
 > **Update 120:** BOXDLE: newest guess on top of the guessed-words box + 3D tiles; 15 "Box colors & looks" designs now in the Appearance dropdown of EVERY game (next to the 6 plain colors). See CHANGES_UPDATE_120.md.
