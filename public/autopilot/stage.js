@@ -116,6 +116,31 @@
   }
   setInterval(function () { try { if (S && !chip.hidden) placeChip(true); } catch (e) {} }, 1000);
 
+
+  /* update 123: the round / timer chip steps aside while a platform notification (gift, follow, milestone ...) is on screen, so it never covers
+     the name of the person in the notification. It fades out as soon as a notification card appears and fades back in when the last one is gone.
+     The notifications are drawn by the game page inside the frame (#eng-alert-layer), so we simply look for their cards. */
+  function alertShowing() {
+    try {
+      var d = frame.contentDocument; if (!d || frame.hidden) return false;
+      var cards = d.querySelectorAll("#eng-alert-layer .eng-card");
+      for (var i = 0; i < cards.length; i++) { var r = cards[i].getBoundingClientRect(); if (r.width > 0 && r.height > 0) return true; }
+    } catch (e) {}
+    return false;
+  }
+  var chipHiddenByAlert = false, alertClearTimer = null;
+  function syncChipWithAlerts() {
+    var on = alertShowing();
+    if (on) {
+      clearTimeout(alertClearTimer); alertClearTimer = null;
+      if (!chipHiddenByAlert) { chipHiddenByAlert = true; chip.classList.add("aside"); }
+    } else if (chipHiddenByAlert && !alertClearTimer) {
+      // small pause after the last card leaves, so the chip does not flicker between two notifications in a row
+      alertClearTimer = setTimeout(function () { alertClearTimer = null; if (!alertShowing()) { chipHiddenByAlert = false; chip.classList.remove("aside"); } }, 350);
+    }
+  }
+  setInterval(syncChipWithAlerts, 120);
+
   /* ---------- reporting back ---------- */
   function report() {
     if (!S || !S.current || loaded.loadSeq !== S.current.loadSeq) return;
@@ -280,7 +305,7 @@
     if (!showChip) placeChip(false);
     if (showChip) {
       clear(chip);
-      chip.className = "chip" + (ph === "wrapup" ? " warn" : "");
+      chip.className = "chip" + (ph === "wrapup" ? " warn" : "") + (chipHiddenByAlert ? " aside" : "");
       chip.appendChild(el("span", "dot"));
       chip.appendChild(el("span", "", S.current.emoji + " " + S.current.name));
       var rem = left(S.current.sessionEndsAt), cu = S.current;

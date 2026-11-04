@@ -136,3 +136,6 @@ html.csLock{ overflow:hidden; }
 /* update 114: second footer button */
 .csApplyDef{ background:linear-gradient(135deg,#1f8f55,#2db36a); margin-left:8px; }
 .csApplyDef[disabled]{ opacity:.7; cursor:wait; }
+
+/* update 123: while the Settings workspace is open nothing from the platform may sit on top of its buttons (Save & Apply is at the bottom) */
+body:has(.csOverlay:not([hidden])) #platformBadge{ display: none !important; }

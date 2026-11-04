@@ -320,7 +320,7 @@
     return h;
   }
   function avatarColorFor(name) { return AVATAR_PALETTE[hashString(name || '?') % AVATAR_PALETTE.length]; }
-  function avatarInitial(name) { const c = String(name || '').trim(); return c ? c[0].toUpperCase() : '?'; }
+  function avatarInitial(name) { const c = String(name || '').trim(); return c ? Array.from(c)[0].toUpperCase() : '?'; }
 
   function avatarChipHtml(name, avatarUrl, sizePx) {
     sizePx = sizePx || 20;

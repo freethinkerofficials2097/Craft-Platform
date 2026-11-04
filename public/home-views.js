@@ -178,17 +178,37 @@
     draw();
   }
 
+  /* update 124: the platform colors / cute looks live here (not on the front of the page) */
+  function appearancePanel(m) {
+    m.appendChild(el("div", "hv-ah", "🎨 Platform appearance"));
+    m.appendChild(el("p", "hv-help", "Pick the colors for the whole platform: the homepage and every game follow it. Besides the 10 plain colors (no decorations) there are 30 cute \"Box colors & looks\" designs (graph paper, washi tape, 3D tiles) inspired by BOXDLE."));
+    var lab = el("label", "theme-picker hv-themepick");
+    lab.appendChild(document.createTextNode("🎨 "));
+    var sel = el("select"); sel.setAttribute("data-theme-select", ""); sel.setAttribute("aria-label", "Platform theme color");
+    [["cream", "Cream"], ["blue", "Sky Blue"], ["green", "Meadow Green"], ["pink", "Blossom Pink"], ["violet", "Lavender Violet"], ["honey", "Honey Gold"]].forEach(function (o) {
+      var op = el("option", "", o[1]); op.value = o[0]; sel.appendChild(op);
+    });
+    lab.appendChild(sel); m.appendChild(lab);
+    if (window.PlatformTheme) { window.PlatformTheme.wire(); try { sel.value = window.PlatformTheme.current(); } catch (e) {} }
+    if (window.PlatformTheme && window.PlatformTheme.buildDisplayBlock) {
+      var blk = el("div"); m.appendChild(blk);
+      window.PlatformTheme.buildDisplayBlock(blk, { noBanner: true });
+    }
+    m.appendChild(el("p", "hv-help", "These display options are the same ones you find inside each game (Settings → Appearance), shared by all games."));
+  }
+
   var settingsTab = "mode"; // update 38: Mode is the first tab (Offline / Test / Live + connection), Cards = Customize Game Cards
   function openSettings(tab) {
     if (tab) settingsTab = tab;
     var m = el("div", "hv-modal"), tb = el("div", "hv-st"), body = el("div", "hv-sbody");
     m.appendChild(mHead("⚙️ Home settings"));
-    var tabs = [["mode", "📡 Mode"], ["records", "📜 Records"], ["cards", "🎴 Cards"], ["find", "🔎 Find"], ["layout", "🎛 Layout"], ["groups", "🗂️ Groups"]];
+    var tabs = [["mode", "📡 Mode"], ["records", "📜 Records"], ["appearance", "🎨 Appearance"], ["cards", "🎴 Cards"], ["find", "🔎 Find"], ["layout", "🎛 Layout"], ["groups", "🗂️ Groups"]];
     function show() {
       body.innerHTML = ""; statusEl = null;
       Array.prototype.forEach.call(tb.children, function (b, i) { b.classList.toggle("on", tabs[i][0] === settingsTab); });
       if (settingsTab === "mode") { if (window.PlatformHome) window.PlatformHome.renderModePanel(body); else body.appendChild(el("p", "hv-help", "Loading...")); }
       else if (settingsTab === "records") { var rb = el("a", "hv-add", "↗ Open the Records page"); rb.href = "/records.html"; rb.style.display = "block"; rb.style.textAlign = "center"; rb.style.textDecoration = "none"; body.appendChild(rb); var rh = el("div"); body.appendChild(rh); var go = function () { if (window.RecordsUI) window.RecordsUI.mount(rh); else rh.appendChild(el("p", "hv-help", "Loading...")); }; if (window.RecordsUI) go(); else { var sc = document.createElement("script"); sc.src = "/shared/records-ui.js"; sc.onload = go; document.head.appendChild(sc); } }
+      else if (settingsTab === "appearance") appearancePanel(body);
       else if (settingsTab === "cards") { if (window.PlatformHome) window.PlatformHome.renderCardsPanel(body); else body.appendChild(el("p", "hv-help", "Loading...")); }
       else if (settingsTab === "find") findPanel(body); else if (settingsTab === "layout") layoutPanel(body); else groupsPanel(body);
     }

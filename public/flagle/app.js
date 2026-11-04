@@ -593,6 +593,7 @@ function showToast(text, kind) {
   const t = document.createElement("div");
   t.className = "toast " + kind;
   t.textContent = text;
+  toastLayer.textContent = ""; // one message at a time inside its reserved slot
   toastLayer.appendChild(t);
   setTimeout(() => t.remove(), 2700);
 }

@@ -167,7 +167,7 @@ html, body {
   flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch;
   padding: 12px; padding-bottom: 96px; /* clears the floating host button */
 }
-.board-section { max-width: 720px; margin: 0 auto; }
+.board-section { max-width: max(720px, min(var(--stage-max, 980px), 100%)); margin: 0 auto; }
 
 .board-legend {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;

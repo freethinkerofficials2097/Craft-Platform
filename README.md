@@ -1,3 +1,5 @@
+> **Update 128:** the floating guess / message window has its own reserved slot in every game and never overlaps the legend, keyboard, grid or board (FLAGLE included); BOXDLE: the "Type words you can trace on the grid in the chat..." line is removed. See `CHANGES_UPDATE_128.md`.
+
 > **Update 120:** BOXDLE: newest guess on top of the guessed-words box + 3D tiles; 15 "Box colors & looks" designs now in the Appearance dropdown of EVERY game (next to the 6 plain colors). See CHANGES_UPDATE_120.md.
 
 > **Update 107:** new game TOWNDLE (Malaysia only: guess the secret city / municipal / district / town; green = the place, yellow = right state with the 3 Federal Territories counted as the 14th, orange = direct neighbour (same or touching district), grey = wrong; arrow + distance; Normal / Medium / Hard / Random tiers) at `/towndle/`. See `CHANGES_UPDATE_107.md` and `data/README-towns.txt`.

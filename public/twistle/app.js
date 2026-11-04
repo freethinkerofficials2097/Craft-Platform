@@ -529,7 +529,7 @@ function hashString(str) {
   return h;
 }
 function avatarColorFor(username) { return AVATAR_PALETTE[hashString(username || "?") % AVATAR_PALETTE.length]; }
-function avatarInitial(username) { const c = String(username || "").trim(); return c ? c[0].toUpperCase() : "?"; }
+function avatarInitial(username) { const c = String(username || "").trim(); return c ? Array.from(c)[0].toUpperCase() : "?"; }
 
 function buildAvatarNode(username, avatarUrl, sizePx, className) {
   const wrap = document.createElement("div");

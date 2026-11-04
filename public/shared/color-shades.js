@@ -33,7 +33,7 @@
        inkVars   CSS variables set to readable text color (dark or white) for that shade
        glowVars  CSS variables set to a translucent glow of the shade
      ------------------------------------------------------------------------ */
-  function wordColors(greenHint, yellowHint, thirdId, thirdLabel, thirdStd, thirdHint) {
+  function wordColors(greenHint, yellowHint, thirdId, thirdLabel, thirdStd, thirdHint, thirdDark) {
     return [
       { id: "green", label: "Green", hint: greenHint, std: "#0E9F45", stdDark: "#087A32",
         vars: ["--strong-green"], darkVars: ["--strong-green-dark"], inkVars: ["--strong-green-ink"], glowVars: ["--green-glow"] },
@@ -41,19 +41,20 @@
         vars: ["--strong-yellow"], darkVars: ["--strong-yellow-dark"], inkVars: ["--strong-yellow-ink"], glowVars: ["--yellow-glow"] },
       thirdId === "grey"
         ? { id: "grey", label: thirdLabel, hint: thirdHint, std: thirdStd, vars: ["--strong-grey"], inkVars: ["--strong-grey-ink"] }
-        : { id: "red", label: thirdLabel, hint: thirdHint, std: thirdStd, stdDark: "#B3101F",
+        : { id: "red", label: thirdLabel, hint: thirdHint, std: thirdStd, stdDark: thirdDark || "#B3101F",
             vars: ["--strong-red"], darkVars: ["--strong-red-dark"], inkVars: ["--strong-red-ink"] }
     ];
   }
 
   function colorLetterColors() {
+    // update 126: softer, less striking defaults (the previous standard colors were very saturated)
     return [
-      { id: "red", label: "Red", hint: "keyboard keys & empty boxes", std: "#E11D2E", vars: ["--cb-red"], inkVars: ["--cb-red-ink"] },
-      { id: "blue", label: "Blue", hint: "keyboard keys & empty boxes", std: "#1E73E8", vars: ["--cb-blue"], inkVars: ["--cb-blue-ink"] },
-      { id: "yellow", label: "Yellow", hint: "keyboard keys & empty boxes", std: "#FFC400", vars: ["--cb-yellow"], inkVars: ["--cb-yellow-ink"] },
-      { id: "purple", label: "Purple", hint: "keyboard keys & empty boxes", std: "#7B3FE4", vars: ["--cb-purple"], inkVars: ["--cb-purple-ink"] },
-      { id: "green", label: "Green", hint: "right letter in the right place", std: "#0E9F45", vars: ["--cb-hit"], inkVars: ["--cb-hit-ink"] },
-      { id: "gray", label: "Gray", hint: "letter not in that place", std: "#8B8F9E", vars: ["--cb-miss"], inkVars: ["--cb-miss-ink"] }
+      { id: "red", label: "Red", hint: "keyboard keys & empty boxes", std: "#E4606B", vars: ["--cb-red"], inkVars: ["--cb-red-ink"] },
+      { id: "blue", label: "Blue", hint: "keyboard keys & empty boxes", std: "#5B93E0", vars: ["--cb-blue"], inkVars: ["--cb-blue-ink"] },
+      { id: "yellow", label: "Yellow", hint: "keyboard keys & empty boxes", std: "#F2CA55", vars: ["--cb-yellow"], inkVars: ["--cb-yellow-ink"] },
+      { id: "purple", label: "Purple", hint: "keyboard keys & empty boxes", std: "#8F6BDD", vars: ["--cb-purple"], inkVars: ["--cb-purple-ink"] },
+      { id: "green", label: "Green", hint: "right letter in the right place", std: "#42AD6E", vars: ["--cb-hit"], inkVars: ["--cb-hit-ink"] },
+      { id: "gray", label: "Gray", hint: "letter not in that place", std: "#9A9EAD", vars: ["--cb-miss"], inkVars: ["--cb-miss-ink"] }
     ];
   }
 
@@ -74,9 +75,9 @@
       { id: "neutral", label: "Land (not guessed)", hint: "countries nobody guessed yet", std: "#8FC1E8", vars: ["--land-light"] }
     ],
     numberblindle: wordColors("tiles, keys & count column: digit correct and in the right position", "tiles, keys & count column: digit in the number, wrong position", "red", "Red", "#E11D2E", "tiles, keys & count column: digit not in the number"),
-    blindle: wordColors("tiles & keys: right letter, right spot", "tiles & keys: right letter, wrong spot", "red", "Red", "#E11D2E", "tiles & keys: letter not in the word"),
+    blindle: wordColors("tiles & keys: right letter, right spot", "tiles & keys: right letter, wrong spot", "red", "Red", "#DE5560", "tiles & keys: letter not in the word", "#B0343F"),
     twistle: wordColors("tiles & keys", "tiles & keys", "red", "Red", "#E11D2E", "tiles & keys"),
-    oracle: wordColors("green count badges", "gold count badges", "red", "Red", "#E11D2E", "red count badges"),
+    oracle: wordColors("green count badges", "gold count badges", "red", "Red", "#DE5560", "red count badges", "#B0343F"),
     crossdle: wordColors("tiles, keys & chips: right spot", "tiles, keys & chips: wrong spot", "grey", "Gray", "#4A4F66", "tiles, keys & chips: not in the word"),
     colorblindle: colorLetterColors(),
     colordle: colorLetterColors(),

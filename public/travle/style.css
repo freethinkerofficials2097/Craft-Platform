@@ -920,3 +920,8 @@ button, input, select {
 .avatarChipFallback{
   font-weight:800; color:#fff; text-transform:uppercase; user-select:none; font-size:10px;
 }
+
+/* update 125: "Game area width" (Settings -> Appearance -> Display & layout) */
+html[data-width="standard"] #app { max-width: 560px; }
+html[data-width="wide"] #app { max-width: 760px; }
+html[data-width="full"] #app { max-width: 100%; }

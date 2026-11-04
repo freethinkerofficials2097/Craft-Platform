@@ -79,6 +79,10 @@
       name: "findle", overlay: "#drawer", body: "#drawer", close: "#closeDrawerBtn", btn: "#settingsBtn", apply: "#saveSettingsBtn",
       isOpen: function (o) { return o.classList.contains("open"); }, mode: "flow", headSel: "h2", skip: ".drawer-handle, .drawer-close", untitled: ["Settings"], gameTitle: "Settings"
     },
+    { // Contexto (update 123): its settings sheet is regrouped into cards (.drawerSection) and uses its own two save buttons
+      name: "contexto", overlay: "#settingsSheet", body: ".sheet-body", close: "#settingsCloseBtn", btn: "#settingsToggle", apply: "#saveApplyBtn", defaultBtn: "#saveApplyDefaultBtn",
+      isOpen: function (o) { return o.classList.contains("open") && !o.classList.contains("hidden"); }, mode: "sections", sectionSel: ":scope > .drawerSection", titleSel: "h4", gameTitle: "Settings"
+    },
     { // Crossdle
       name: "crossdle", overlay: "#hostPanelOverlay", body: ".host-cards", close: "#hostPanelClose", btn: "#hostFab",
       isOpen: function (o) { return !o.classList.contains("hidden"); }, mode: "sections", sectionSel: ":scope > .host-card", titleSel: ".host-card-title", gameTitle: "Host controls"
@@ -211,7 +215,7 @@
     var proxy = mk("button", "csApply"); proxy.type = "button"; proxy.textContent = "Save & Apply";
     proxy.addEventListener("click", function () {
       try { if (out.apply) out.apply.click(); } catch (e) { console.warn(e); }
-      setTimeout(function () { var c = $(ad.close); if (c) c.click(); else forceClose(); }, 120);
+      setTimeout(function () { if (ad.name === "contexto" && !S.open) return; var c = $(ad.close); if (c) c.click(); else forceClose(); }, 120);
     });
     $(".csFootBtns", root).appendChild(proxy);
     S.applyProxy = proxy;
@@ -219,6 +223,11 @@
     var defBtn = mk("button", "csApply csApplyDef"); defBtn.type = "button"; defBtn.textContent = "💾 Save & Apply as default";
     defBtn.title = "Applies the settings now and keeps them as this game's default: they stay even after the server restarts";
     defBtn.addEventListener("click", function () {
+      if (ad.defaultBtn) { // Contexto keeps its own "Save & Apply as Default" (it applies, saves on the server and starts the game)
+        try { var own = $(ad.defaultBtn, document); if (own) own.click(); } catch (e) { console.warn(e); }
+        setTimeout(function () { var c = $(ad.close); if (c && S.open) c.click(); }, 160);
+        return;
+      }
       try { if (out.apply) out.apply.click(); } catch (e) { console.warn(e); }
       defBtn.disabled = true; defBtn.textContent = "Saving…";
       setTimeout(function () {

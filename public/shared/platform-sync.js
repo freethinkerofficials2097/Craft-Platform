@@ -335,18 +335,27 @@
       if (!badgeEl) {
         badgeEl = document.createElement("a");
         badgeEl.href = "/";
+        badgeEl.id = "platformBadge";
+        // update 123: a faded-out badge used to stay clickable (opacity 0 still receives taps) and sat on top of the Settings "Save & Apply"
+        // button at the bottom-left, so pressing it opened the HOME page. A hidden badge is now fully inert, and a tap on a visible one needs
+        // to be deliberate (it never fires while a settings / dialog window is open).
+        badgeEl.addEventListener("click", function (e) {
+          var op = parseFloat(badgeEl.style.opacity || "0");
+          var dlg = document.querySelector(".csOverlay:not([hidden]), .overlay.open, .drawer.open, #settingsOverlay:not([hidden]), #settings-overlay:not([hidden])");
+          if (op < 0.5 || dlg) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
         badgeEl.setAttribute("aria-label", "Platform connection - open HOME");
         badgeEl.style.cssText = "position:fixed;left:8px;bottom:8px;z-index:2147483000;font:600 12px/1.2 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;" +
-          "padding:6px 11px;border-radius:999px;color:#fff;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.35);opacity:0;transition:opacity .4s;max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+          "padding:6px 11px;border-radius:999px;color:#fff;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .4s;max-width:80vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
         (document.body || document.documentElement).appendChild(badgeEl);
       }
       badgeEl.textContent = sig;
       badgeEl.style.background = t[1] === "ok" ? "#2e8b4f" : t[1] === "warn" ? "#b8860b" : t[1] === "bad" ? "#b3382c" : "#5a5a66";
       if (sig === lastBadge) return;
       lastBadge = sig;
-      badgeEl.style.opacity = "0.95";
+      badgeEl.style.opacity = "0.95"; badgeEl.style.pointerEvents = "auto";
       clearTimeout(badgeTimer);
-      badgeTimer = setTimeout(function () { if (badgeEl) badgeEl.style.opacity = "0"; }, t[1] === "bad" ? 14000 : 6000);
+      badgeTimer = setTimeout(function () { if (badgeEl) { badgeEl.style.opacity = "0"; badgeEl.style.pointerEvents = "none"; } }, t[1] === "bad" ? 14000 : 6000);
     } catch (e) {}
   }
 

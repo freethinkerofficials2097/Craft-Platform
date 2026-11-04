@@ -69,3 +69,7 @@ body.fs-on .fsbtn:hover{ opacity:.9; }
 .opt.clickable:hover{ border-color:var(--accent); }
 .opt.mine{ outline:3px solid var(--accent); }
 [hidden]{ display:none !important; }
+
+/* update 123: the chip steps aside while a platform notification is showing */
+.chip{ transition:opacity .18s ease; }
+.chip.aside{ opacity:0 !important; visibility:hidden; transition:opacity .12s ease, visibility 0s linear .12s; }

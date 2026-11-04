@@ -35,12 +35,12 @@
 
 /* ---- COLORBLINDLE: color-count squares, keyboard colors, hit/miss ---- */
 :root{
-  --cb-red:    #E11D2E;
-  --cb-blue:   #1E73E8;
-  --cb-yellow: #FFC400;
-  --cb-purple: #7B3FE4;
-  --cb-hit:    #0E9F45;
-  --cb-miss:   #8B8F9E;
+  --cb-red:    #E4606B;
+  --cb-blue:   #5B93E0;
+  --cb-yellow: #F2CA55;
+  --cb-purple: #8F6BDD;
+  --cb-hit:    #42AD6E;
+  --cb-miss:   #9A9EAD;
 }
 .key.c-red, .legendSwatch.c-red{ color: var(--cb-red-ink, #fff); }
 .key.c-blue, .legendSwatch.c-blue{ color: var(--cb-blue-ink, #fff); }

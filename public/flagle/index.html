@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="style.css" />
 <script src="/shared/score-ticker.js"></script>
 </head>
-<body>
+<body data-no-width>
 
   <!-- ============ SETUP SCREEN ============ -->
   <section id="setup-screen" class="screen">
@@ -100,6 +100,9 @@
       <div class="ticker-track" id="ticker-track">Waiting for the first correct guess…</div>
     </div>
 
+    <!-- update 128: the floating message window has its own reserved slot (nothing can overlap it) -->
+    <div id="toast-layer" aria-live="polite"></div>
+
     <div class="radar-wrap">
       <div class="flag-plate">
         <img id="flag-image" alt="Guess this flag" />
@@ -141,7 +144,6 @@
       <button type="button" id="skip-btn" class="ghost-btn" title="Skip this round">Skip</button>
     </form>
 
-    <div id="toast-layer"></div>
 
     <!-- Leaderboard drawer (update 46: same layout as the word games - This session / All-time tabs) -->
     <div class="settingsOverlay" id="leaderboard-overlay" hidden>

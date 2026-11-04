@@ -261,3 +261,7 @@ body.hv-on .hub-sub{margin-bottom:22px}
 .hv-modal .hv-search{margin-bottom:12px}
 .hv-modal .hv-count{margin:8px 2px 0}
 .hv-gear{width:40px;height:40px}
+
+/* update 124: Appearance tab inside Home settings */
+.hv-modal .hv-themepick{ display:flex; align-items:center; gap:8px; width:100%; margin:6px 0 10px; }
+.hv-modal .hv-themepick select{ flex:1; min-width:0; min-height:44px; font-size:16px; }
