@@ -166,7 +166,7 @@
     return AVATAR_COLORS[h % AVATAR_COLORS.length];
   }
   function fallbackAvatarHtml(user) {
-    return `<span class="pp-avatar" style="background:${colorFor(user || '?')}">${escapeHtml((user || '?').charAt(0).toUpperCase())}</span>`;
+    return `<span class="pp-avatar" style="background:${colorFor(user || '?')}">${escapeHtml(Array.from(user || '?')[0].toUpperCase())}</span>`;
   }
   function avatarHtml(user, avatarUrl) {
     if (!avatarUrl) return fallbackAvatarHtml(user);
@@ -184,7 +184,7 @@
     span.className = 'pp-avatar';
     const user = img.dataset.fallbackUser || '?';
     span.style.background = colorFor(user);
-    span.textContent = user.charAt(0).toUpperCase();
+    span.textContent = Array.from(user)[0].toUpperCase();
     img.replaceWith(span);
   }, true);
 
@@ -381,8 +381,74 @@
       if (bg) themeMetaTag.setAttribute('content', bg);
     }
     $$('.theme-option').forEach((opt) => opt.setAttribute('aria-selected', String(opt.dataset.themeId === theme.id)));
+    if (typeof themeSelect !== 'undefined' && themeSelect && themeSelect.value !== theme.id) themeSelect.value = theme.id;
+    try { syncShellTokens(); } catch (e) { /* ignore */ }
     return theme;
   }
+
+  // ============================================================
+  // Update 123: Font & text customization + the settings Appearance list
+  // ============================================================
+  const LOOK_KEY = 'contextoLive.text';
+  const TEXT_DEFAULTS = { fs: 1.2, font: '', wordFont: '', weight: '', leading: '', density: '', contrast: false, calm: false };
+  let textPrefs = Object.assign({}, TEXT_DEFAULTS);
+  try { Object.assign(textPrefs, JSON.parse(localStorage.getItem(LOOK_KEY) || '{}')); } catch (e) { /* ignore */ }
+  function saveText() { try { localStorage.setItem(LOOK_KEY, JSON.stringify(textPrefs)); } catch (e) { /* ignore */ } }
+  function applyText() {
+    const root = document.documentElement, st = root.style, p = textPrefs;
+    const fs = Math.min(1.9, Math.max(0.9, Number(p.fs) || 1.2));
+    st.setProperty('--fs', String(fs));
+    const set = (name, val) => { if (val) st.setProperty(name, val); else st.removeProperty(name); };
+    set('--ctx-font', p.font); set('--ctx-head-font', p.font ? p.font : '');
+    set('--ctx-word-font', p.wordFont); set('--ctx-weight', p.weight); set('--ctx-leading', p.leading); set('--row-pad-y', p.density);
+    if (p.wordFont) root.setAttribute('data-ctx-wordfont', ''); else root.removeAttribute('data-ctx-wordfont');
+    if (p.contrast) root.setAttribute('data-ctx-contrast', '1'); else root.removeAttribute('data-ctx-contrast');
+    if (p.calm) root.setAttribute('data-ctx-nopulse', ''); else root.removeAttribute('data-ctx-nopulse');
+    // controls
+    const setVal = (id, v) => { const c = el(id); if (c && c.value !== String(v)) c.value = String(v); };
+    setVal('ftScale', fs); setVal('ftFont', p.font); setVal('ftWordFont', p.wordFont); setVal('ftWeight', p.weight);
+    setVal('ftLeading', p.leading); setVal('ftDensity', p.density);
+    const ftC = el('ftContrast'), ftK = el('ftCalm');
+    if (ftC) { ftC.checked = !!p.contrast; el('ftContrastText').textContent = p.contrast ? 'On' : 'Off'; }
+    if (ftK) { ftK.checked = !!p.calm; el('ftCalmText').textContent = p.calm ? 'On' : 'Off'; }
+    $$('#ftSizeChips .ft-chip').forEach((b) => b.setAttribute('aria-pressed', String(Math.abs(Number(b.dataset.fs) - fs) < 0.026)));
+    const note = el('ftScaleNote'); if (note) note.textContent = 'Now: ' + Math.round(fs * 100) + '% of the original size.';
+  }
+  function bindText() {
+    const upd = (key, val) => { textPrefs[key] = val; saveText(); applyText(); };
+    $$('#ftSizeChips .ft-chip').forEach((b) => b.addEventListener('click', () => upd('fs', Number(b.dataset.fs))));
+    const sc = el('ftScale'); if (sc) sc.addEventListener('input', () => upd('fs', Number(sc.value)));
+    [['ftFont', 'font'], ['ftWordFont', 'wordFont'], ['ftWeight', 'weight'], ['ftLeading', 'leading'], ['ftDensity', 'density']].forEach(([id, key]) => {
+      const c = el(id); if (c) c.addEventListener('change', () => upd(key, c.value));
+    });
+    const ftC = el('ftContrast'); if (ftC) ftC.addEventListener('change', () => upd('contrast', ftC.checked));
+    const ftK = el('ftCalm'); if (ftK) ftK.addEventListener('change', () => upd('calm', ftK.checked));
+    const rs = el('ftReset'); if (rs) rs.addEventListener('click', () => { textPrefs = Object.assign({}, TEXT_DEFAULTS); saveText(); applyText(); });
+  }
+  bindText();
+  applyText();
+
+  // the settings "Appearance" list = the same 22 themes as the round button
+  const themeSelect = el('ctxThemeSelect');
+  function fillThemeSelect() {
+    if (!themeSelect) return;
+    const mk = (label, list) => {
+      const g = document.createElement('optgroup'); g.label = label;
+      list.forEach((t) => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.emoji + ' ' + t.name; g.appendChild(o); });
+      themeSelect.appendChild(g);
+    };
+    mk('Contexto colors', CLASSIC);
+    if (LOOKS.length) mk('🧸 Box colors & looks', LOOKS);
+    themeSelect.addEventListener('change', () => { currentTheme = themeSelect.value; saveTheme(currentTheme); applyTheme(currentTheme); });
+  }
+  // the settings window (shared with the other games) reads --theme-* colors: keep them equal to the Contexto colors
+  function syncShellTokens() {
+    const root = document.documentElement, cs = getComputedStyle(root), g = (n) => cs.getPropertyValue(n).trim();
+    const map = { '--theme-bg': '--bg', '--theme-bg-top': '--bg', '--theme-bg-deep': '--bg-2', '--theme-card': '--panel', '--theme-surface-2': '--panel-2',
+      '--theme-line': '--line', '--theme-deep': '--brand-cyan', '--theme-ink': '--text', '--theme-ink-soft': '--muted' };
+    Object.keys(map).forEach((k) => { const v = g(map[k]); if (v) root.style.setProperty(k, v); });
+  }
+
   let currentTheme = loadTheme();
   function addThemeHeading(text) {
     const h = document.createElement('div');
@@ -408,6 +474,8 @@
   addThemeHeading('Contexto colors');
   CLASSIC.forEach(addThemeOption);
   if (LOOKS.length) { addThemeHeading('🧸 Box colors & looks'); LOOKS.forEach(addThemeOption); }
+  fillThemeSelect();
+  (function () { const h = el('ctxDisplayHost'); if (h && PT && PT.buildDisplayBlock) PT.buildDisplayBlock(h, { noHeader: true, noBanner: true, only: ['width', 'deco'] }); })();
   applyTheme(currentTheme, true);
 
   function openThemeMenu() {
@@ -930,7 +998,7 @@
       <div class="guess-heat" style="width:${heatWidth(entry.rank)};background:${tierColor(entry.rank)}"></div>
       <span class="guess-word">${escapeHtml(entry.word)}</span>
       <span class="guess-who">
-        ${showAvatar ? avatarHtml(entry.user, entry.avatar) : ''}
+        ${showAvatar ? avatarHtml(entry.user, entry.avatar) : '<span class="who-spacer" aria-hidden="true"></span>'}
         <span class="guess-user">${escapeHtml(displayUser)}</span>
       </span>
       <span class="guess-end">
@@ -1441,4 +1509,27 @@
   updateHintButton();
   // Both sheets start closed — a clean, uncluttered first screen. Tap the
   // gear icon to open Settings whenever you need to change something.
+})();
+
+
+// update 127: the "More" menu of the top bar (connection details + hide toolbar live in it so the row can stay one line)
+(function () {
+  const btn = document.getElementById('moreBtn'), menu = document.getElementById('moreMenu');
+  if (!btn || !menu) return;
+  function place() {
+    const r = btn.getBoundingClientRect();
+    menu.style.top = (r.bottom + 6) + 'px';
+    menu.style.right = Math.max(6, window.innerWidth - r.right) + 'px';
+    menu.style.left = 'auto';
+  }
+  function close() { menu.classList.add('hidden'); btn.setAttribute('aria-expanded', 'false'); }
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = menu.classList.contains('hidden');
+    if (open) { place(); menu.classList.remove('hidden'); btn.setAttribute('aria-expanded', 'true'); } else close();
+  });
+  menu.addEventListener('click', () => setTimeout(close, 0));
+  document.addEventListener('click', (e) => { if (!menu.contains(e.target) && e.target !== btn) close(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  window.addEventListener('resize', close);
 })();
