@@ -1,0 +1,44 @@
+/* update 134: title banner for Findle / Flagle / Travle (same look as the other games; no toolbar rules) */
+/* ---- 1. hero banner (fills the old empty safe-top space) ---- */
+.heroBand{
+  position: relative; flex: 0 0 auto; box-sizing: border-box; width: 100%;
+  min-height: var(--live-safe-top, 100px);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  gap: 3px; text-align: center; padding: 8px 14px 10px; overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 120% at 50% 110%, var(--theme-surface-2), transparent 70%),
+    linear-gradient(180deg, var(--theme-bg-top) 0%, var(--theme-bg) 100%);
+  border-bottom: 2px dashed var(--theme-line);
+}
+.heroBand::before, .heroBand::after{
+  content: ""; position: absolute; top: 50%; width: 38px; height: 38px; margin-top: -4px;
+  border-radius: 50%; border: 2px dashed var(--theme-line); opacity: .55; pointer-events: none;
+}
+.heroBand::before{ left: 10px; } .heroBand::after{ right: 10px; }
+@media (max-width: 599px){ .heroBand::before, .heroBand::after{ display: none; } }
+.heroTitle{
+  position: relative; margin: 0; max-width: 100%;
+  font-family: var(--hero-font, "Fredoka", cursive); font-weight: 400;
+  font-size: clamp(26px, 8.6vw, 44px); line-height: 1.08; letter-spacing: var(--hero-spacing, .03em);
+  background: linear-gradient(100deg, var(--theme-deep) 15%, var(--hero-accent, #E0A010) 55%, var(--theme-deep) 90%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 2px 0 rgba(255,255,255,.75)) drop-shadow(0 4px 8px var(--theme-shadow));
+  white-space: nowrap;
+}
+.heroTagline{
+  position: relative; margin: 0; max-width: min(92%, 520px);
+  font-family: "Quicksand", "Inter", system-ui, sans-serif; font-weight: 600;
+  font-size: clamp(11px, 3.1vw, 13.5px); line-height: 1.35; color: var(--theme-ink);
+}
+
+
+/* update 134: title banner for games that had none (Findle, Flagle, Travle) */
+body[data-game="findle"] { --hero-font: "Baloo 2", "Fredoka", sans-serif; --hero-accent: #E08A1E; --hero-spacing: .04em; }
+body[data-game="flagle"] { --hero-font: "Baloo 2", "Fredoka", sans-serif; --hero-accent: #D64F5F; --hero-spacing: .04em; }
+body[data-game="travle"] { --hero-font: "Baloo 2", "Fredoka", sans-serif; --hero-accent: #2B8FC4; --hero-spacing: .04em; }
+.heroBandSlim { min-height: 0 !important; padding-top: 12px !important; padding-bottom: 4px !important; }
+.heroBandSlim .heroTagline { display: none; } /* update 137: same compact banner as the other games on phones */
+@media (min-height: 1000px) { .heroBandSlim .heroTagline { display: block; } }
+.heroBandSlim .heroTitle { font-size: clamp(24px, 7.4vw, 36px); }
+/* the banner now carries the space reserved for TikTok LIVE's own buttons, so the bar under it needs no extra top room */
+.heroBandSlim + .topbar { padding-top: 6px !important; }

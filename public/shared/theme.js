@@ -248,6 +248,29 @@
     }, 60);
   }
 
+  // update 145: the crown sits exactly on the top-left corner of the FIRST LETTER of the title on every phone. The letter's real ink position is
+  // measured with the title's own font (canvas text metrics), so it does not matter which font the phone ends up using or how big the title is.
+  // Results are in em, so they stay right when the title is resized.
+  function placeCrown() {
+    try {
+      var t = document.querySelector(".heroTitle"), a = t && t.querySelector(".hT1");
+      if (!a) return;
+      var cs = getComputedStyle(a), size = parseFloat(cs.fontSize);
+      var ch = (a.textContent || "").trim().charAt(0);
+      if (cs.textTransform === "uppercase") ch = ch.toUpperCase(); else if (cs.textTransform === "lowercase") ch = ch.toLowerCase();
+      if (!ch || !size) return;
+      var ctx = (placeCrown.cv || (placeCrown.cv = document.createElement("canvas"))).getContext("2d");
+      ctx.font = (cs.fontStyle || "normal") + " " + (cs.fontWeight || "400") + " " + size + "px " + cs.fontFamily;
+      var m = ctx.measureText(ch);
+      if (m.actualBoundingBoxAscent == null || m.fontBoundingBoxAscent == null) return;
+      var top = (m.fontBoundingBoxAscent - m.actualBoundingBoxAscent) / size;   // from the top of the text box to the top of the letter
+      var left = -m.actualBoundingBoxLeft / size;                                  // from the left of the text box to the left of the letter
+      if (!isFinite(top) || !isFinite(left) || top < -0.5 || top > 1.2) return;
+      a.style.setProperty("--crown-top", top.toFixed(3) + "em");
+      a.style.setProperty("--crown-left", Math.max(-0.1, left).toFixed(3) + "em");
+    } catch (e) { /* the CSS fallback position is used */ }
+  }
+
   function fitTitle() {
     var t = document.querySelector(".heroTitle"), band = document.getElementById("heroBand");
     if (!t || !band || !document.documentElement.hasAttribute("data-look")) return;
@@ -271,9 +294,7 @@
       d.className = "cuteDeco heroDeco d" + (i + 1); d.setAttribute("aria-hidden", "true"); d.textContent = deco[i];
       band.appendChild(d);
     }
-    var crown = document.createElement("span");
-    crown.className = "cuteDeco heroCrown"; crown.setAttribute("aria-hidden", "true"); crown.textContent = "👑";
-    band.appendChild(crown);
+    // update 135: the crown is now drawn by CSS on the first part of the title (.hT1::before) so it always sticks to the title
     var game = document.body ? document.body.getAttribute("data-game") : "";
     var rib = document.createElement("div");
     rib.className = "cuteRibbon";
@@ -282,8 +303,9 @@
     band.insertBefore(rib, tag || null);
     // the title keeps its place: ribbon goes right under it
     if (t.nextSibling !== rib) band.insertBefore(rib, t.nextSibling);
-    fitTitle();
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitTitle);
+    fitTitle(); placeCrown();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { fitTitle(); placeCrown(); });
+    window.addEventListener("resize", placeCrown);
   }
 
   function setHStyle(id) {
@@ -292,7 +314,7 @@
     try { localStorage.setItem(HKEY, id); } catch (e) {}
     var sel = document.querySelectorAll("[data-hstyle-select]");
     for (var i = 0; i < sel.length; i++) if (sel[i].value !== id) sel[i].value = id;
-    setTimeout(fitTitle, 0);
+    setTimeout(function () { fitTitle(); placeCrown(); }, 0);
     relayout();
   }
 
@@ -386,6 +408,37 @@
     wrap.style.marginTop = "10px";
     host.parentNode.insertBefore(wrap, host.nextSibling);
     buildDisplayBlock(wrap, { noBanner: !document.getElementById("heroBand"), noHeader: !!(document.body && document.body.getAttribute("data-game") === "boxdle") });
+    keepDisplayOutOfHeader(wrap);
+  }
+
+  // update 132: some games keep their theme picker in the header bar. The big "Display & layout" card must NEVER sit there (it
+  // covered the title and ran off the screen). If the card is not inside a settings panel, move it into the game's own one.
+  var SETTINGS_HOMES = [
+    { box: "#hostPanelOverlay .host-cards", card: true },      // Crossdle host panel
+    { box: ".host-cards", card: true },
+    { box: ".settingsBody", head: "h4", headClass: "settings-subhead" }, { box: ".drawer-body", head: "h3", headClass: "drawer-subhead" }, { box: "#settingsSheet .sheet-body" }
+  ];
+  function inSettings(el) {
+    return !!(el.closest && el.closest("#hostPanelOverlay, #settingsOverlay, #settings-overlay, #settingsDrawer, #settingsSheet, #drawer, .drawer, .settingsBody, .drawer-body, .sheet-body, .host-cards, .csBody"));
+  }
+  function keepDisplayOutOfHeader(wrap) {
+    var tries = 0;
+    (function attempt() {
+      if (!wrap.isConnected || inSettings(wrap)) return;
+      for (var i = 0; i < SETTINGS_HOMES.length; i++) {
+        var home = document.querySelector(SETTINGS_HOMES[i].box);
+        if (!home) continue;
+        if (SETTINGS_HOMES[i].card) wrap.classList.add("host-card");
+        if (SETTINGS_HOMES[i].head) {   // "flow" style settings panels start a new card at every sub-heading
+          var hd = document.createElement(SETTINGS_HOMES[i].head); hd.className = SETTINGS_HOMES[i].headClass; hd.textContent = "Display & layout";
+          home.appendChild(hd);
+        }
+        home.appendChild(wrap);
+        wrap.style.marginTop = "";
+        return;
+      }
+      if (++tries < 40) setTimeout(attempt, 250);
+    })();
   }
 
   hstyle = readHStyle();
@@ -471,7 +524,7 @@
     var de = document.documentElement;
     if (!(de.requestFullscreen || de.webkitRequestFullscreen)) return;   // e.g. iPhone Safari: nothing to offer
     var found = document.querySelector("#fullscreenBtn, #fullscreen-btn, #fsBtn, [aria-label*='ullscreen'], [aria-label*='ull screen'], .fsAutoBtn");
-    if (found && found.offsetParent !== null) return;
+    if (found && (found.offsetParent !== null || (found.closest && found.closest(".screen, .hidden, [hidden]")))) return;   // update 139: a button inside a screen that is simply not shown yet counts as present
     var bar = document.querySelector(".toolbarRow, .topbar-actions, .topbar, .app-header");
     if (!bar) return;
     var b = document.createElement("button");

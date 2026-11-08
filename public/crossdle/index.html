@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no, minimum-scale=1" />
 <title>CROSSDLE LIVE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,76 +23,30 @@
 <script src="/shared/title-font.js" defer></script>
 <script src="/shared/score-ticker.js"></script>
 <script src="/shared/word-language.js"></script>
+<link rel="stylesheet" href="/shared/fit-screen.css" />
+<script src="/shared/fit-screen.js"></script>
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 </head>
 <body data-game="crossdle">
 <div id="app">
 
   <!-- ============================================================
-       DIAGNOSTICS RIBBON - always visible, collapsible.
-  ============================================================= -->
-  <div id="diagBar" class="diag-bar">
-    <button id="diagToggle" class="diag-toggle" aria-label="Toggle diagnostics">
-      <span id="diagDot" class="status-dot status-idle"></span>
-      <span id="diagSummary">Events: 0 &middot; not connected</span>
-      <span class="diag-caret">▾</span>
-    </button>
-    <div id="diagPanel" class="diag-panel hidden">
-      <div class="diag-row"><b>Connection:</b> <span id="diagConnState">idle</span></div>
-      <div class="diag-row"><b>Sign key configured:</b> <span id="diagSignKey">checking…</span></div>
-      <div class="diag-row"><b>Dictionary:</b> <span id="diagDictionary">checking…</span></div>
-      <div class="diag-row"><b>Events received (all):</b> <span id="diagEvents">0</span></div>
-      <div class="diag-row"><b>Accepted onto board:</b> <span id="diagRecognized">0</span></div>
-      <div class="diag-row"><b>Last received:</b> <span id="diagLast">—</span></div>
-      <div class="diag-row diag-sub">If "Events received" stays at 0, messages aren't arriving at all (check the TikTok username / that you're live). If it climbs but "Accepted" doesn't, messages are arriving but aren't a single recognizable word matching this round's length - normal for chit-chat.</div>
-      <details class="diag-raw">
-        <summary>Raw event samples (first few, for troubleshooting)</summary>
-        <pre id="diagRawSamples">No samples yet.</pre>
-      </details>
-      <details class="diag-raw">
-        <summary>Recent errors (server-side, none of these should crash the game)</summary>
-        <pre id="diagErrors">No errors logged.</pre>
-      </details>
-    </div>
-  </div>
-
-  <!-- ============================================================
        HEADER
   ============================================================= -->
-  <div class="heroBand hasDiag" id="heroBand">
+  <div class="heroBand" id="heroBand">
       <h1 class="heroTitle">CROSSDLE</h1>
       <p class="heroTagline">Every guess is tested against the secret word and a sneaky decoy. Can chat untangle the clues?</p>
     </div>
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-mark">✦</span>
-      <span class="brand-title">CROSS<span class="brand-accent">DLE</span></span>
-      <span class="brand-sub">live</span>
-    </div>
-    <div class="round-meta">
-      <a href="/" class="btn btn-ghost btn-icon-label" id="homeBtn" title="Choose another game">
-        <span>🏠</span><span class="btn-text">Games</span>
-      </a>
-      <label class="theme-picker crossdle-theme-picker">
-        🎨
-        <select data-theme-select aria-label="Platform theme color">
-          <option value="cream">Cream</option>
-          <option value="blue">Sky Blue</option>
-          <option value="green">Meadow Green</option>
-          <option value="pink">Blossom Pink</option>
-          <option value="violet">Lavender Violet</option>
-          <option value="honey">Honey Gold</option>
-        </select>
-      </label>
-      <div class="pill" id="roundPill">Round —</div>
-      <button id="leaderboardBtn" class="btn btn-ghost btn-icon-label" type="button">
-        <span>🏆</span><span class="btn-text">Leaderboard</span>
-      </button>
-      <button id="fullscreenBtn" class="btn btn-ghost btn-icon-label" type="button">
-        <span>⛶</span><span class="btn-text">Fullscreen</span>
-      </button>
-      <button id="howToPlayBtn" class="btn btn-ghost btn-icon-label" type="button">
-        <span>❓</span><span class="btn-text">How to Play</span>
-      </button>
+  <header class="topbar">
+    <div class="toolbarRow">
+      <a href="/" class="iconBtn" id="homeBtn" aria-label="Choose another game">🏠</a>
+      <span class="modeBadge" id="roundPill">Round —</span>
+      <button class="iconBtn" id="hintBtn" type="button" aria-label="Use a hint">💡</button>
+      <button class="iconBtn" id="howToPlayBtn" type="button" aria-label="How to play">❓</button>
+      <button class="iconBtn" id="leaderboardBtn" type="button" aria-label="Leaderboard">🏆</button>
+      <button class="iconBtn" id="hostFab" type="button" aria-label="Settings">⚙️</button>
+      <button class="iconBtn" id="fullscreenBtn" type="button" aria-label="Enter fullscreen">⛶</button>
     </div>
   </header>
 
@@ -127,7 +81,6 @@
         <div class="keyboard-row" id="keyboardRow2"></div>
       </div>
 
-      <div class="board-legend"><span class="legend-note">Unlimited guesses — only real words (matching this round's length) are tested &amp; added to the board.</span></div>
 
       <div id="hintChips" class="hintChips"></div>
       <div id="hintsRow" class="hints-row hidden">
@@ -151,10 +104,6 @@
        HOST CONTROLS - a small floating button that opens a slide-up
        panel, so by default the whole screen is just the game.
   ============================================================= -->
-  <button id="hostFab" class="host-fab" type="button" aria-label="Open host controls">
-    <span class="host-fab-icon">⚙️</span>
-    <span class="host-fab-label">Host</span>
-  </button>
 
   <div id="hostPanelOverlay" class="host-panel-overlay hidden">
     <div class="host-panel-sheet">
@@ -195,7 +144,6 @@
           <div class="host-card-row">
             <button id="startRoundBtn" class="btn btn-accent">▶ Start Round</button>
             <button id="skipRoundBtn" class="btn btn-ghost">⏭ Skip</button>
-            <button id="hintBtn" class="btn btn-ghost">💡 Hint</button>
             <button id="revealBtn" class="btn btn-ghost">👁 Reveal</button>
           </div>
           <div class="host-card-row">
@@ -269,6 +217,27 @@
             </label>
           </div>
           <p class="mini-note" style="margin:6px 2px 0;font-size:12px;opacity:.8;line-height:1.4;">On (default): a guess must still be a possible answer given every row on the board - some decoy word must be able to explain the tiles that were shown. Off: any real word of the right length is tested and added. Your choice is remembered and applies right away.</p>
+        </div>
+
+        <div class="host-card" id="diagCard">
+          <div class="host-card-title">🩺 Diagnostics</div>
+          <div class="diag-row"><span id="diagDot" class="status-dot status-idle"></span> <span id="diagSummary">Events: 0 &middot; not connected</span></div>
+
+          <div class="diag-row"><b>Connection:</b> <span id="diagConnState">idle</span></div>
+          <div class="diag-row"><b>Sign key configured:</b> <span id="diagSignKey">checking…</span></div>
+          <div class="diag-row"><b>Dictionary:</b> <span id="diagDictionary">checking…</span></div>
+          <div class="diag-row"><b>Events received (all):</b> <span id="diagEvents">0</span></div>
+          <div class="diag-row"><b>Accepted onto board:</b> <span id="diagRecognized">0</span></div>
+          <div class="diag-row"><b>Last received:</b> <span id="diagLast">—</span></div>
+          <div class="diag-row diag-sub">If "Events received" stays at 0, messages aren't arriving at all (check the TikTok username / that you're live). If it climbs but "Accepted" doesn't, messages are arriving but aren't a single recognizable word matching this round's length - normal for chit-chat.</div>
+          <details class="diag-raw">
+            <summary>Raw event samples (first few, for troubleshooting)</summary>
+            <pre id="diagRawSamples">No samples yet.</pre>
+          </details>
+          <details class="diag-raw">
+            <summary>Recent errors (server-side, none of these should crash the game)</summary>
+            <pre id="diagErrors">No errors logged.</pre>
+          </details>
         </div>
 
         <div class="host-card">

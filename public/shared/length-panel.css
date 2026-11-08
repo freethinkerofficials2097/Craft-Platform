@@ -78,3 +78,7 @@
 .lpColor { width: 46px; height: 34px; padding: 0; border: 2px solid var(--lp-ui-border); border-radius: 8px; background: none; cursor: pointer; }
 .lpSwitch { margin: 0 0 8px; }
 .lpActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+/* update 138: no separator line / dot / slash between the parts of the length panel - only space (also for devices that saved "line"). */
+.lpDiv, .lengthPanel[data-divider] .lpDiv { display: none !important; }
+.lpDiv + .lpPart { margin-left: var(--lp-pgap, 10px); }

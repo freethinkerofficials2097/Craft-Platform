@@ -1,4 +1,4 @@
-> **Update 130:** BOXDLE: compact clock box with no extra row; hint / result / "New round" live in the reserved message slot at the top, so nothing ever shifts. See `CHANGES_UPDATE_130.md`.
+> **Update 131:** every game fits on one screen (no scrolling) and every game has a new ⚙️ Settings > 🧩 Customize section to show / hide / resize each part. See `CHANGES_UPDATE_131.md`.
 
 > **Update 128:** the floating guess / message window has its own reserved slot in every game and never overlaps the legend, keyboard, grid or board (FLAGLE included); BOXDLE: the "Type words you can trace on the grid in the chat..." line is removed. See `CHANGES_UPDATE_128.md`.
 

@@ -887,10 +887,10 @@ function renderHeader(state) {
   el.hintBtn.disabled = state.game.status !== "live";
 
   if (state.game.status === "idle") {
-    el.roundLabel.textContent = "TWISTLE";
+    el.roundLabel.textContent = "";
     el.roundSub.textContent = "waiting to start";
   } else {
-    el.roundLabel.textContent = "TWISTLE";
+    el.roundLabel.textContent = "";
     el.roundSub.textContent = "";
   }
   el.guessBadge.hidden = true;

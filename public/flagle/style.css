@@ -168,7 +168,7 @@ body{
   /* Extra top padding reserves space for TikTok LIVE's own on-screen UI
      (viewer name, live badge, gift/exit icons) so it never covers the
      top bar — see --live-safe-top in /shared/theme.css. */
-  padding:calc(10px + var(--live-safe-top)) 12px 10px;
+  padding:0 12px 10px; /* update 137: the title banner above carries the top space; no extra empty strip above it */
   gap:7px;
   overflow-y:auto; /* safety net: if content ever exceeds the screen, scroll instead of hiding it */
 }
@@ -443,7 +443,7 @@ body{
 /* Toasts for correct / wrong / reveal */
 #toast-layer{
   /* update 128: reserved slot in the page flow (under the ticker, above the flag) - the message never covers anything */
-  position:relative; flex:0 0 44px; height:44px; width:100%; overflow:hidden;
+  position:relative; flex:0 0 44px; height:44px; width:100%; overflow:visible;
   display:flex; justify-content:center; align-items:flex-start;
   pointer-events:none;
 }
@@ -457,8 +457,9 @@ body{
   border:2px dashed var(--navy-line);
   animation:toast-in .25s ease, toast-out .4s ease 2.2s forwards;
   white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; box-sizing:border-box; margin-top:2px;
-  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6), 0 5px 0 rgba(139,90,52,.10), 0 9px 14px rgba(139,90,52,.14);
+  box-shadow:0 1px 4px rgba(139,90,52,.18); /* update 137: small soft shadow */
 }
+.toast.info{color:var(--text,#3a2a1a);}
 .toast.win{color:#fff; background:var(--mint); border-color:var(--mint-dim);}
 .toast.reveal{color:#fff; background:var(--amber); border-color:var(--amber-dim);}
 @keyframes toast-in{from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:translateY(0);}}
@@ -744,3 +745,9 @@ input[type="range"].settings-input,
 .lbRank{ color:var(--ink-mid); font-weight:700; min-width:28px; }
 .lbName{ flex:1; word-break:break-word; }
 .lbScore{ font-weight:800; color:var(--wood-deep); }
+
+/* update 139: standard platform toolbar (same as the other games) */
+.liveInfoRow{ display:flex; justify-content:center; gap:10px; font-size:12px; font-weight:700; opacity:.8; padding:2px 8px; }
+.liveInfoRow .heartbeat{ position:static; }
+.liveInfoRow:has(#heartbeat.hidden) #live-username{ opacity:.8; }
+.timerBadge{ min-width:2.2em; }

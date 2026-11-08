@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimum-scale=1" />
 <title>FLAGLE Live · Yarn Atlas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,9 +13,13 @@
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="flagle"></script>
 <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="/shared/hero-banner.css" />
+<link rel="stylesheet" href="/shared/game-chrome.css" />
 <script src="/shared/score-ticker.js"></script>
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 </head>
-<body data-no-width>
+<body data-no-width data-game="flagle">
 
   <!-- ============ SETUP SCREEN ============ -->
   <section id="setup-screen" class="screen">
@@ -63,7 +67,7 @@
 
       <!-- TEST MODE -->
       <div id="test-panel" class="mode-panel hidden">
-        <p class="setup-sub">No TikTok needed. Rounds are shorter (15s) and the correct answer is shown in a small debug label, so you can quickly check the game works after any update.</p>
+        <p class="setup-sub">No TikTok needed. A bot audience guesses by itself (mostly wrong, sometimes right), and the correct answer is shown in a small debug label, so you can quickly check the game works after any update.</p>
         <button id="start-test-btn" class="primary-btn">Start test round</button>
       </div>
 
@@ -80,21 +84,23 @@
   <!-- ============ GAME SCREEN ============ -->
   <section id="game-screen" class="screen hidden">
 
+    <div class="heroBand heroBandSlim" id="heroBand">
+      <h1 class="heroTitle">FLAGLE</h1>
+      <p class="heroTagline">Name the country from its flag. Chat guesses live!</p>
+    </div>
+
     <header class="topbar">
-      <div class="topbar-left">
-        <a href="/" class="icon-btn" id="home-btn" title="Choose another game">🏠</a>
-        <span class="mode-badge" id="mode-badge">LIVE</span>
-        <span class="topbar-title">FLAGLE live</span>
-      </div>
-      <div class="round-timer" id="round-timer">45</div>
-      <div class="topbar-right">
-        <button type="button" id="leaderboard-btn" class="icon-btn" title="Leaderboard" aria-label="Leaderboard">🏆</button>
-        <button type="button" id="settings-btn" class="icon-btn" title="Host settings">⚙️</button>
-        <button type="button" id="fullscreen-btn" class="icon-btn" title="Toggle fullscreen">⛶</button>
-        <span id="heartbeat" class="heartbeat">🎧 0</span>
-        <span id="live-username">@—</span>
+      <div class="toolbarRow">
+        <a href="/" class="iconBtn" id="home-btn" aria-label="Choose another game">🏠</a>
+        <span class="modeBadge mode-badge" id="mode-badge">LIVE</span>
+        <span class="modeBadge timerBadge" id="round-timer">45</span>
+        <button type="button" id="hint-btn" class="iconBtn" aria-label="Give the audience a hint">💡</button>
+        <button type="button" id="leaderboard-btn" class="iconBtn" aria-label="Leaderboard">🏆</button>
+        <button type="button" id="settings-btn" class="iconBtn" aria-label="Settings">⚙️</button>
+        <button type="button" id="fullscreenBtn" class="iconBtn" aria-label="Toggle fullscreen">⛶</button>
       </div>
     </header>
+    <div class="liveInfoRow"><span id="heartbeat" class="heartbeat">🎧 0</span><span id="live-username">@—</span></div>
 
     <div class="ticker-wrap" id="ticker-wrap">
       <div class="ticker-track" id="ticker-track">Waiting for the first correct guess…</div>
@@ -140,7 +146,6 @@
     <form id="host-form" class="host-bar" autocomplete="off">
       <input id="host-input" type="text" placeholder="Type here to test a guess or chat as host…" />
       <button type="submit">Send</button>
-      <button type="button" id="hint-btn" class="ghost-btn" title="Give the audience a hint">💡 Hint</button>
       <button type="button" id="skip-btn" class="ghost-btn" title="Skip this round">Skip</button>
     </form>
 
@@ -167,7 +172,7 @@
     <div class="settingsOverlay" id="settings-overlay" hidden>
       <div class="settingsPanel">
         <div class="settingsHead">
-          <h3>Host settings</h3>
+          <h3>Settings</h3>
           <button class="icon-btn" id="settings-close" type="button" aria-label="Close">✕</button>
         </div>
         <div class="settingsBody">

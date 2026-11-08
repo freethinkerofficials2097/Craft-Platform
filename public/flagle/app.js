@@ -63,7 +63,7 @@ const hostForm = document.getElementById("host-form");
 const hostInput = document.getElementById("host-input");
 const skipBtn = document.getElementById("skip-btn");
 const hintBtn = document.getElementById("hint-btn");
-const fullscreenBtn = document.getElementById("fullscreen-btn");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
 
 let countdownInterval = null;
 let currentMode = "live"; // update 46
@@ -274,7 +274,7 @@ socket.on("session-started", ({ mode, label, settings }) => {
   debugStripEl.classList.toggle("hidden", mode !== "live");
 
   modeBadgeEl.textContent = mode.toUpperCase();
-  modeBadgeEl.className = "mode-badge " + mode;
+  modeBadgeEl.className = "modeBadge mode-badge " + mode;
 
   latestFanStats = { likes: [], gifts: [] };
   renderFansList();
@@ -327,9 +327,11 @@ socket.on("round-start", ({ code, roundSeconds, revealHoldSeconds, maxBlurPx, an
   }
 });
 
-socket.on("wrong-guess", ({ guessedName, distanceKm, direction }) => {
+socket.on("wrong-guess", ({ username, guessedName, distanceKm, direction }) => {
   hintTextEl.textContent = `${guessedName} is not it — ${distanceKm.toLocaleString()} km away, head ${direction}.`;
   hintTextEl.classList.add("flash");
+  // update 142: the floating window announces every audience guess, like the other games
+  showToast(`💬 ${username || "Someone"} guessed ${guessedName} — ${distanceKm.toLocaleString()} km, head ${direction}`, "info");
 });
 
 socket.on("host-hint", ({ message }) => {

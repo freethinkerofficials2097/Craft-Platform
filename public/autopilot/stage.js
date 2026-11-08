@@ -52,7 +52,7 @@
     if (!p || !p.ready || !p.ready()) return false;
     // update 115: in Live mode the game is first made to follow the shared TikTok connection (the settings come after), for at most ~15 s
     if (liveNow() && isLinked() === false) {
-      if (Date.now() - lastRelink > 2500) { lastRelink = Date.now(); relinkTries++; try { p.relink && p.relink(); } catch (e) {} }
+      if (Date.now() - lastRelink > 1500) { lastRelink = Date.now(); relinkTries++; try { p.relink && p.relink(); } catch (e) {} }
       if (Date.now() - loadedAt < 15000) return false;
     }
     if (!cur.family) {
@@ -86,7 +86,7 @@
     if (!S || !S.running || S.paused || !S.current || loaded.loadSeq !== S.current.loadSeq || !frameLoaded) return;
     if (!liveNow()) { relinkTries = 0; return; }
     var lk = isLinked();
-    if (lk === false && Date.now() - loadedAt > 3000 && Date.now() - lastRelink > 4000) {
+    if (lk === false && Date.now() - loadedAt > 1500 && Date.now() - lastRelink > 2500) {
       lastRelink = Date.now(); relinkTries++;
       var p = ps(); try { p && p.relink && p.relink(); } catch (e) {}
     } else if (lk === true) relinkTries = 0;

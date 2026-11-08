@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, minimum-scale=1, user-scalable=no" />
 <title>TRAVLE — Yarn Atlas Edition</title>
 <meta name="description" content="A host-controlled TRAVLE geography game built for TikTok Live." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,13 +14,23 @@
 <link rel="stylesheet" href="/shared/color-shades.css" />
 <script src="/shared/color-shades.js" data-game="travle"></script>
 <link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="/shared/hero-banner.css" />
 <link rel="stylesheet" href="/shared/hints.css" />
 <link rel="stylesheet" href="/shared/settings-shell.css" />
 <script src="/shared/score-ticker.js"></script>
+<link rel="stylesheet" href="/shared/fit-screen.css" />
+<script src="/shared/fit-screen.js"></script>
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 </head>
-<body>
+<body data-game="travle">
 
 <div id="app">
+
+  <div class="heroBand heroBandSlim" id="heroBand">
+    <h1 class="heroTitle">TRAVLE</h1>
+    <p class="heroTagline">Find the shortest trail between two countries. Chat guesses live!</p>
+  </div>
 
   <!-- ============ TOP BAR ============ -->
   <header class="topbar">
@@ -107,11 +117,12 @@
   <!-- ============ HOST CONTROL DOCK ============ -->
   <footer class="host-dock">
     <p class="mode-banner" id="modeBanner"></p>
-    <button class="dock-toggle" id="dockToggle" aria-expanded="true">
+    <!-- update 142: the Host controls panel is MINIMIZED by default in every mode (Offline, Test, Live); only the host opens it -->
+    <button class="dock-toggle" id="dockToggle" aria-expanded="false">
       <span>Host controls</span>
-      <span class="feed-chevron" id="dockChevron">▾</span>
+      <span class="feed-chevron" id="dockChevron">▸</span>
     </button>
-    <div class="dock-collapsible" id="dockCollapsible">
+    <div class="dock-collapsible collapsed" id="dockCollapsible">
       <div class="host-row" id="viewerRow">
         <input id="viewerInput" class="host-input" type="text" placeholder="Viewer name (from chat)" autocomplete="off" />
       </div>
@@ -313,5 +324,6 @@
 <script src="/shared/penguin-fun.js"></script>
 <script src="/shared/celebration.js"></script>
 <script src="app.js"></script>
+<script src="/travle/fit-travle.js"></script>
 </body>
 </html>

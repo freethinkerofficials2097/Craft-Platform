@@ -925,3 +925,35 @@ button, input, select {
 html[data-width="standard"] #app { max-width: 560px; }
 html[data-width="wide"] #app { max-width: 760px; }
 html[data-width="full"] #app { max-width: 100%; }
+
+/* ---- update 131: one screen. The globe takes exactly the height that is left (set by fit-travle.js), so the route card,
+   live feed and host dock are ALWAYS fully visible. ---- */
+#app { overflow: hidden; }
+.globe-wrap { width: var(--globe-size, min(52dvh, calc(100dvh - 330px), calc(100vw - 56px), 560px)); height: var(--globe-size, min(52dvh, calc(100dvh - 330px), calc(100vw - 56px), 560px)); }
+.board > .route-card, .board > .feed-card { flex-shrink: 0; }
+.board > .feed-card:not(.collapsed) { flex: 1 1 0; min-height: 44px; }
+.board > .feed-card:not(.collapsed) .feed-list { overflow-y: auto; }
+html.fs body #app > main.board { flex: 1 1 0 !important; min-height: 0 !important; }
+
+/* ==========================================================================
+   UPDATE 137 - the GLOBE is the main part of TRAVLE.
+   It used to get only what was left after the instructions, big stat boxes and the live feed (about 120px on a phone).
+   Now the explanations are gone on small screens, the stat boxes sit in one slim row, the live feed is a small scrolling strip,
+   and the globe takes everything else (fit-travle.js measures what is left).
+   ========================================================================== */
+.globe-caption, .route-hint { display: none !important; }
+.globe-card { padding-top: 6px !important; padding-bottom: 6px !important; gap: 4px !important; }
+.globe-toolbar { margin-bottom: 0 !important; }
+.route-card { padding-top: 6px !important; padding-bottom: 6px !important; gap: 5px !important; }
+.route-meta { display: flex !important; gap: 6px !important; margin: 0 !important; }
+.route-meta .meta-pill { flex: 1 1 0; display: flex !important; flex-direction: row !important; align-items: baseline; justify-content: space-between; gap: 6px; padding: 3px 10px !important; min-height: 0 !important; }
+.route-meta .meta-label { font-size: 10.5px !important; }
+.route-meta .meta-value { font-size: 17px !important; line-height: 1.1 !important; }
+.board > .feed-card:not(.collapsed) { flex: 0 0 auto !important; }
+.board > .feed-card:not(.collapsed) .feed-list { max-height: 54px; overflow-y: auto; }
+.globe-wrap { width: var(--globe-size, min(62dvh, calc(100vw - 36px), 640px)) !important; height: var(--globe-size, min(62dvh, calc(100vw - 36px), 640px)) !important; }
+.board > .feed-card:not(.collapsed) .feed-list { max-height: 30px; font-size: 12px; }
+.feed-card { padding-top: 2px !important; padding-bottom: 4px !important; }
+.feed-toggle { padding-top: 4px !important; padding-bottom: 4px !important; }
+.globe-card > .post-round-timer[hidden] { display: none !important; }
+.route .route-inner { gap: 4px; }

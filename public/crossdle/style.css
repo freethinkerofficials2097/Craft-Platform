@@ -505,3 +505,29 @@ input[type="text"]:focus, .select:focus { border-color: var(--accent-2); box-sha
 .avatarChipFallback{
   font-weight:800; color:#fff; text-transform:uppercase; user-select:none; font-size:10px;
 }
+
+
+/* ==========================================================================
+   UPDATE 132 - long words: tiles were squeezed into thin slivers and the letters spilled outside them.
+   - 7+ letters: the decoy word goes on its own line under the guess (the name stays on the left), so each tile keeps a usable size
+   - the letter size follows the REAL tile width (container units), so a letter always sits inside its tile
+   ========================================================================== */
+.tile-set { container-type: inline-size; min-width: 0; }
+.tile { min-width: 0; font-size: clamp(8px, calc((100cqw - 4px * (var(--n, 5) - 1)) / var(--n, 5) * 0.6), 22px); }
+.attempt-row.attempt-long { grid-template-columns: 56px minmax(0, 1fr); grid-template-areas: "user guess" "user decoy"; row-gap: 5px; }
+.attempt-row.attempt-long > .attempt-user { grid-area: user; align-self: center; }
+.attempt-row.attempt-long > .tile-set:nth-of-type(2) { grid-area: guess; }
+.attempt-row.attempt-long > .tile-set:nth-of-type(3) { grid-area: decoy; }
+.attempt-row.attempt-long .tile-set { gap: 3px; }
+@media (max-width: 420px) { .tile { font-size: clamp(8px, calc((100cqw - 4px * (var(--n, 5) - 1)) / var(--n, 5) * 0.6), 22px); } }
+
+/* update 140: seamless guess rows. The rows were separate bordered cards with a drop shadow, and the board (which scrolls and so clips)
+   cut the shadow of the last row at its bottom edge and of every row at the sides: that was the cut-off look and the line between rows.
+   Rows are now borderless and shadow-free (the tiles carry the look), a correct guess is marked with a soft tint instead of a border,
+   and the board has enough room around its content that tile glows are never sliced. */
+.board { gap: 4px; }
+.attempt-row { background: transparent; border: 0; border-radius: 12px; box-shadow: none; padding: 5px 4px; }
+.attempt-row.attempt-correct { border: 0; box-shadow: none; background: linear-gradient(90deg, rgba(63,214,122,0.20), rgba(63,214,122,0.07)); }
+html.fs body #app .main-content .board-section > #board.board { padding: 8px 8px 16px; }
+/* the shared theme draws a 3D edge line under every .attempt-row; the seamless rows have none */
+html body .attempt-row, html body .attempt-row.attempt-correct { box-shadow: none !important; }

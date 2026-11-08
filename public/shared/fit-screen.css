@@ -1,0 +1,156 @@
+/* ==========================================================================
+   FIT-SCREEN (update 131) - every game is ONE screen: no page scrolling.
+   Title, top bar, score ticker, message slot, legend, keyboard, hints, the guess board and the host bar are all
+   visible at once. Only the guess list itself (it can hold hundreds of guesses) scrolls inside its own box; it
+   shows the newest guesses first, and it takes whatever height is left over.
+   fit-screen.js (loaded with this file) shrinks the whole game by a few percent ONLY when a small screen cannot hold
+   everything at full size. It uses CSS "zoom" (text and symbols are re-drawn at the new size, never stretched), so
+   nothing becomes blurry, and it only ever shrinks (never jumps up and down while playing).
+   ========================================================================== */
+html.fs, html.fs body { height: 100%; margin: 0; overflow: hidden !important; overscroll-behavior: none; }
+html.fs body .app {
+  position: relative; display: flex; flex-direction: column; overflow: hidden !important;
+  height: calc(var(--fs-vh, 100vh) / var(--fs-zoom, 1)); max-height: calc(var(--fs-vh, 100vh) / var(--fs-zoom, 1));
+  zoom: var(--fs-zoom, 1);
+}
+/* fixed-size parts keep their natural size ... */
+html.fs body .app > * { flex-shrink: 0; }
+/* ... and the middle takes ALL the remaining height */
+html.fs body .app > .stage {
+  flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  padding-top: 4px; padding-bottom: 4px; gap: 0; margin-left: auto; margin-right: auto;
+}
+html.fs body .app > .stage > .round-card {
+  flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; gap: 6px;
+  padding-top: 8px; padding-bottom: 8px; margin-bottom: 0;
+}
+html.fs body .app > .stage > .round-card > * { flex: 0 0 auto; min-height: 0; margin-top: 0; margin-bottom: 0; }
+/* the guess list: the ONE flexible area; its own scroll (hidden bar, still touch/wheel scrollable) */
+html.fs body .app > .stage > .round-card > .tilesWrap {
+  flex: 1 1 0; min-height: 130px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; align-content: flex-start;
+}
+/* TWISTLE: its guess rows live in #grid */
+html.fs body .app > .stage > .round-card > .grid {
+  flex: 1 1 0; min-height: 130px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; align-content: flex-start; justify-content: flex-start;
+}
+/* CITYDLE / TOWNDLE / EXPANDLE / FIXLE: the guess list sits inside a "board" with a header row (column titles / timer):
+   the whole board is the flexible area, the list inside it scrolls */
+html.fs body .app > .stage > .round-card > .fxBoard:not([hidden]) {
+  flex: 1 1 0; min-height: 130px; display: flex; flex-direction: column; overflow: hidden;
+}
+html.fs body .app > .stage > .round-card > .fxBoard > * { flex: 0 0 auto; }
+html.fs body .app > .stage > .round-card > .fxBoard > .tilesWrap {
+  flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; margin-bottom: 0; scrollbar-width: thin;
+}
+html.fs body .app > .controls { flex: 0 0 auto; }
+html.fs body .app > .controls .controlsBody { max-height: none; }
+@media (prefers-reduced-motion: reduce) { html.fs body .app { transition: none; } }
+
+/* ---------- CROSSDLE (different markup: #app > header + ticker + main.main-content > section.board-section) ---------- */
+html.fs body #app:not(.app) {
+  display: flex; flex-direction: column; position: relative; overflow: hidden !important;
+  height: calc(var(--fs-vh, 100vh) / var(--fs-zoom, 1)); max-height: calc(var(--fs-vh, 100vh) / var(--fs-zoom, 1));
+  zoom: var(--fs-zoom, 1);
+}
+html.fs body #app:not(.app) > * { flex-shrink: 0; }
+html.fs body #app > .main-content {
+  flex: 1 1 0; min-height: 0; overflow: hidden !important; display: flex; flex-direction: column;
+  padding: 6px 10px 62px; /* bottom: clears the floating host button */
+}
+html.fs body #app > .main-content > .board-section {
+  flex: 1 1 0; min-height: 0; width: 100%; display: flex; flex-direction: column; overflow: hidden;
+}
+html.fs body #app > .main-content > .board-section > * { flex: 0 0 auto; margin-top: 0; }
+html.fs body #app > .main-content > .board-section > .keyboard-section,
+html.fs body #app > .main-content > .board-section > .board-legend { margin-bottom: 6px; }
+html.fs body #app > .main-content > .board-section > #board {
+  flex: 1 1 0; min-height: 130px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; align-content: flex-start;
+}
+html.fs body #app > .main-content > .board-section > .board-empty { flex: 1 1 0; min-height: 0; padding: 12px 16px; overflow: hidden; }
+
+/* ---------- CONTEXTO (#app > header#diagnostics + main#game > hero, latest guess, board > #guessList) ---------- */
+html.fs body #app > #game {
+  flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; padding-top: 6px; padding-bottom: 8px;
+}
+html.fs body #app > #game > * { flex: 0 0 auto; }
+html.fs body #app > #game > .hero { padding: 2px 0 6px; }
+html.fs body #app > #game > .latest { margin: 6px 0 8px; }
+html.fs body #app > #game > .board { flex: 1 1 0; min-height: 0; margin-bottom: 0; padding: 10px 12px; overflow: hidden; }
+html.fs body #app > #game > .board > .board-head { margin-bottom: 6px; }
+html.fs body #app > #game > .board > .guess-list { flex: 1 1 0; min-height: 130px; overflow-y: auto; scrollbar-width: thin; }
+html.fs body #app > #game > .board > .empty-hint { padding: 10px 0; }
+
+
+/* ==========================================================================
+   UPDATE 132 - nothing is ever cut off.
+   1. SCROLL FALLBACK: when the game cannot fit on one screen even at the smallest zoom (a long word + legend + grid on a small
+      phone), fit-screen.js adds  html.fs-scroll . The one-screen lock is then released: the page scrolls like a normal page and
+      every row stays whole and reachable (before this, everything below the card was hidden and could not be reached).
+   2. The guess list keeps a stable scrollbar gutter, so the width a game measured for its tiles is the width it really gets.
+   3. Wide rows are shrunk to fit by fit-screen.js (row fit) instead of being clipped at the card edge.
+   ========================================================================== */
+html.fs.fs-scroll, html.fs.fs-scroll body { height: auto !important; min-height: 100%; overflow-y: auto !important; overflow-x: hidden !important; overscroll-behavior: auto; }
+html.fs.fs-scroll body .app, html.fs.fs-scroll body #app:not(.app) {
+  height: auto !important; max-height: none !important; overflow: visible !important; zoom: var(--fs-zoom, 1);
+}
+html.fs.fs-scroll body .app > .stage { flex: 0 0 auto; overflow: visible; }
+html.fs.fs-scroll body .app > .stage > .round-card { flex: 0 0 auto; overflow: visible; }
+html.fs.fs-scroll body .app > .stage > .round-card > .tilesWrap,
+html.fs.fs-scroll body .app > .stage > .round-card > .grid,
+html.fs.fs-scroll body .app > .stage > .round-card > .fxBoard:not([hidden]) { flex: 0 0 auto; max-height: none; min-height: 130px; overflow-y: visible; }
+html.fs.fs-scroll body .app > .stage > .round-card > .fxBoard > .tilesWrap { flex: 0 0 auto; overflow-y: visible; }
+html.fs.fs-scroll body #app > .main-content,
+html.fs.fs-scroll body #app > #game { flex: 0 0 auto; overflow: visible !important; }
+html.fs.fs-scroll body #app > .main-content > .board-section { flex: 0 0 auto; overflow: visible; }
+html.fs.fs-scroll body #app > .main-content > .board-section > #board { flex: 0 0 auto; overflow-y: visible; min-height: 130px; }
+html.fs.fs-scroll body #app > #game > .board { flex: 0 0 auto; overflow: visible; }
+html.fs.fs-scroll body #app > #game > .board > .guess-list { flex: 0 0 auto; overflow-y: visible; }
+
+html.fs body .app > .stage > .round-card > .tilesWrap,
+html.fs body .app > .stage > .round-card > .fxBoard > .tilesWrap,
+html.fs body #app > .main-content > .board-section > #board { scrollbar-gutter: stable; }
+/* a row is allowed to be measured at its natural width; the fitter shrinks it only when it is wider than the box */
+html.fs body .app .tilesWrap > * { max-width: 100%; }
+
+/* in scroll-fallback mode the guess list may use most of the screen (tile-fit.js sets a small inline max-height for the one-screen layout) */
+html.fs.fs-scroll body .app .tilesWrap { max-height: max(300px, 72vh) !important; }
+
+/* ==========================================================================
+   UPDATE 133 - decorations and tile edges are never sliced.
+   The one-screen lock clipped three things that legitimately stick out of their box:
+   (a) the washi tape + heart on top of the card (they sit 13-17px ABOVE the card edge)  -> the stage now reserves that room
+       and the card itself no longer clips (the fit logic measures scrollHeight, so it never relied on the clip);
+   (b) the TOP edge of the first tile row (3D lift / border / highlight)                 -> the guess lists get a little padding
+       inside their scroll box, so the first row is whole at scroll position 0;
+   (c) the bottom 3D edge of the last visible row                                        -> same padding at the bottom.
+   ========================================================================== */
+html.fs body .app > .stage { padding-top: 20px; }
+html.fs body .app > .stage > .round-card { overflow: visible; }
+html.fs body .app > .stage > .round-card > .tilesWrap,
+html.fs body .app > .stage > .round-card > .grid,
+html.fs body .app > .stage > .round-card > .fxBoard > .tilesWrap { padding-top: 7px; padding-bottom: 9px; box-sizing: border-box; }
+html.fs body #app > .main-content > .board-section > #board,
+html.fs body #app > #game > .board > .guess-list { padding-top: 6px; padding-bottom: 8px; box-sizing: border-box; }
+/* the fx board (Citydle / Towndle / Expandle / Fixle) has its own clip: give its content the same breathing room */
+html.fs body .app > .stage > .round-card > .fxBoard:not([hidden]) { overflow: visible; }
+/* scroll fallback mode: same room above the card */
+html.fs.fs-scroll body .app > .stage { padding-top: 20px; }
+
+/* ==========================================================================
+   UPDATE 134 - one stable size.
+   tile-fit.js puts an inline max-height (about 150-200px) on the guess list. In the one-screen layout that clamp made the list
+   look "too small" to fit-screen.js, which then shrank the WHOLE game to 70-80% and fell back to scroll mode (small game, blank
+   screen below it). In the one-screen layout the list takes the height that is left (flex), so the clamp is switched off there.
+   ========================================================================== */
+html.fs:not(.fs-scroll) body .app .tilesWrap { max-height: none !important; }
+
+/* ---- compact levels (fit-screen.js adds them only when the game would not fit at full size) ----
+   level 1: tighter gaps, smaller reserved message slot, no keyboard heading;  level 2: also hides the banner's description line.
+   Everything stays on screen - the game is only shrunk (zoom) if this is still not enough. */
+html.fs.fs-compact { --toast-slot-height: 42px; }   /* (update 137: the message card is 2 compact lines = 39px, it fits) */
+html.fs.fs-compact body .app > .stage { padding-top: 16px; padding-bottom: 2px; }
+html.fs.fs-compact body .app > .stage > .round-card { gap: 4px; padding-top: 6px; padding-bottom: 6px; }
+html.fs.fs-compact body .keyboardHead { display: none; }
+html.fs.fs-compact body .heroBand { padding-top: 6px !important; padding-bottom: 4px !important; gap: 2px !important; }
+html.fs.fs-compact2 body .heroBand .heroTagline { display: none; }
+html.fs.fs-compact2 body .app > .controls .controlsHandle { padding-top: 4px; padding-bottom: 4px; }

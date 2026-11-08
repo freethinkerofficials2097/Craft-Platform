@@ -24,8 +24,7 @@
   // --------------------------------------------------------------------
   const el = (id) => document.getElementById(id);
 
-  const diagToggle = el('diagToggle');
-  const diagPanel = el('diagPanel');
+    const diagPanel = el('diagPanel');
   const diagDot = el('diagDot');
   const diagSummary = el('diagSummary');
   const diagConnState = el('diagConnState');
@@ -94,7 +93,7 @@
   // --------------------------------------------------------------------
   // Diagnostics ribbon toggle
   // --------------------------------------------------------------------
-  diagToggle.addEventListener('click', () => diagPanel.classList.toggle('hidden'));
+  
 
   // --------------------------------------------------------------------
   // Fullscreen toggle
@@ -103,15 +102,8 @@
     return !!(document.fullscreenElement || document.webkitFullscreenElement);
   }
   function updateFullscreenLabel() {
-    const label = fullscreenBtn.querySelector('.btn-text');
-    const icon = fullscreenBtn.querySelector('span');
-    if (isFullscreen()) {
-      icon.textContent = '⤢';
-      if (label) label.textContent = 'Exit Fullscreen';
-    } else {
-      icon.textContent = '⛶';
-      if (label) label.textContent = 'Fullscreen';
-    }
+    fullscreenBtn.textContent = isFullscreen() ? '⤢' : '⛶';
+    fullscreenBtn.setAttribute('aria-label', isFullscreen() ? 'Exit fullscreen' : 'Enter fullscreen');
   }
   fullscreenBtn.addEventListener('click', () => {
     try {
@@ -508,7 +500,7 @@
 
   function buildAttemptRow(attempt, animateIn) {
     const row = document.createElement('div');
-    row.className = 'attempt-row' + (attempt.correct ? ' attempt-correct' : '');
+    row.className = 'attempt-row' + (attempt.correct ? ' attempt-correct' : '') + (attempt.guess.length > 6 ? ' attempt-long' : '');   // update 132: long words stack guess + decoy on two lines
 
     const userDiv = document.createElement('div');
     userDiv.className = 'attempt-user';
@@ -518,6 +510,7 @@
 
     const guessSet = document.createElement('div');
     guessSet.className = 'tile-set';
+    guessSet.style.setProperty('--n', String(attempt.guess.length));
     for (let i = 0; i < attempt.guess.length; i++) {
       const tile = document.createElement('div');
       tile.className = `tile tile-${attempt.colors[i]}` + (animateIn ? ' tile-new' : '');
@@ -528,6 +521,7 @@
 
     const decoySet = document.createElement('div');
     decoySet.className = 'tile-set';
+    decoySet.style.setProperty('--n', String(attempt.decoy.length));
     for (let i = 0; i < attempt.decoy.length; i++) {
       const tile = document.createElement('div');
       tile.className = 'tile tile-decoy' + (animateIn ? ' tile-new' : '');

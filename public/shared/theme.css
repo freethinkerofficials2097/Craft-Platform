@@ -35,7 +35,7 @@
      three never overlap and nothing jumps when the message appears or disappears.
      This is the slot's height - raise it if the message is ever cut off, lower it to
      move the keyboard and board back up. */
-  --toast-slot-height: 62px;
+  --toast-slot-height: 42px;
 
   --theme-bg-top:  #FFF3DC;
   --theme-bg:      #F5E3C0;
@@ -224,7 +224,7 @@ html[data-look] body:not([data-game="boxdle"]) .heroTagline{ font-family: "Quick
    ========================================================================== */
 /* the injected decorations / ribbon exist in the page always, but are invisible unless a look + a non-classic style is on */
 .cuteDeco, .cuteRibbon{ display: none; }
-.heroDeco, .heroCrown{ position: absolute; pointer-events: none; user-select: none; line-height: 1; z-index: 2; }
+.heroDeco{ position: absolute; pointer-events: none; user-select: none; line-height: 1; z-index: 2; }
 @keyframes cuteTwinkle{ 0%,100%{ transform: scale(1); opacity: 1; } 50%{ transform: scale(1.25) rotate(12deg); opacity: .7; } }
 
 html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .cuteDeco{ display: block; }
@@ -250,8 +250,6 @@ html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .her
 html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .heroDeco.d3{ right: 8%; top: 12%; font-size: 20px; animation: cuteTwinkle 3.1s ease-in-out infinite .6s; }
 html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .heroDeco.d4{ right: 3%; top: 46%; font-size: 28px; transform: rotate(10deg); }
 html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .heroDeco.d5{ left: 14%; bottom: 8%; font-size: 15px; }
-html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .heroCrown{ font-size: 26px; left: calc(50% - 22vw); top: 4px; transform: rotate(-16deg); }
-@media (min-width: 560px){ html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .heroCrown{ left: calc(50% - 120px); } }
 html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]) .cuteRibbon{
   position: relative; z-index: 1; margin: -2px auto 2px; padding: 3px 22px 4px;
   font: 800 clamp(12px, 3.6vw, 16px) "Baloo 2", "Fredoka", sans-serif; letter-spacing: .18em; color: #fff;
@@ -286,7 +284,6 @@ html[data-look][data-hstyle="candy"] body:not([data-game="boxdle"]) .cuteRibbon{
 html[data-look][data-hstyle="candy"] body:not([data-game="boxdle"]) .heroTagline{
   background: var(--theme-card); border: 2px dashed var(--look-accent); border-radius: 999px; padding: 3px 14px; box-shadow: 0 2px 0 var(--theme-shadow);
 }
-html[data-look][data-hstyle="candy"] body:not([data-game="boxdle"]) .heroCrown{ display: none; }
 
 /* ---- 3. NOTEBOOK LABEL: a paper card with punch holes, washi tape and a pink sticker pill ---- */
 html[data-look][data-hstyle="note"] body:not([data-game="boxdle"]) .heroBand{
@@ -314,7 +311,6 @@ html[data-look][data-hstyle="note"] body:not([data-game="boxdle"]) .cuteRibbon{
   background: var(--theme-surface-2); color: var(--theme-deep); outline: 0; border: 2px dashed var(--look-accent);
   border-radius: 999px; letter-spacing: .12em; transform: rotate(-1deg); box-shadow: 0 2px 0 var(--theme-shadow);
 }
-html[data-look][data-hstyle="note"] body:not([data-game="boxdle"]) .heroCrown,
 html[data-look][data-hstyle="note"] body:not([data-game="boxdle"]) .heroDeco.d2,
 html[data-look][data-hstyle="note"] body:not([data-game="boxdle"]) .heroDeco.d5{ display: none; }
 html[data-look][data-hstyle="note"] body:not([data-game="boxdle"]) .heroDeco.d4{ right: 8px; top: auto; bottom: -10px; }
@@ -380,7 +376,7 @@ html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="cont
 }
 
 /* ---- TILES: glossy raised blocks ---- */
-html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .tile, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .exTile, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .mineTile, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .codeCell, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .patCell, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .symbolCell, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .letterChartCell, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .hint-tile{
+html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .tile, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .exTile, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .mineTile, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .letterChartCell, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .hint-tile{
   box-shadow: inset 0 2px 0 rgba(255,255,255,.5), inset 0 -3px 0 rgba(0,0,0,.14),
     0 var(--d1, 2px) 0 rgba(0,0,0,.26), 0 calc(var(--d1, 2px) + 3px) var(--dblur, 8px) -3px var(--theme-shadow);
   background-image: radial-gradient(ellipse 70% 45% at 30% 14%, rgba(255,255,255,.28), transparent 70%);
@@ -413,7 +409,7 @@ html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="cont
 }
 
 /* ---- ROWS ---- */
-html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .guessRow, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .attempt-row, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .banner-row, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .host-row{
+html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .attempt-row, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .banner-row, html:not([data-depth="off"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .host-row{
   box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 var(--d1, 2px) 0 rgba(0,0,0,.16);
 }
 
@@ -454,7 +450,6 @@ html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="conte
 html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroTitle{ font-size: clamp(28px, 8.4vw, 44px); margin-top: 4px; }
 html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroTagline{ font-size: clamp(11px, 3vw, 13px); }
 html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .cuteRibbon{ font-size: clamp(10px, 2.9vw, 13px); padding: 1px 16px 2px; margin: 0 auto; }
-html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroCrown{ font-size: 20px; }
 html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroDeco.d2, html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroDeco.d5{ display: none; }
 @media (max-height: 720px){ html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroTagline{ display: none; } }
 html[data-banner="compact"][data-hstyle="note"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroBand{ margin: 10px 10px 2px; padding: 8px 14px 6px 30px; }
@@ -628,3 +623,97 @@ html body:not([data-game="contexto"]) .toolbarRow > .modeBadge, html body:not([d
   .app-header .btn-icon-label{ flex: 1 1 0; min-width: 26px; max-width: 40px; aspect-ratio: 1 / 1; padding: 0; justify-content: center; font-size: clamp(13px, 4.2vw, 17px); }
 }
 @media (max-width: 560px){ .app-header .crossdle-theme-picker{ display: none; } }
+
+/* update 132: the Display & layout card is a full-width block wherever it lives (never a squeezed flex item in a header row) */
+[data-hstyle-wrap]{ box-sizing: border-box; max-width: 100%; min-width: 0; }
+.topbar [data-hstyle-wrap], header [data-hstyle-wrap], .app-header [data-hstyle-wrap]{ flex: 1 1 100%; width: 100%; }
+.settings-subhead + [data-hstyle-wrap] > .dispHead, .drawer-subhead + [data-hstyle-wrap] > .dispHead{ display: none; }
+
+/* ==========================================================================
+   UPDATE 133 - the title crown / sparkles are never cut by the banner box
+   The crown emoji paints a few pixels above its own box; the banner used to clip it flat at the top of the screen.
+   ========================================================================== */
+html[data-look] body:not([data-game="boxdle"]) .heroBand { overflow: visible !important; }
+html[data-look] body:not([data-game="boxdle"]) .heroBand { padding-top: max(10px, var(--hero-pad-top, 0px)); }
+/* the tagline keeps clear of the corner decorations (teddy bear / sparkles) instead of running underneath them */
+html[data-look]:not([data-hstyle="classic"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroTagline { padding-left: clamp(30px, 10vw, 50px); padding-right: clamp(34px, 11vw, 54px); box-sizing: border-box; }
+
+
+/* ==========================================================================
+   UPDATE 135 - the title crown is attached to the TITLE, not to the screen
+   Before: the crown was placed at a fixed distance from the centre of the banner, so it only looked right for titles of one
+   particular width (it sat on top of the first letter of CROSSDLE / BLINDLE and floated away from short titles like FINDLE).
+   Now: it is a decoration of the first word-part of the title (.hT1::before), sized in em, so it always sits on the top-left
+   corner of the first letter, tilted like a hat, whatever the game name, title font, banner size or screen width.
+   ========================================================================== */
+.heroCrown{ display: none !important; }   /* the old stand-alone crown element is never shown any more */
+html[data-look]:not([data-hstyle="classic"]):not([data-hstyle="candy"]):not([data-hstyle="note"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroTitle .hT1{ position: relative; overflow: visible; }
+html[data-look]:not([data-hstyle="classic"]):not([data-hstyle="candy"]):not([data-hstyle="note"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroTitle .hT1::before{
+  content: ""; position: absolute; z-index: 3; display: block;
+  /* update 145: the crown is a fixed-shape picture (the same on every Android phone - no emoji font involved) sized in em of the title, and it is
+     placed from the MEASURED top-left corner of the first letter (--crown-top / --crown-left are set by theme.js for the real font on this phone) */
+  width: .56em; height: .44em;
+  left: calc(var(--crown-left, .02em) - .30em); top: calc(var(--crown-top, .16em) - .44em + .07em);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 50'%3E%3Cpath d='M5 41 L3 13 L19 27 L32 5 L45 27 L61 13 L59 41 Z' fill='%23FFC62E' stroke='%23C98A0C' stroke-width='3' stroke-linejoin='round'/%3E%3Crect x='5' y='41' width='54' height='7' rx='3' fill='%23F2A60C' stroke='%23C98A0C' stroke-width='2'/%3E%3Ccircle cx='3' cy='13' r='4' fill='%23FF5C8A'/%3E%3Ccircle cx='32' cy='5' r='4.5' fill='%23FF5C8A'/%3E%3Ccircle cx='61' cy='13' r='4' fill='%23FF5C8A'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform: rotate(-18deg); transform-origin: 50% 100%; pointer-events: none; user-select: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.25));
+}
+html[data-deco="off"] .heroTitle .hT1::before{ content: none !important; display: none !important; }
+/* room above the title for the crown (never touches / is cut by the top of the screen) */
+html[data-look]:not([data-hstyle="classic"]):not([data-hstyle="candy"]):not([data-hstyle="note"]) body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroBand{ padding-top: max(15px, var(--hero-pad-top, 0px)); }
+/* the first sparkle moves to the lower-left corner in the compact banner, so it never collides with the crown on long titles */
+html[data-banner="compact"] body:not([data-game="boxdle"]):not([data-game="contexto"]) .heroDeco.d1{ top: auto; bottom: 10%; left: 4%; }
+
+
+/* ==========================================================================
+   UPDATE 137 - the floating guess / message window is lighter.
+   Before: a big dark drop shadow (0 14px 32px) that the reserved slot cut off with a hard edge, which showed as an obvious
+   border line between the window and the section below it, plus a coloured bar and a thick outline.
+   Now: a small, soft shadow that fits inside the slot (so nothing is cut), a hairline outline and no extra bar. The message
+   still gets two compact lines. Same look in every game (Boxdle, Crossdle and the others override their own colours only).
+   ========================================================================== */
+html body .toastSlot, html body .toast-slot { overflow: visible !important; border: 0 !important; box-shadow: none !important; background: transparent !important; }
+html body .toastSlot .rejectionToast, html body .toast-slot .reject-toast, html body .toastSlot .toast {
+  top: 2px !important;
+  padding: 5px 12px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  box-shadow: 0 1px 4px rgba(30, 14, 28, .20) !important;
+  font-size: 12px !important; line-height: 1.22 !important;
+  max-height: calc(var(--toast-slot-height) - 6px) !important; overflow: hidden !important;
+}
+html body .toastSlot .rejectionToast::before, html body .toast-slot .reject-toast::before { display: none !important; }
+html body[data-game="boxdle"] .toastSlot .rejectionToast, html body[data-game="boxdle"] .toastSlot .rejectionToast.ok, html body[data-game="boxdle"] .toastSlot .rejectionToast.bad {
+  border-width: 1px !important; border-style: solid !important; box-shadow: 0 1px 4px rgba(30, 14, 28, .16) !important;
+}
+
+
+/* update 139: guess rows never get the 3D "under-edge" line (it read as an ugly separator line between the rows) */
+.guessRow, .guessRow.new, html body .guessRow{ box-shadow: none !important; }
+
+
+/* update 139: the symbol / code / pattern cells above the guesses are plain pictures - no 3D tile look, no grey bar under them */
+.symbolCell, .codeCell, .patCell, .symbolCell::before, .symbolCell::after, .codeCell::before, .codeCell::after, .patCell::before, .patCell::after{
+  box-shadow: none !important; background-image: none !important;
+}
+.symbolCell, .codeCell, .patCell{ border: 0 !important; }
+
+
+/* ==========================================================================
+   UPDATE 140 - the floating guess / message window gets a TIGHT slot of its own, strictly BELOW the score ticker.
+   (It never sits on top of the ticker or of anything else.) What was trimmed, nothing else:
+   - the slot is exactly as tall as a 2-line message needs (42px; it was 52px, 44px in compact) and has no extra margin under it;
+   - the message card is sized to fit those 2 lines completely (no clipped second line);
+   - the blank band above the game card is only as tall as the washi tape / heart that sticks out of it (20px in total, the card's own 12px top margin + 8px; it was 28-32px).
+   The slot keeps its height whether a message shows or not, so the page never jumps when one appears.
+   ========================================================================== */
+html body .toastSlot, html body .toast-slot{
+  --toast-slot-height: 42px;
+  height: 42px !important; min-height: 42px !important; max-height: 42px !important; flex: 0 0 42px !important;
+  margin-top: 0 !important; margin-bottom: 0 !important; overflow: visible !important;
+}
+html body .toastSlot .rejectionToast, html body .toast-slot .reject-toast{
+  top: 1px !important; box-sizing: border-box !important; padding: 4px 12px !important; line-height: 1.2 !important;
+  max-height: 40px !important; overflow: hidden !important;
+}
+html body .app > .stage, html.fs body .app > .stage, html.fs.fs-compact body .app > .stage, html.fs.fs-scroll body .app > .stage{ padding-top: 8px !important; }   /* + the card's own 12px top margin = 20px: the 17px tape/heart plus 3px */

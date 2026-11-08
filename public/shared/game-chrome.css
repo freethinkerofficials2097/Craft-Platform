@@ -145,3 +145,24 @@ body[data-game="colorblindle"] { --hero-font: "Baloo 2", "Fredoka", sans-serif; 
 .app > .toastSlot,
 .app > .controls { flex-shrink: 0; }
 .app > .topbar, .app > .app-header { min-height: min-content; }
+
+
+/* ---- update 138: host controls start MINIMIZED and float OVER the game ----
+   The bar at the bottom is only a slim handle. When the host expands it, the panel opens as a sheet above the handle
+   (it covers the game for a moment) instead of pushing the game up / shrinking it. Tap the handle again to close. */
+.app > .controls{ position: sticky; bottom: 0; }
+.app > .controls .controlsHandle{ padding-top: 5px; padding-bottom: 5px; min-height: 28px; font-size: 12px; line-height: 1.2; }
+.app > .controls .controlsBody{
+  position: absolute; left: 0; right: 0; bottom: 100%; z-index: 40; box-sizing: border-box;
+  max-height: min(62vh, 460px); overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  width: 100%; max-width: 640px; margin: 0 auto; padding: 10px 14px 12px;
+  background: var(--theme-card); border: 2px solid var(--theme-line); border-bottom: 0; border-radius: 16px 16px 0 0;
+  box-shadow: 0 -6px 18px var(--theme-shadow);
+}
+.app > .controls .controlsBody.collapsed{ display: none; }
+html.fs body .app > .controls .controlsBody{ max-height: min(62vh, 460px); }
+
+/* ---- update 138: no stray separator lines / dots ---- */
+.heroBand, html[data-look] body .heroBand { border-bottom: 0 !important; }
+.patternWrap, .bxMissedRow, .diagRow:last-child { border-bottom: 0; }
+.sym:empty::before, .cell:empty::before, .patCell:empty::before, .symBox:empty::before { content: none !important; }
