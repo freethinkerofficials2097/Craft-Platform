@@ -240,6 +240,8 @@ const game = {
   hintAutoAt: 0,
   hintNote: null,
   lastRejection: null,
+  eventSeq: 0,
+  lastEvent: null, // update 142: { id, kind: "guess" | "duplicate", word, caller, green, yellow, at } - what the floating message window announces
   // false (default in LINEDLE): any real, not-yet-guessed word of the right length is accepted.
   // true (host's choice in Settings): BLINDLE's rule - the guess must also fit the colors of every guess already on the board.
   strictFit: getStrictFit("linedle", false),
@@ -300,6 +302,8 @@ function processGuess(word, caller) {
   const clue = scoreClue(word, game.secretWord);
   const avatarUrl = knownAvatars.get(caller) || null;
   game.guesses.push({ word, clue, caller, avatarUrl });
+  // update 142: the floating window announces every accepted guess with how many letters are green / yellow
+  game.lastEvent = { id: ++game.eventSeq, kind: "guess", word, caller, green: clue.filter((c) => c === 0).length, yellow: clue.filter((c) => c === 1).length, at: Date.now() };
 
   if (word === game.secretWord) {
     // Solving the round is worth WIN_POINTS (1 point). A wrong guess scores nothing (GUESS_POINTS = 0).
@@ -327,7 +331,9 @@ function attemptGuess(word, caller) {
 
   // A word already on the board is never accepted twice (otherwise one viewer could farm the
   // 1-point-per-guess reward by repeating a word). Silent for chat; offline shows the message.
-  if (game.guesses.some((g) => g.word === word)) {
+  const already = game.guesses.find((g) => g.word === word);
+  if (already) {
+    if (!already.isStarter) game.lastEvent = { id: ++game.eventSeq, kind: "duplicate", word, caller, green: already.clue.filter((c) => c === 0).length, yellow: already.clue.filter((c) => c === 1).length, at: Date.now() };
     return { ok: false, error: "That word is already on the board.", duplicate: true };
   }
 
@@ -381,6 +387,7 @@ function startRound(overrideWord) {
   game.hintAutoAt = 0;
   game.hintNote = null;
   game.lastRejection = null;
+  game.lastEvent = null;
   game.lastWinInfo = null;
   game.roundScores.clear();
   game.status = "live";
@@ -808,6 +815,7 @@ function buildStatePayload() {
       hintConfig: HC.publicHintInfo("linedle", game.hintsUsed, game.hintLastAt),
       hintNote: game.hintNote,
       lastRejection: game.lastRejection,
+      lastEvent: game.lastEvent,
       strictFit: game.strictFit,
       wordLanguage,
       wordLanguages: WL.languageOptionsForClient(),

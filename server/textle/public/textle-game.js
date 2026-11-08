@@ -902,7 +902,18 @@ function buildGuessBlock(guess, wordLength, metrics) {
       rowEl.appendChild(tile);
     }
   }
-  block.appendChild(rowEl);
+  // update 142: the avatar now has its OWN column (left) and an identical empty column on the right keeps the tiles centred in the board,
+  // so the tiles can never run over / under the round TikTok picture - not with a long guess, not when the host makes the tiles
+  // or the pictures larger in Settings. A row wider than its space scrolls inside its own box instead of sliding under the picture.
+  const box = document.createElement("div");
+  box.className = "tileRowBox";
+  box.appendChild(rowEl);
+  block.appendChild(box);
+  const mirror = document.createElement("div");
+  mirror.className = "guessAvatarSpacer guessAvatarMirror";
+  mirror.style.width = metrics.avatarSize + "px";
+  mirror.style.height = metrics.avatarSize + "px";
+  block.appendChild(mirror);
 
   return block;
 }

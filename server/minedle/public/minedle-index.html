@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, minimum-scale=1, user-scalable=no" />
 <title>MINEDLE — Live Word Game</title>
 <meta name="description" content="A live word game: a grid of letter-and-number tiles hints at the hidden word - tap tiles blue or red to build the letter bank, then guess words made of grid letters, powered by TikTok LIVE chat." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -34,6 +34,10 @@
 <script src="/shared/word-language.js"></script>
 <script src="/shared/hints.js"></script>
 <script src="/shared/settings-shell.js"></script>
+<link rel="stylesheet" href="/shared/fit-screen.css" />
+<script src="/shared/fit-screen.js"></script>
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 </head>
 <body data-game="minedle">
   <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
@@ -110,12 +114,12 @@
     </main>
 
     <footer class="controls" id="controls">
-      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="true" aria-controls="controlsBody">
+      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="false" aria-controls="controlsBody">
         <span>Host controls</span>
         <span id="handleArrow" class="handleArrow">▾</span>
       </button>
 
-      <div class="controlsBody" id="controlsBody">
+      <div class="controlsBody collapsed" id="controlsBody">
 
         <div class="modeControls" id="liveControls" hidden>
           <div class="row">

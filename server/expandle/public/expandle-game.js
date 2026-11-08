@@ -708,8 +708,15 @@ function avatarChipHtml(username, avatarUrl, sizePx) {
 function tileSizeFor(len) {
   len = window.TileFit ? window.TileFit.fitLength(len) : len; // update 99: "Tile size & scrolling" (auto-resize on / off)
   const boardWidth = (el.tilesWrap && el.tilesWrap.clientWidth) || 340;
-  const room = Math.max(120, boardWidth - 2 * 46 - 12); // two side columns + gaps
-  return Math.max(window.TileFit && window.TileFit.autoFit() ? 9 : 16, Math.min(40, Math.floor(room / Math.max(1, len)) - 3));
+  // update 139: the avatar column is reserved on BOTH sides (40px + gap each), the row has a frame + padding, and the host's
+  // "tile size" setting (--ex-tile-scale) makes every tile bigger on screen - all of that is counted now, so the letter tiles can
+  // never grow over the circular profile picture.
+  let scale = 1;
+  try { scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ex-tile-scale")) || parseFloat(getComputedStyle(el.tilesWrap).getPropertyValue("--ex-tile-scale")) || 1; } catch (e) {}
+  scale = Math.max(0.5, scale);
+  const room = Math.max(100, boardWidth - 2 * 46 - 18); // two side columns + gaps + frame/padding
+  const perTile = room / Math.max(1, len) - 3;           // minus the gap between tiles
+  return Math.max(window.TileFit && window.TileFit.autoFit() ? 9 : 16, Math.min(40, Math.floor(perTile / scale)));
 }
 function buildBoardRow(kind, entry, g, index) {
   // update 96: [avatar of who made it - on the LEFT, like the other games] [letter tiles, centered] [empty spacer so the tiles stay centered].

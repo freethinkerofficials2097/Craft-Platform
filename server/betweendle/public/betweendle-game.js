@@ -929,10 +929,13 @@ function maybeShowRejection(g) {
   lastShownRejectionAt = g.lastRejection.at;
 
   const seconds = g.rejectionToastSeconds || 4;
-  statusMsg = g.lastRejection.reason; statusUntil = Date.now() + seconds * 1000;
-  renderBoardStatus(g);
+  const kind = g.lastRejection.kind || "bad";
+  if (kind === "bad") { statusMsg = g.lastRejection.reason; statusUntil = Date.now() + seconds * 1000; renderBoardStatus(g); }
 
-  el.rejectionToast.textContent = "✗ " + g.lastRejection.word.toUpperCase() + " — " + g.lastRejection.reason;
+  el.rejectionToast.className = "rejectionToast" + (kind === "bad" ? "" : " " + kind);
+  el.rejectionToast.textContent = kind === "bad"
+    ? "✗ " + g.lastRejection.word.toUpperCase() + " — " + g.lastRejection.reason
+    : (kind === "ok" ? "🎉 " : "💬 ") + g.lastRejection.word.toUpperCase() + " — " + g.lastRejection.reason;
   el.rejectionToast.hidden = false;
   el.rejectionToast.style.animation = "none";
   void el.rejectionToast.offsetWidth;

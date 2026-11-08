@@ -349,6 +349,10 @@ button { cursor: pointer; }
   background: var(--coral);
   margin: 0 auto 8px;
 }
+/* update 142: announcement of an accepted guess */
+.rejectionToast.info { background: rgba(18, 24, 30, 0.96); border-color: rgba(140, 200, 255, 0.5); color: #e8f3ff; }
+.rejectionToast.info::before { background: #8cc8ff; }
+.rejectionToast b { font-weight: 800; }
 @keyframes toast-flash {
   0% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
   10% { opacity: 1; transform: translateX(-50%) translateY(0); }

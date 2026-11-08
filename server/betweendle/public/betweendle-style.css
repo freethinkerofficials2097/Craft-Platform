@@ -1117,3 +1117,7 @@ body[data-game="betweendle"] .toolbarRow .lengthBadge {
 .bdPanelTarget[data-panel-ink="dark"] { --text: #241a10; --muted: rgba(36, 26, 16, 0.66); color: var(--text); }
 .bdPanelTarget[data-panel-ink="light"] .lgSection.lgPanel, .bdPanelTarget[data-panel-ink="light"] .lengthPanel { --lg-panel-bg: rgba(255, 255, 255, 0.10); --lg-panel-border: rgba(255, 255, 255, 0.30); }
 .bdPanelTarget[data-panel-ink="dark"] .lgSection.lgPanel, .bdPanelTarget[data-panel-ink="dark"] .lengthPanel { --lg-panel-bg: rgba(0, 0, 0, 0.06); --lg-panel-border: rgba(0, 0, 0, 0.22); }
+
+/* update 137: friendly / success messages in the floating window */
+.rejectionToast.info { background: rgba(18, 24, 30, 0.96); border-color: rgba(140, 200, 255, 0.4); color: #e8f3ff; }
+.rejectionToast.ok { background: rgba(12, 30, 22, 0.97); border-color: rgba(60, 220, 130, 0.5); color: #d9ffe9; }

@@ -768,21 +768,44 @@ function handleOfflineGuessResult(result) {
 // host-configurable (Settings → "Show rejection message for").
 // ------------------------------------------------------------
 let lastShownRejectionAt = 0;
+let lastShownEventId = -1;
+let lastShownEventRound = -1;
 let rejectionHideTimer = null;
-function maybeShowRejection(g) {
-  if (!g.lastRejection || g.lastRejection.at <= lastShownRejectionAt) return;
-  lastShownRejectionAt = g.lastRejection.at;
-
-  const seconds = g.rejectionToastSeconds || 4;
-
-  el.rejectionToast.textContent = "✗ " + g.lastRejection.word.toUpperCase() + " — " + g.lastRejection.reason;
+function showToast(html, kind, seconds) {
+  el.rejectionToast.innerHTML = html;
+  el.rejectionToast.classList.toggle("info", kind === "info");
   el.rejectionToast.hidden = false;
   el.rejectionToast.style.animation = "none";
   void el.rejectionToast.offsetWidth;
   el.rejectionToast.style.animation = "toast-flash " + seconds + "s ease forwards";
-
   clearTimeout(rejectionHideTimer);
   rejectionHideTimer = setTimeout(() => { el.rejectionToast.hidden = true; }, seconds * 1000);
+}
+// update 142: the floating window announces EVERY new guess ("viewer guessed WORD - 2 green, 1 yellow") as well as skipped guesses,
+// like the other games of the platform. A new round resets the counter so the old announcement is never shown again.
+function maybeShowRejection(g) {
+  const seconds = g.rejectionToastSeconds || 4;
+
+  // a skipped guess (error message)
+  if (g.lastRejection && g.lastRejection.at > lastShownRejectionAt) {
+    lastShownRejectionAt = g.lastRejection.at;
+    showToast("\u2717 " + escapeHtml(g.lastRejection.word.toUpperCase()) + " \u2014 " + escapeHtml(g.lastRejection.reason), "error", seconds);
+    return;
+  }
+
+  // a new guess (announced once)
+  const ev = g.lastEvent;
+  if (g.roundNumber !== lastShownEventRound) { lastShownEventRound = g.roundNumber; lastShownEventId = ev ? ev.id : -1; return; }
+  if (ev && ev.id > lastShownEventId) {
+    lastShownEventId = ev.id;
+    const clue = "<b>" + ev.green + "</b> green \u00b7 <b>" + ev.yellow + "</b> yellow";
+    if (ev.kind === "duplicate") {
+      showToast("\ud83d\udd01 <b>" + escapeHtml(ev.caller) + "</b> \u2014 <b>Already guessed</b>: <b>" + escapeHtml(ev.word.toUpperCase()) + "</b> \u2014 " + clue, "info", Math.min(seconds, 3));
+      return;
+    }
+    const won = g.status === "won" && g.lastWinInfo && g.lastWinInfo.word === ev.word;
+    showToast((won ? "\ud83c\udf89 " : "\ud83c\udfaf ") + "<b>" + escapeHtml(ev.caller) + "</b> guessed <b>" + escapeHtml(ev.word.toUpperCase()) + "</b> \u2014 " + clue + (won ? " \u00b7 exact word!" : ""), "info", Math.min(seconds, 3));
+  }
 }
 
 // ------------------------------------------------------------

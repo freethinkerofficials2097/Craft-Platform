@@ -320,6 +320,10 @@ function processGuess(word, caller) {
   const distance = distanceTo(word, game.secretWord);
   game.guesses.push({ word, distance, caller, avatarUrl });
   game.lastGuess = { word, distance, caller };
+  // update 137: the floating window also announces every accepted guess (kind "info") and the win (kind "ok")
+  game.lastRejection = distance === 0
+    ? { word, reason: `${caller || "Someone"} found the secret word!`, at: Date.now(), kind: "ok" }
+    : { word, reason: `${caller || "Someone"} guessed — the secret word is ${word < game.secretWord ? "after" : "before"} it`, at: Date.now(), kind: "info" };
 
   if (distance === 0) {
     // Finding the secret word is worth WIN_POINTS (1). Nothing else scores.
@@ -354,7 +358,7 @@ function attemptGuess(word, caller) {
   const highWord = game.upper ? game.upper.word : START_UPPER;
   if (!(word > lowWord && word < highWord)) {
     const reason = `Word outside the allowed range (${lowWord.toUpperCase()} – ${highWord.toUpperCase()})`;
-    game.lastRejection = { word, reason, at: Date.now() };
+    game.lastRejection = { word, reason, at: Date.now(), kind: "bad" };
     return { ok: false, error: reason, rejected: true };
   }
 
@@ -753,6 +757,8 @@ function describeConnectErrorLegacy(err) {
 const FAKE_USERNAMES = [
   "comet_fan", "wordwiz99", "livstream_lu", "night.owl", "byte_buddy", "quiz.queen", "pixel_pete"
 ];
+const lowWordT = () => (game.lower ? game.lower.word : START_LOWER);
+const highWordT = () => (game.upper ? game.upper.word : START_UPPER);
 const FAKE_JUNK_WORDS = ["hi", "lol", "go team", "so fun", "love this game", "hmm", "wait what"];
 
 function startTestMode() {
@@ -775,6 +781,10 @@ function startTestMode() {
         const highWord = game.upper ? game.upper.word : START_UPPER;
         const pool = commonBetween(lowWord, highWord);
         text = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : FAKE_JUNK_WORDS[0];
+      } else if (game.status === "live" && roll < 0.55) {
+        // update 137: a real word OUTSIDE the window, so Test Mode also shows the floating "outside the range" message
+        const outside = commonWords.filter((w) => !(w > lowWordT() && w < highWordT()));
+        text = outside.length > 0 ? outside[Math.floor(Math.random() * outside.length)] : FAKE_JUNK_WORDS[0];
       } else {
         text = FAKE_JUNK_WORDS[Math.floor(Math.random() * FAKE_JUNK_WORDS.length)];
       }

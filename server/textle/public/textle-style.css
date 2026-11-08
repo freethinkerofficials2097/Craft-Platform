@@ -226,7 +226,12 @@ button { cursor: pointer; }
 .tilesWrap { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 4px; }
 .guessBlock { position: relative; display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; width: 100%; }
 /* Update 16: the guessed tiles sit in the CENTER of the board; the guesser's avatar stays pinned to the left edge. */
-.guessBlock > .guessAvatar, .guessBlock > .guessAvatarSpacer { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
+/* update 142: avatar = its own column (in the flow, never overlapped); tiles centred in the space between the avatar and an identical mirror column */
+.guessBlock > .guessAvatar, .guessBlock > .guessAvatarSpacer { position: static; flex: 0 0 auto; transform: none; }
+.guessBlock { gap: 8px; }
+.tileRowBox { flex: 1 1 0; min-width: 0; display: flex; justify-content: safe center; align-items: center; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.tileRowBox::-webkit-scrollbar { display: none; }
+.tileRowBox > .tileRow { flex: 0 0 auto; }
 .tileRow { display: flex; gap: 6px; flex-wrap: nowrap; flex: 0 0 auto; min-width: 0; }
 .guessAvatar {
   flex-shrink: 0;

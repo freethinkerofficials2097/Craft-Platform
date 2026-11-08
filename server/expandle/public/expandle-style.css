@@ -924,3 +924,15 @@ body[data-game="fixle"] .toolbarRow .lengthBadge {
 .cdcRange { flex: 1 1 150px; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .cdcRange input[type="range"] { flex: 1 1 auto; min-width: 0; }
 .cdcVal { min-width: 46px; text-align: right; font-size: 12px; opacity: .8; }
+
+/* update 139: the letter tiles never draw over the circular profile pictures.
+   The avatar column sits above the tiles; if a very long word still cannot fit, the tiles scroll sideways inside their own column
+   (starting from the left, "safe center") instead of spilling over the avatar. */
+.exRow { position: relative; }
+.exWho { position: relative; z-index: 3; min-width: 0; overflow: visible; }
+.exSpacer { position: relative; z-index: 3; }
+.exTiles { position: relative; z-index: 1; min-width: 0; max-width: 100%; justify-content: safe center; overflow-x: auto; overflow-y: hidden;
+  padding: 3px 2px; scrollbar-width: none; -ms-overflow-style: none; overscroll-behavior-x: contain; }
+.exTiles::-webkit-scrollbar { display: none; height: 0; }
+.exTile { flex: 0 0 auto; }
+.exWho .guessAvatar, .exWho .fxAvatar { width: 26px; height: 26px; min-width: 26px; border-radius: 50%; overflow: hidden; }
