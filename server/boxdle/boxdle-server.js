@@ -544,13 +544,19 @@ function endRound(reason) {
       if (!top || p > top.p || (p === top.p && reachedAt.get(name) < top.at)) top = { name, p, at: reachedAt.get(name) };
     }
     const mine = game.found.filter((f) => f.caller === top.name);
-    const longest = mine.reduce((a, b) => (b.word.length > a.word.length ? b : a), mine[0]);
+    // update 143: "Longest" is the longest word FOUND IN THE WHOLE ROUND by anyone (it used to be only the round winner's own longest, which
+    // read as wrong whenever somebody else found a longer one). Ties keep the word that was found first. The winner's own longest is kept too.
+    const longest = game.found.reduce((a, b) => (b.word.length > a.word.length ? b : a), game.found[0]);
+    const winnerLongest = mine.reduce((a, b) => (b.word.length > a.word.length ? b : a), mine[0]);
     game.status = "won";
     game.lastWinInfo = {
       username: top.name,
       points: game.mode === "live" ? top.p : null,
       roundPoints: top.p,
       word: longest.word,
+      longestBy: longest.caller,
+      longestLength: longest.word.length,
+      winnerLongestWord: winnerLongest.word,
       words: mine.length,
       totalWords: game.found.length,
       avatarUrl: knownAvatars.get(top.name) || longest.avatarUrl || null

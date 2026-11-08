@@ -242,6 +242,12 @@ function platformConnStatus() {
 // ============================================================
 // 2. GLOBAL STATE
 // ============================================================
+// update 142: AUTO NEXT ROUND safety net, all modes (Live, Test, Offline). The page runs the visible countdown and starts the next round
+// itself; if the page missed the end of the round (sleeping phone, reconnecting socket, TikTok Studio throttling a hidden tab) the SERVER
+// starts it anyway a moment after the countdown should have finished. The page tells the server its setting through 'auto_next_config'.
+let autoNextTimer = null;
+const autoNext = { on: true, ms: 10000 };
+
 const state = {
   connection: { status: 'idle', message: 'Not connected yet.', username: null },
   mode: null, // mode of the current / last round: 'live' | 'test' | 'offline'
@@ -791,6 +797,7 @@ function tailRank(word) {
 // 4. GAME LOGIC
 // ============================================================
 async function startGame(mode, opts = {}) {
+  clearTimeout(autoNextTimer); autoNextTimer = null;
   try {
     const custom = normalize(opts.word || '');
     let puzzle;
@@ -921,6 +928,15 @@ function finishRound(winnerUser, opts = {}) {
     topScorers,
     leaderboardTop: topLeaderboard(),
   };
+  clearTimeout(autoNextTimer);
+  if (autoNext.on) {
+    const mode = state.mode;
+    autoNextTimer = setTimeout(() => {
+      autoNextTimer = null;
+      if (!autoNext.on || state.game.active) return;
+      startGame(mode, { autoplay: mode === 'test', speed: state.autoplay.speed });
+    }, autoNext.ms + 2000);
+  }
 }
 
 // ------------------------------------------------------------
@@ -1459,6 +1475,13 @@ function handleClientMessage(msg, socket) {
         speed: msg.speed,
       });
       break;
+    case 'auto_next_config': {
+      autoNext.on = !!msg.on;
+      const ms = Number(msg.ms);
+      if (ms > 0 && ms < 10 * 60 * 1000) autoNext.ms = ms;
+      if (!autoNext.on) { clearTimeout(autoNextTimer); autoNextTimer = null; }
+      break;
+    }
     case 'give_up':
       giveUp();
       break;

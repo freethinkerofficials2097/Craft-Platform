@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, minimum-scale=1, user-scalable=no" />
 <title>FINDLE Live</title>
 <link rel="stylesheet" href="/shared/theme.css" />
+<link rel="stylesheet" href="/shared/hero-banner.css" />
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 <script src="/shared/theme.js"></script>
 <script src="/shared/session.js"></script>
 <script src="/shared/platform-sync.js"></script>
@@ -36,6 +39,12 @@
     flex:none; display:flex; align-items:center; justify-content:space-between;
     padding:calc(8px + var(--live-safe-top)) 10px 8px; gap:6px;
   }
+  /* update 132: the shared "Display & layout" card must never sit inside the narrow top bar (it ran off the right edge of the screen) */
+  .topbar{ flex-wrap:wrap; }
+  .topbar .icon-group{ flex-wrap:wrap; justify-content:flex-end; min-width:0; max-width:100%; }
+  [data-hstyle-wrap]{ flex:1 1 100%; width:100%; max-width:100%; min-width:0; box-sizing:border-box; }
+  .drawer [data-hstyle-wrap]{ margin-top:6px !important; }
+  [data-hstyle-wrap] > .dispHead{ display:none; }  /* the h2 above already names the card */
   .brand{ font-size:15px; font-weight:700; white-space:nowrap; flex:none; }
   .brand em{ font-style:normal; color:var(--findle-citrus-text); }
   .topbar .pill{ font-size:11px; padding:5px 8px; flex:1; min-width:0; overflow:hidden; }
@@ -158,11 +167,15 @@
 </style>
 <script src="/shared/score-ticker.js"></script>
 </head>
-<body>
+<body data-game="findle">
 
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="host-banner" id="hostBanner"><div class="host-banner-inner"><b>HOST:</b><span id="hostBannerText"></span></div></div>
 
+<div class="heroBand heroBandSlim" id="heroBand">
+  <h1 class="heroTitle">FINDLE</h1>
+  <p class="heroTagline">Find the hidden words in the grid. Chat guesses live!</p>
+</div>
 <div class="topbar">
   <div class="brand">FIN<em>DLE</em></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Not connected</span></div>
@@ -566,6 +579,24 @@
   }
   document.getElementById('hostSendBtn').onclick = sendHostMessage;
   document.getElementById('hostMessageInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendHostMessage(); });
+</script>
+<script>
+/* update 132: move the shared "Display & layout" card (theme.js puts it next to the theme picker) into the Settings drawer. */
+(function () {
+  function move() {
+    var wrap = document.querySelector("[data-hstyle-wrap]"), drawer = document.getElementById("drawer");
+    if (!wrap || !drawer || drawer.contains(wrap)) return !!(wrap && drawer && drawer.contains(wrap));
+    var anchor = document.getElementById("hintSettingsSection");
+    var h = document.createElement("h2"); h.textContent = "Display & layout"; h.setAttribute("data-disp-h", "1");   // its own card in the Settings sheet
+    if (anchor && anchor.parentNode === drawer) { drawer.insertBefore(h, anchor); drawer.insertBefore(wrap, anchor); } else { drawer.appendChild(h); drawer.appendChild(wrap); }
+    return true;
+  }
+  function start() {
+    if (move()) return;
+    var n = 0, t = setInterval(function () { if (move() || ++n > 40) clearInterval(t); }, 250);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
 </script>
 </body>
 </html>

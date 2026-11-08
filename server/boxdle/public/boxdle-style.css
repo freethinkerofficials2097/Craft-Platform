@@ -959,7 +959,7 @@ body[data-game="boxdle"] .toolbarRow .lengthBadge {
 }
 .bxGridSection[hidden] { display: none; }
 .bxGridWrap { position: relative; margin: 0 auto; }
-.bxGrid { display: grid; justify-content: center; align-content: start; }
+.bxGrid { display: grid; justify-content: center; align-content: start; position: relative; }
 .bxTile {
   display: flex; align-items: center; justify-content: center; box-sizing: border-box; user-select: none;
   background: rgba(60, 40, 20, 0.16); border: 1.5px solid rgba(60, 40, 20, 0.42); color: var(--text);
@@ -969,7 +969,7 @@ body[data-game="boxdle"] .toolbarRow .lengthBadge {
 .bxTile.hl { background: var(--bx-path); color: var(--bx-path-ink); border-color: var(--bx-path-dark); transform: scale(1.06); z-index: 1; }
 .bxTile.hint { background: var(--bx-hint); color: var(--bx-hint-ink); border-color: var(--bx-hint-dark); animation: bx-pulse 1s ease-in-out infinite; }
 .bxGrid.over .bxTile { opacity: 0.78; }
-.bxPathSvg { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.bxPathSvg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; overflow: visible; }  /* update 142: inside the grid */
 .bxRuleNote { margin: 8px 0 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); }
 .bxRuleNote:empty { display: none; }
 
@@ -1109,14 +1109,12 @@ body[data-game="boxdle"] .heroRibbon {
   border-radius: 6px; box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12); transform: rotate(-1.5deg);
 }
 body[data-game="boxdle"] .heroTagline { font-family: "Patrick Hand", "Quicksand", cursive; font-size: clamp(13px, 3.7vw, 16px); color: var(--bxc-ink); z-index: 1; }
-.heroDeco, .heroCrown { position: absolute; pointer-events: none; user-select: none; line-height: 1; }
+.heroDeco { position: absolute; pointer-events: none; user-select: none; line-height: 1; }
 .heroDeco.d1 { left: 7%; top: 14%; font-size: 20px; animation: bx-twinkle 2.6s ease-in-out infinite; }
 .heroDeco.d2 { left: 4%; top: 52%; font-size: 24px; transform: rotate(-14deg); }
 .heroDeco.d3 { right: 8%; top: 12%; font-size: 20px; animation: bx-twinkle 3.1s ease-in-out infinite 0.6s; }
 .heroDeco.d4 { right: 3%; top: 46%; font-size: 30px; transform: rotate(10deg); }
 .heroDeco.d5 { left: 14%; bottom: 8%; font-size: 15px; }
-.heroCrown { font-size: 26px; left: calc(50% - 22vw); top: 4px; transform: rotate(-16deg); z-index: 2; }
-@media (min-width: 560px) { .heroCrown { left: calc(50% - 120px); } }
 @keyframes bx-twinkle { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.25) rotate(12deg); opacity: 0.7; } }
 
 /* ---- top bar and host controls: paper strips ---- */
@@ -1218,7 +1216,7 @@ body[data-game="boxdle"] .bxWordRow { background: linear-gradient(160deg, var(--
 body[data-game="boxdle"] .bxWordText { flex: none; font: 800 18px/1.1 "Baloo 2", "Fredoka", sans-serif; letter-spacing: 0.05em; overflow-wrap: anywhere; white-space: normal; color: var(--bxc-navy); text-overflow: clip; }
 body[data-game="boxdle"] .bxWho { flex: none; text-align: left; font: 700 11.5px "Quicksand", sans-serif; color: var(--bxc-muted); }
 body[data-game="boxdle"] .bxPts { font-family: var(--font-display); font-size: 15px; min-width: 46px; }
-.bxMissedRow { flex: 0 0 auto; padding: 8px 6px 2px; border-top: 2px dotted var(--bxc-line); font: 700 12.5px/1.8 "Patrick Hand", "Quicksand", sans-serif; color: var(--bxc-muted); }
+.bxMissedRow { flex: 0 0 auto; padding: 8px 6px 2px; border-top: 0; font: 700 12.5px/1.8 "Patrick Hand", "Quicksand", sans-serif; color: var(--bxc-muted); }
 .bxMissedRow b { color: var(--bxc-navy); text-transform: uppercase; letter-spacing: 0.03em; padding: 1px 8px; margin: 0 2px; border-radius: 999px; border: 1.5px solid var(--bxc-line); background: var(--bxc-tile); display: inline-block; font-family: var(--font-display); }
 body[data-game="boxdle"] .bxEmpty { font-family: "Patrick Hand", "Quicksand", cursive; font-size: 15px; color: var(--bxc-muted); }
 
@@ -1353,7 +1351,6 @@ body[data-game="boxdle"] .toolbarRow .modeBadge, body[data-game="boxdle"] .toolb
   body[data-game="boxdle"] .heroBand { min-height: 0; padding: 2px 10px 4px; gap: 2px; }
   body[data-game="boxdle"] .heroTitle { font-size: clamp(32px, 10vw, 42px); margin-top: 6px; }
   body[data-game="boxdle"] .heroRibbon { font-size: 12px; padding: 1px 16px 2px; margin: 0 auto; }
-  body[data-game="boxdle"] .heroCrown { font-size: 20px; top: 0; }
   body[data-game="boxdle"] .heroDeco.d1 { font-size: 15px; } body[data-game="boxdle"] .heroDeco.d3 { font-size: 15px; } body[data-game="boxdle"] .heroDeco.d4 { font-size: 22px; top: 30%; }
   body[data-game="boxdle"] .stage { padding: 2px 6px 6px; }
   body[data-game="boxdle"] .round-card { margin-top: 10px; padding: 8px 5px 6px; }
@@ -1385,3 +1382,22 @@ body[data-game="boxdle"] .toastSlot .bxStatus {
 body[data-game="boxdle"] .toastSlot .bxStatus.bxEmpty { display: flex; visibility: hidden; }
 body[data-game="boxdle"] .toastSlot .bxStatusText { font-size: 13.5px; line-height: 1.2; -webkit-line-clamp: 2; text-align: center; }
 body[data-game="boxdle"] .toastSlot .bxNewBtn { pointer-events: auto; padding: 5px 12px; }
+
+/* UPDATE 133 - the crown is never cut flat by the banner box */
+body[data-game="boxdle"] .heroBand { overflow: visible; }
+
+/* UPDATE 135 - the crown is attached to the title (first part of it), so it always sits on the top-left corner of the first letter */
+.heroCrown { display: none !important; }
+body[data-game="boxdle"] .heroTitle .hT1 { position: relative; overflow: visible; }
+body[data-game="boxdle"] .heroTitle .hT1::before {
+  content: ""; position: absolute; z-index: 3; display: block;
+  /* update 145: the crown is a fixed-shape picture (the same on every Android phone - no emoji font involved) sized in em of the title, and it is
+     placed from the MEASURED top-left corner of the first letter (--crown-top / --crown-left are set by theme.js for the real font on this phone) */
+  width: .56em; height: .44em;
+  left: calc(var(--crown-left, .02em) - .30em); top: calc(var(--crown-top, .16em) - .44em + .07em);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 50'%3E%3Cpath d='M5 41 L3 13 L19 27 L32 5 L45 27 L61 13 L59 41 Z' fill='%23FFC62E' stroke='%23C98A0C' stroke-width='3' stroke-linejoin='round'/%3E%3Crect x='5' y='41' width='54' height='7' rx='3' fill='%23F2A60C' stroke='%23C98A0C' stroke-width='2'/%3E%3Ccircle cx='3' cy='13' r='4' fill='%23FF5C8A'/%3E%3Ccircle cx='32' cy='5' r='4.5' fill='%23FF5C8A'/%3E%3Ccircle cx='61' cy='13' r='4' fill='%23FF5C8A'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform: rotate(-18deg); transform-origin: 50% 100%; pointer-events: none; user-select: none;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.25));
+}
+html[data-deco="off"] body[data-game="boxdle"] .heroTitle .hT1::before { content: none !important; display: none !important; }
+body[data-game="boxdle"] .heroBand { padding-top: max(15px, var(--hero-pad-top, 0px)); }

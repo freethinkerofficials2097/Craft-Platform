@@ -858,3 +858,14 @@ button { cursor: pointer; }
 .celebrationDots { display: flex; justify-content: center; gap: 6px; margin-top: 18px; }
 .celebDot { width: 6px; height: 6px; border-radius: 50%; background: rgba(60, 40, 20, 0.42); }
 .celebDot.active { background: var(--gold); }
+
+/* ---- update 138: the TOP of every tile is never cut off (Honor X9b and other tall Android phones) ----
+   The guess list is a scrolling box. The first row is lifted 2px, wears a 4px glow ring and a 3D top highlight, and rows are
+   zoomed by fit-screen.js with fractional values - on some Android browsers that made the top few pixels fall outside the box.
+   Fix: more room above the first row, every row and tile keeps its own top margin, and nothing inside the list may clip. */
+.tilesWrap { padding-top: 14px !important; padding-bottom: 12px !important; box-sizing: border-box; scroll-padding-top: 14px; overflow-clip-margin: 12px; }
+.guessBlock { padding-top: 3px; padding-bottom: 2px; box-sizing: content-box; overflow: visible; }
+.tileRow { padding-top: 3px; overflow: visible; }
+.tile { box-sizing: border-box; line-height: 1; overflow: visible; padding: 2px 0 0; min-height: 0; }
+.tile.current { transform: none !important; }
+html.fs body .app > .stage > .round-card > .tilesWrap { padding-top: 14px !important; padding-bottom: 12px !important; }

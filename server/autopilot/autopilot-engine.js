@@ -57,10 +57,14 @@ export function readViewer(d) {
   const name = String(u.uniqueId || data.uniqueId || u.nickname || data.nickname || "").replace(/^@/, "").toLowerCase();
   const follow = Number(u.followRole != null ? u.followRole : data.followRole);
   const pick = (k) => (u[k] != null ? u[k] : data[k]);
+  // update 144: TikTok does not always fill followRole on a chat message, so every other place that says "follows the host" counts as well
+  const fi = u.followInfo || data.followInfo || null;
+  const fstat = Number(fi && fi.followStatus != null ? fi.followStatus : pick("followStatus"));
+  const followsHost = (Number.isFinite(follow) && follow >= 1) || (Number.isFinite(fstat) && fstat >= 1) || pick("isFollower") === true || pick("isFollowing") === true || pick("followingHost") === true;
   return {
     name,
     nickname: String(u.nickname || data.nickname || name).slice(0, 40),
-    isFollower: Number.isFinite(follow) && follow >= 1,
+    isFollower: followsHost,
     isSubscriber: Boolean(pick("isSubscriber")) || hasBadge(u, "subscri"),
     isModerator: Boolean(pick("isModerator")) || hasBadge(u, "moderator")
   };
@@ -104,7 +108,7 @@ class AutopilotEngine {
     this.hub = null;
     this.editKey = "";
     this.rt = this._fresh();
-    this.memory = { gifters: new Map(), followers: new Set(), sharers: new Set(), lastChatAt: 0, chats: 0 };
+    this.memory = { gifters: new Map(), followers: new Set(), sharers: new Set(), moderators: new Set(), subscribers: new Set(), lastChatAt: 0, chats: 0 };
     this._timer = null;
     this._saveTimer = null;
     this._lastBroadcast = 0;
@@ -361,7 +365,7 @@ class AutopilotEngine {
     delete this.profiles[name];
     this._saveNow();
   }
-  _resetMemory() { this.memory.gifters.clear(); this.memory.followers.clear(); this.memory.sharers.clear(); }
+  _resetMemory() { this.memory.gifters.clear(); this.memory.followers.clear(); this.memory.sharers.clear(); this.memory.moderators.clear(); this.memory.subscribers.clear(); }
 
   // ------------------------------------------------------------------ helpers
   _cfgFor(id) { return this.config.games[id] || DEFAULT_CONFIG.games[id]; }
@@ -511,11 +515,15 @@ class AutopilotEngine {
     } catch (e) { /* never break the schedule */ }
   }
   _linkWatch(t, cur) {
-    if (t - (this._lastLinkCheck || 0) < 5000) return;
+    // update 144: checked every 2 s (was 5 s) for the whole game. Linking is idempotent (a game that already follows the connection answers
+    // "already"), so it is simply asked again whenever the game is not provably linked - nobody has to press Connect after a game change.
+    if (t - (this._lastLinkCheck || 0) < 2000) return;
     this._lastLinkCheck = t;
     try {
       if (!this.hub || typeof this.hub.isGameLinked !== "function") return;
-      if (this.hub.isGameLinked(cur.id) === false) { this._log("warn", "The game was not linked to TikTok - linking it again."); this._linkGameNow(cur.id); }
+      const lk = this.hub.isGameLinked(cur.id);
+      if (lk === false) { if (t - (this._lastLinkWarn || 0) > 30000) { this._lastLinkWarn = t; this._log("warn", "The game was not linked to TikTok - linking it again."); } this._linkGameNow(cur.id); }
+      else if (lk === null && this.hub.mode === "live" && this.hub.status === "connected") this._linkGameNow(cur.id);
     } catch (e) { /* ignore */ }
   }
 
@@ -819,6 +827,8 @@ class AutopilotEngine {
     r.result = { winnerId: winner.id, winnerName: winner.name, emoji: winner.emoji, counts: v.options.map((o) => ({ n: o.n, id: o.id, name: o.name, emoji: o.emoji, count: o.count })), total: v.total, voters: v.voters, note, preview: v.preview };
     r.next = { id: winner.id, via: v.total >= vc.minVotes ? "vote" : "fallback" };
     this._log("good", "🏆 Vote result: " + winner.name + " (" + v.total + " vote" + (v.total === 1 ? "" : "s") + ")" + (note ? " - " + note : ""));
+    if (v.rejected) this._log("info", v.rejected + " chat vote" + (v.rejected === 1 ? " was" : "s were") + " not counted: the sender is not in a group ticked under \"Who can vote\" (Voting tab).");
+    this._linkGameNow(winner.id); // update 144: the next game is already joined to the TikTok connection while the result is on screen
     this._setPhase("result", vc.resultSeconds);
   }
   _noResultPick(v) {
@@ -839,9 +849,14 @@ class AutopilotEngine {
   // ------------------------------------------------------------------ chat in
   _onTikTok(ev, args) {
     const d = (args && args[0]) || {};
+    // update 144: a viewer's role (follower / moderator / subscriber) is learned from EVERY event that carries it (joins, likes, gifts, shares, follows ...),
+    // not only from the chat line that casts the vote - so "who can vote" is applied to what is really known about the viewer.
+    if (ev !== "roomUser" && ev !== "chat") this._learnRoles(readViewer(d));
+    if (ev === "social") { const lbl = String(d.displayType || d.label || ""); const w = readViewer(d); if (w.name) { if (/follow/i.test(lbl) && this.memory.followers.size < MAX_MEMORY) this.memory.followers.add(w.name); if (/share/i.test(lbl) && this.memory.sharers.size < MAX_MEMORY) this.memory.sharers.add(w.name); } }
     if (ev === "chat") {
       this.memory.lastChatAt = now();
       this.memory.chats += 1;
+      this._learnRoles(readViewer(d));
       const r = this.rt;
       if (r.running && !r.paused && r.phase === "voting" && r.vote) this._castFromChat(readViewer(d), textOf(d));
     } else if (ev === "gift") {
@@ -858,21 +873,33 @@ class AutopilotEngine {
     }
   }
 
-  /** May this viewer vote, and how many votes does theirs count for?  -> { ok, weight } */
+  _learnRoles(v) {
+    if (!v || !v.name) return;
+    const m = this.memory;
+    if (v.isFollower && m.followers.size < MAX_MEMORY) m.followers.add(v.name);
+    if (v.isModerator && m.moderators.size < MAX_MEMORY) m.moderators.add(v.name);
+    if (v.isSubscriber && m.subscribers.size < MAX_MEMORY) m.subscribers.add(v.name);
+  }
+
+  /** May this viewer vote, and how many votes does theirs count for?  -> { ok, weight, why } */
   eligibility(viewer) {
     const e = this.config.eligibility, m = this.memory, name = viewer.name;
-    if (!name) return { ok: false, weight: 0 };
-    if (e.blockList.includes(name)) return { ok: false, weight: 0 };
+    if (!name) return { ok: false, weight: 0, why: "no name" };
+    if (e.blockList.includes(name)) return { ok: false, weight: 0, why: "blocked" };
     const isFollower = viewer.isFollower || m.followers.has(name);
+    const isModerator = viewer.isModerator || m.moderators.has(name);
+    const isSubscriber = viewer.isSubscriber || m.subscribers.has(name);
     const isGifter = (m.gifters.get(name) || 0) >= e.giftMinCoins;
     const isSharer = m.sharers.has(name);
     const allowed = e.allowList.includes(name);
-    const ok = e.everyone || allowed || (e.followers && isFollower) || (e.subscribers && viewer.isSubscriber) || (e.moderators && viewer.isModerator) || (e.gifters && isGifter) || (e.sharers && isSharer);
-    if (!ok) return { ok: false, weight: 0 };
+    // update 144: STRICTLY what the host ticked under "Who can vote": every ticked group may vote (a viewer who belongs to ANY ticked group counts),
+    // and nobody outside the ticked groups does. Roles come from the chat line AND from everything learned about the viewer during this live.
+    const ok = e.everyone || allowed || (e.followers && isFollower) || (e.subscribers && isSubscriber) || (e.moderators && isModerator) || (e.gifters && isGifter) || (e.sharers && isSharer);
+    if (!ok) return { ok: false, weight: 0, why: "not in an allowed group" };
     let w = 1;
-    if (viewer.isSubscriber) w = Math.max(w, e.weightSubscriber);
+    if (isSubscriber) w = Math.max(w, e.weightSubscriber);
     if (isGifter) w = Math.max(w, e.weightGifter);
-    if (viewer.isModerator) w = Math.max(w, e.weightModerator);
+    if (isModerator) w = Math.max(w, e.weightModerator);
     if (isFollower) w = Math.max(w, e.weightFollower);
     return { ok: true, weight: w };
   }

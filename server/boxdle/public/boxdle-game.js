@@ -446,7 +446,7 @@ function showCelebrationStage(stageIndex, g) {
       '<div class="celebLabel">🎉 Round winner</div>' +
       '<div class="celebWinnerRow">' + avatarChipHtml(winnerName, winnerAvatar, 34) + '<span>' + escapeHtml(winnerName) + "</span></div>" +
       '<div class="celebPoints">' + pts + " points · " + words + (words === 1 ? " word" : " words") + "</div>" +
-      (word ? '<div class="celebAnswerRow">Longest: ' + escapeHtml(word) + "</div>" : "");
+      (word ? '<div class="celebAnswerRow">Longest word: ' + escapeHtml(word) + " (" + word.length + " letters)" + (info && info.longestBy ? " \u2014 by " + escapeHtml(info.longestBy) : "") + "</div>" : "");
   } else if (stage === "round") {
     el.celebrationBody.innerHTML =
       '<div class="celebBoardTitle">🏆 Top scorers this round</div>' +
@@ -613,6 +613,7 @@ function renderGrid(g) {
     el.grid.style.setProperty("--bx-w1", w1 + "px"); el.grid.style.setProperty("--bx-w2", Math.min(w1 * 2, m.gap - 1) + "px");
     el.grid.style.setProperty("--bx-lift", w1 + "px");
     el.grid.innerHTML = "";
+    el.grid.appendChild(el.pathSvg);   // update 142: the path line lives INSIDE the grid, so it is scaled / zoomed exactly like the tiles
     tileEls = [];
     const radius = Math.max(5, Math.round(m.size * 0.2)) + "px";
     for (let i = 0; i < g.letters.length; i++) {
@@ -626,28 +627,41 @@ function renderGrid(g) {
       el.grid.appendChild(t);
       tileEls.push(t);
     }
-    el.pathSvg.setAttribute("width", w);
-    el.pathSvg.setAttribute("height", w);
-    el.pathSvg.setAttribute("viewBox", "0 0 " + w + " " + w);
   }
   el.grid.classList.toggle("over", g.status !== "live");
   applyHighlights(g);
 }
 
+// update 142: the line is placed from the REAL position and size of the tiles on screen (their offsets inside the grid), not from the
+// numbers the page computed when it drew them. So when the host makes the letter grid tiles smaller / larger, changes their spacing,
+// proportions or border in Settings -> Customize (which zooms / restyles the tiles after they were drawn), the line, its thickness and
+// its start dot follow the tiles exactly. The line sits inside the grid, so any zoom of the grid scales the line with it.
 function drawPath(path) {
-  const m = curMetrics;
-  if (!path || path.length < 2 || !m.n) { el.pathSvg.innerHTML = ""; return; }
-  const step = m.size + m.gap;
-  const half = m.size / 2;
-  const pts = path.map((i) => (i % m.n) * step + half + "," + (Math.floor(i / m.n) * step + half)).join(" ");
-  const first = path[0];
-  const cx = (first % m.n) * step + half;
-  const cy = Math.floor(first / m.n) * step + half;
+  if (!path || path.length < 2 || !tileEls.length) { el.pathSvg.innerHTML = ""; return; }
+  const gw = el.grid.offsetWidth, gh = el.grid.offsetHeight;
+  if (!gw || !gh) { el.pathSvg.innerHTML = ""; return; }
+  el.pathSvg.setAttribute("viewBox", "0 0 " + gw + " " + gh);
+  el.pathSvg.setAttribute("preserveAspectRatio", "none");
+  const pt = (i) => {
+    const t = tileEls[i];
+    return t ? { x: t.offsetLeft + t.offsetWidth / 2, y: t.offsetTop + t.offsetHeight / 2, s: Math.min(t.offsetWidth, t.offsetHeight) } : null;
+  };
+  const pts = path.map(pt).filter(Boolean);
+  if (pts.length < 2) { el.pathSvg.innerHTML = ""; return; }
+  const size = pts[0].s || 20;
   el.pathSvg.innerHTML =
-    '<polyline points="' + pts + '" fill="none" stroke="var(--bx-path-dark)" stroke-opacity="0.72" stroke-width="' + Math.max(3, Math.round(m.size * 0.17)) +
+    '<polyline points="' + pts.map((p) => p.x + "," + p.y).join(" ") + '" fill="none" stroke="var(--bx-path-dark)" stroke-opacity="0.72" stroke-width="' + Math.max(3, Math.round(size * 0.17)) +
     '" stroke-linecap="round" stroke-linejoin="round"></polyline>' +
-    '<circle cx="' + cx + '" cy="' + cy + '" r="' + Math.max(3, Math.round(m.size * 0.14)) + '" fill="var(--bx-path-dark)"></circle>';
+    '<circle cx="' + pts[0].x + '" cy="' + pts[0].y + '" r="' + Math.max(3, Math.round(size * 0.14)) + '" fill="var(--bx-path-dark)"></circle>';
 }
+// redraw the line whenever the grid or its tiles change size (window resize, fit-screen zoom, Settings -> Customize dispatches a resize too)
+let pathRedrawRaf = 0;
+function redrawPathSoon() {
+  cancelAnimationFrame(pathRedrawRaf);
+  pathRedrawRaf = requestAnimationFrame(() => { if (hl && hl.until > Date.now()) drawPath(hl.path); });
+}
+window.addEventListener("resize", redrawPathSoon);
+if (typeof ResizeObserver !== "undefined") { try { new ResizeObserver(redrawPathSoon).observe(el.grid); } catch (e) { /* optional */ } }
 
 function applyHighlights(g) {
   const gg = g || (lastState && lastState.game);
@@ -766,7 +780,8 @@ function renderStatus(g) {
     const info = g.lastWinInfo;
     html = info && info.username
       ? "🎉 <b>" + escapeHtml(info.username) + "</b> wins the round with <b>" + info.roundPoints + " points</b> (" + info.words + (info.words === 1 ? " word" : " words") + ")! " +
-        g.foundCount + " words · " + g.totalPoints + " points in total."
+        g.foundCount + " words · " + g.totalPoints + " points in total." +
+        (info.word ? " Longest word: <b>" + escapeHtml(String(info.word).toUpperCase()) + "</b> (" + info.word.length + " letters" + (info.longestBy ? ", " + escapeHtml(info.longestBy) : "") + ")." : "")
       : "🎉 Time's up! " + g.foundCount + " words found for " + g.totalPoints + " points.";
   } else if (g.status === "lost") {
     html = "⏱ Time's up! No words were found this round.";

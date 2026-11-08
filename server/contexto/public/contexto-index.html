@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, minimum-scale=1, user-scalable=no" />
 <meta name="theme-color" content="#0b0d14" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -15,10 +15,26 @@
 <link rel="stylesheet" href="contexto-style.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&family=Lexend:wght@400;600;700&family=Merriweather:wght@400;700&family=JetBrains+Mono:wght@500;700&family=Patrick+Hand&family=Pacifico&family=Lobster&family=Chewy&family=Lilita+One&family=Titan+One&family=Bungee&family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared/fit-screen.css" />
+<script src="/shared/fit-screen.js"></script>
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 </head>
 <body>
 
 <div id="app">
+
+  <!-- ===== TITLE (update 138: above the toolbar, like every other game) ===== -->
+  <section class="hero">
+    <h1 class="wordmark">Contexto <span>LIVE</span></h1>
+    <p id="heroSub" class="hero-sub">Pick a mode, adjust the settings, then start a round.</p>
+    <div id="statsRow" class="stats-row hidden">
+      <span id="statGuesses">0 guesses</span>
+      <span class="dot-sep">·</span>
+      <span id="statPlayers">0 players</span>
+      <span id="statDiff" class="diff-chip hidden"></span>
+    </div>
+  </section>
 
   <!-- ===== TOP BAR: status word + every control in one single row ===== -->
   <header id="diagnostics">
@@ -27,10 +43,7 @@
       <span id="statusWord" class="status-word status-idle" title="Current status">IDLE</span>
       <span id="viewerChip" class="viewer-chip hidden">👁 <span id="viewerCount">0</span></span>
 
-      <button id="settingsToggle" class="icon-pill" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsSheet" title="Settings">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span id="modePip" class="mode-pip"></span>
-      </button>
+      <button id="settingsToggle" class="icon-pill" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="settingsSheet" title="Settings"><span aria-hidden="true">⚙️</span><span id="modePip" class="mode-pip"></span></button>
 
       <!-- Theme picker: button shows only the current theme's symbol;
            full theme names appear only inside the opened dropdown. -->
@@ -40,33 +53,16 @@
         </button>
         <div id="themeMenu" class="theme-menu hidden" role="listbox" aria-label="Choose theme"></div>
       </div>
-      <button id="hintBtn" class="icon-pill" type="button" disabled title="Reveal the next-best word (never the answer)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.5.4.8 1 .8 1.6v.2h6.4v-.2c0-.6.3-1.2.8-1.6A7 7 0 0 0 12 2Z"/></svg>
-      </button>
-      <button id="dockToggle" class="icon-pill" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="hostSheet" title="Enter a word">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h12"/></svg>
-      </button>
-      <button id="leaderboardToggle" class="icon-pill" type="button" title="View leaderboard">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M7 5H4a1 1 0 0 0-1 1v1a4 4 0 0 0 4 4M17 5h3a1 1 0 0 1 1 1v1a4 4 0 0 1-4 4"/></svg>
-      </button>
+      <button id="hintBtn" class="icon-pill" type="button" disabled title="Reveal the next-best word (never the answer)"><span aria-hidden="true">💡</span></button>
+      <button id="dockToggle" class="icon-pill" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="hostSheet" title="Enter a word"><span aria-hidden="true">⌨️</span></button>
+      <button id="leaderboardToggle" class="icon-pill" type="button" title="View leaderboard"><span aria-hidden="true">🏆</span></button>
 
       <button id="roundBtn" class="btn btn-primary" type="button">Start round</button>
 
       <button id="fsBtn" class="icon-btn" type="button" aria-pressed="false" aria-label="Enter fullscreen" title="Enter fullscreen">
-        <svg id="fsIconEnter" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-        <svg id="fsIconExit" class="hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+        <span id="fsIconEnter" aria-hidden="true">⛶</span>
+        <span id="fsIconExit" class="hidden" aria-hidden="true">⤢</span>
       </button>
-      <div class="more-wrap">
-        <button id="moreBtn" class="icon-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="moreMenu" aria-label="More" title="More: connection details, hide toolbar">⋯</button>
-        <div id="moreMenu" class="more-menu hidden" role="menu">
-      <button id="diagBtn" class="icon-btn mm-item" type="button" aria-expanded="false" aria-label="Connection details" title="Connection details">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-5M12 8h.01"/></svg>
-      <span class="mm-label">Connection details</span></button>
-      <button id="toolbarHideBtn" class="icon-btn mm-item" type="button" aria-label="Hide toolbar" title="Hide toolbar">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>
-      <span class="mm-label">Hide toolbar</span></button>
-        </div>
-      </div>
     </div>
     <div id="diagPanel" class="diag-panel hidden">
       <div class="diag-row"><span>Dictionary</span><strong id="diagDict">—</strong></div>
@@ -80,25 +76,9 @@
     </div>
   </header>
 
-  <!-- Single button to bring the toolbar back once it's been hidden,
-       so hiding it never costs the host a way to reach it again. -->
-  <button id="toolbarShowBtn" class="toolbar-reveal hidden" type="button" aria-label="Show toolbar" title="Show toolbar">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-  </button>
-
   <!-- ===== MAIN GAME AREA ===== -->
   <main id="game">
 
-    <section class="hero">
-      <h1 class="wordmark">Contexto <span>LIVE</span></h1>
-      <p id="heroSub" class="hero-sub">Pick a mode, adjust the settings, then start a round.</p>
-      <div id="statsRow" class="stats-row hidden">
-        <span id="statGuesses">0 guesses</span>
-        <span class="dot-sep">·</span>
-        <span id="statPlayers">0 players</span>
-        <span id="statDiff" class="diff-chip hidden"></span>
-      </div>
-    </section>
 
     <!-- Floating "+N points" popups, one per scoring guess. Centered,
          between the stats row above and the latest-guess box below. -->
@@ -109,16 +89,16 @@
       <span id="winIcon">🎉</span>
       <strong id="winnerName"></strong> found it — <strong id="winWord"></strong>!
       <span id="winMeta" class="win-meta"></span>
-    </section>
+  </section>
 
     <section id="giveUpBanner" class="give-up-banner hidden">
       Round ended. The answer was <strong id="giveUpWord"></strong> (#1).
-    </section>
+  </section>
 
     <!-- ===== LATEST GUESS (single line) ===== -->
     <section class="latest" aria-label="Latest guess" aria-live="polite">
       <div id="latestRow" class="guess-row is-empty">Waiting for the first guess…</div>
-    </section>
+  </section>
 
     <!-- ===== LIVE GUESSES (auto-sorted by rank, always top-down) ===== -->
     <section class="board">
@@ -128,7 +108,7 @@
       </div>
       <div id="guessList" class="guess-list"></div>
       <p id="guessEmpty" class="empty-hint">Guesses will appear here, closest word first.</p>
-    </section>
+  </section>
 
   </main>
 

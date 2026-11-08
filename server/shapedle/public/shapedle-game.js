@@ -1010,7 +1010,10 @@ function computeTileMetrics(wordLength, rowCount) {
   let tileSizeByHeight = Math.floor(rowHeightBudget / 1.18);
   tileSizeByHeight = Math.max(8, Math.min(90, tileSizeByHeight));
 
-  const tileSize = Math.max(8, Math.min(tileSizeByWidth, tileSizeByHeight));
+  // update 139: the tile size depends on the WORD WIDTH only. It used to also depend on the list's height at the moment the guess
+  // was drawn (which changes with the fit-screen zoom, the keyboard, the legend...), so tiles came out small, medium or big.
+  // Extra rows already scroll inside the list, so the height never needs to shrink the tiles.
+  const tileSize = Math.max(8, tileSizeByWidth);
   const tileHeight = Math.round(tileSize * 1.18);
   const fontSize = Math.max(7, Math.round(tileSize * 0.42));
 

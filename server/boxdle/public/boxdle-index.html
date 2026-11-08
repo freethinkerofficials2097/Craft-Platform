@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, minimum-scale=1, maximum-scale=1, user-scalable=no" />
 <title>BOXDLE — Live Word Hunt</title>
 <meta name="description" content="A live word-hunt game: build real words from a grid of letter tiles by chaining touching tiles - up, down, sideways and corners - before the clock runs out. Powered by TikTok LIVE chat." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -29,6 +29,8 @@
 <script src="/shared/score-ticker.js"></script>
 <script src="/shared/word-language.js"></script>
 <script src="/shared/settings-shell.js"></script>
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 </head>
 <body data-game="boxdle">
   <div class="confettiLayer" id="confettiLayer" aria-hidden="true"></div>
@@ -41,7 +43,6 @@
       <span class="heroDeco d3" aria-hidden="true">⭐</span>
       <span class="heroDeco d4" aria-hidden="true">🧸</span>
       <span class="heroDeco d5" aria-hidden="true">💗</span>
-      <span class="heroCrown" aria-hidden="true">👑</span>
       <h1 class="heroTitle"><span class="hT1">BOX</span><span class="hT2">DLE</span></h1>
       <div class="heroRibbon">WORD HUNT</div>
       <p class="heroTagline">Chain touching tiles into real words — every letter is a point! Your chat plays live.</p>
@@ -122,12 +123,12 @@
     </main>
 
     <footer class="controls" id="controls">
-      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="true" aria-controls="controlsBody">
+      <button class="controlsHandle" id="controlsHandle" type="button" aria-expanded="false" aria-controls="controlsBody">
         <span>Host controls</span>
         <span id="handleArrow" class="handleArrow">▾</span>
       </button>
 
-      <div class="controlsBody" id="controlsBody">
+      <div class="controlsBody collapsed" id="controlsBody">
 
         <div class="modeControls" id="liveControls" hidden>
           <div class="row">

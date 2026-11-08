@@ -371,7 +371,7 @@ button { font-family: inherit; }
   gap: 8px;
   flex-wrap: wrap;
 }
-.dot-sep { opacity: .5; }
+.dot-sep { display: none; }
 .diff-chip {
   padding: 2px 9px;
   border-radius: 999px;
@@ -1102,7 +1102,7 @@ body:has(.sheet-backdrop:not(.hidden)) #platformBadge { display: none !important
    ============================================================ */
 html[data-depth="soft"]   { --d1: 2px; --d2: 4px; --dblur: 8px; }
 html[data-depth="strong"] { --d1: 3px; --d2: 6px; --dblur: 12px; }
-html:not([data-depth="off"]) .board, html:not([data-depth="off"]) .latest, html:not([data-depth="off"]) .overlay-card,
+html:not([data-depth="off"]) .board, html:not([data-depth="off"]) .overlay-card,
 html:not([data-depth="off"]) .hero {
   box-shadow: 0 var(--d2, 4px) 0 var(--line), 0 calc(var(--d2, 4px) + 6px) calc(var(--dblur, 8px) * 2) -8px rgba(0,0,0,.35);
 }
@@ -1171,3 +1171,36 @@ html[data-deco="off"] .wordmark::before, html[data-deco="off"] .wordmark::after 
 .guess-row .guess-who .pp-avatar, .guess-who .who-spacer { flex: 0 0 var(--who-av); width: var(--who-av); height: var(--who-av); }
 .guess-who .who-spacer { display: block; }
 .guess-row .guess-user { flex: 1 1 auto; min-width: 0; max-width: none; text-align: left; }
+
+/* ---- update 138: the title now sits ABOVE the toolbar (same order as every other game) ---- */
+#app > .hero { width: 100%; max-width: var(--ctx-max, 820px); margin: 0 auto; box-sizing: border-box;
+  padding: calc(var(--live-safe-top, var(--safe-top)) + 6px) 16px 8px; flex: 0 0 auto; }
+#diagnostics { padding-top: 0; }
+#game { padding-top: 8px; }
+.stats-row { gap: 10px; }
+
+/* update 139: same toolbar look as every other game - round emoji buttons, one size */
+#diagnostics .top-bar .icon-pill, #diagnostics .top-bar .icon-btn, #diagnostics .top-bar > a.icon-btn{
+  width: clamp(28px, 8.6vw, 38px); height: clamp(28px, 8.6vw, 38px); min-width: 0; padding: 0; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: clamp(14px, 4.2vw, 18px); line-height: 1; flex: 0 0 auto; position: relative;
+}
+#diagnostics .top-bar .icon-pill svg, #diagnostics .top-bar .icon-btn svg{ display: none; }
+#diagnostics .top-bar{ gap: 4px; flex-wrap: nowrap; justify-content: space-between; }
+#diagnostics .top-bar #roundBtn{ flex: 0 1 auto; padding: 0 10px; height: clamp(28px, 8.6vw, 38px); font-size: 12px; white-space: nowrap; }
+#fsIconEnter.hidden, #fsIconExit.hidden{ display: none; }
+#diagnostics .top-bar{ flex-wrap: wrap; row-gap: 4px; justify-content: center; }
+#diagnostics .top-bar .icon-pill, #diagnostics .top-bar .icon-btn, #diagnostics .top-bar > a.icon-btn{ width: clamp(26px, 7.2vw, 34px); height: clamp(26px, 7.2vw, 34px); }
+#diagnostics .top-bar #roundBtn{ height: clamp(26px, 7.2vw, 34px); padding: 0 8px; font-size: 11px; }
+#diagnostics .top-bar .status-word{ min-width: 0; max-width: 64px; overflow: hidden; text-overflow: clip; font-size: 10px; padding: 3px 6px; flex: 0 1 auto; }
+#diagnostics .top-bar .theme-picker{ flex: 0 0 auto; }
+#diagnostics .top-bar{ gap: 3px; }
+#diagnostics .top-bar .icon-pill, #diagnostics .top-bar .icon-btn, #diagnostics .top-bar > a.icon-btn{ width: clamp(24px, 6.4vw, 32px); height: clamp(24px, 6.4vw, 32px); font-size: clamp(12px, 3.6vw, 16px); }
+#diagnostics .top-bar #roundBtn{ height: clamp(24px, 6.4vw, 32px); padding: 0 7px; font-size: 10.5px; }
+#diagnostics .top-bar .status-word{ max-width: 54px; font-size: 9.5px; padding: 3px 5px; }
+#diagnostics .top-bar{ align-items: center; } #diagnostics .top-bar .more-wrap{ display: inline-flex; align-items: center; align-self: center; margin: 0; } #diagnostics .top-bar .more-wrap > .icon-btn{ margin: 0; }
+
+
+/* update 145: nothing draws a line under the "Latest guess" row - the wrapper had a hard 3D shadow line and the row an under-edge line;
+   the latest guess now sits cleanly on the page like a normal row */
+html .latest, html:not([data-depth="off"]) .latest { box-shadow: none !important; background: transparent !important; border: 0 !important; }
+html .latest .guess-row, html:not([data-depth="off"]) .latest .guess-row { box-shadow: none !important; }

@@ -2,9 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, minimum-scale=1, maximum-scale=1, user-scalable=no" />
 <title>FINDLE Live — Display</title>
 <link rel="stylesheet" href="/shared/theme.css" />
+<link rel="stylesheet" href="/shared/hero-banner.css" />
+<link rel="stylesheet" href="/shared/game-customize.css" />
+<script src="/shared/game-customize.js"></script>
 <script src="/shared/theme.js"></script>
 <script src="/shared/session.js"></script>
 <link rel="stylesheet" href="/shared/color-shades.css" />
@@ -55,11 +58,15 @@
 </style>
 <script src="/shared/score-ticker.js"></script>
 </head>
-<body>
+<body data-game="findle">
 
   <div class="host-banner" id="hostBanner"><div class="host-banner-inner"><b>HOST:</b><span id="hostBannerText"></span></div></div>
 
-  <div class="topbar">
+  <div class="heroBand heroBandSlim" id="heroBand">
+  <h1 class="heroTitle">FINDLE</h1>
+  <p class="heroTagline">Find the hidden words in the grid. Chat guesses live!</p>
+</div>
+<div class="topbar">
     <div class="brand">FIN<em>DLE</em> live</div>
     <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Connecting…</span></div>
     <div class="icon-group">

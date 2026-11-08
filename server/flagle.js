@@ -262,6 +262,7 @@ function processGuess(session, username, rawText) {
   const dir = bearingCompass(guessedCountry.lat, guessedCountry.lng, target.lat, target.lng);
 
   session.socket.emit("wrong-guess", {
+    username, // update 142: the floating window announces who guessed what
     guessedName: guessedCountry.name,
     distanceKm: dist,
     direction: dir,
@@ -269,6 +270,38 @@ function processGuess(session, username, rawText) {
   });
 
   return false;
+}
+
+
+// update 139: TEST MODE BOT - like the other games, Test Mode simulates a chat of viewers that keep guessing on their own
+// (mostly wrong countries, some chatter, and a correct answer that gets more likely as the round goes on). Scores are never saved.
+const BOT_NAMES = ["comet_fan", "flag_wiz99", "livstream_lu", "night.owl", "geo_buddy", "quiz.queen", "pixel_pete", "map_nerd", "atlas_ann"];
+const BOT_CHATTER = ["hi", "lol", "go team", "so fun", "love this game", "hmm", "wait what", "is it in europe?", "no idea"];
+
+function stopTestBot(session) {
+  if (session.botTimer) { clearInterval(session.botTimer); session.botTimer = null; }
+}
+
+function startTestBot(session) {
+  stopTestBot(session);
+  session.botTimer = setInterval(() => {
+    try {
+      if (session.mode !== "test" || !session.socket.connected) return stopTestBot(session);
+      if (!session.roundActive || !session.round) return;
+      const username = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
+      const total = Math.max(1, session.settings.roundSeconds * 1000);
+      const progress = Math.min(1, (Date.now() - session.round.startedAt) / total);
+      const roll = Math.random();
+      let text;
+      if (roll < 0.04 + progress * 0.22) text = session.round.country.name;                       // correct answer, likelier later
+      else if (roll < 0.62) text = COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)].name;   // a wrong guess
+      else text = BOT_CHATTER[Math.floor(Math.random() * BOT_CHATTER.length)];                     // chatter
+      session.commentsSeen = (session.commentsSeen || 0) + 1;
+      session.socket.emit("debug-last-comment", { username, text });
+      const isCorrect = processGuess(session, username, text);
+      session.socket.emit("comment-feed", { username, text, correct: isCorrect, avatarUrl: null });
+    } catch (e) { console.error("[flagle] test bot error:", e); }
+  }, 1300);
 }
 
 export function registerFlagle(io) {
@@ -279,6 +312,7 @@ export function registerFlagle(io) {
 
     socket.on("connect-tiktok", async ({ username }) => {
       session.mode = "live";
+      stopTestBot(session);
       if (!username || typeof username !== "string") {
         socket.emit("tiktok-error", { message: "Please enter a valid TikTok username." });
         return;
@@ -425,6 +459,7 @@ export function registerFlagle(io) {
       session.tiktokUsername = label;
       socket.emit("session-started", { mode, label, settings: session.settings });
       startRound(session);
+      if (mode === "test") startTestBot(session); else stopTestBot(session);
     });
 
     socket.on("host-comment", ({ text }) => {
@@ -486,6 +521,7 @@ export function registerFlagle(io) {
     });
 
     socket.on("disconnect", () => {
+      stopTestBot(session);
       clearRoundTimer(session);
       if (session.watchdog) clearTimeout(session.watchdog);
       if (session.tiktokConnection) {

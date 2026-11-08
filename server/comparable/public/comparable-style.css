@@ -487,7 +487,7 @@ button { cursor: pointer; }
 .tile.filled.cm0, .tile.filled.cm1 { border-radius: 9px; }
 
 /* ---- the symbol row: round tiles + comparison signs, lined up above the letter tiles ---- */
-.patternWrap { overflow: hidden; margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); }
+.patternWrap { overflow: hidden; margin: 0 0 6px; padding-bottom: 2px; border-bottom: 0; }
 .patternWrap[hidden] { display: none; }
 .patternRowInner { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; }
 .patCells { display: flex; flex-wrap: nowrap; flex: 0 0 auto; min-width: 0; }
